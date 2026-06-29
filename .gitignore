@@ -1,0 +1,85 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+jspm_packages/
+
+# Build output
+dist/
+out/
+build/
+app/dist/
+app/out/
+*.asar
+
+# Packaged installers / electron-builder artifacts
+*.dmg
+*.pkg
+*.exe
+*.msi
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.blockmap
+*.zip
+release/
+
+# Generated / compiled
+*.tsbuildinfo
+.prisma/
+coverage/
+.nyc_output/
+
+# Env + secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# SQLite databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Caches / logs
+.cache/
+.cache2/
+.bun/
+.turbo/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS cruft
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+Desktop.ini
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# AI agent / assistant files
+.claude/
+CLAUDE.local.md
+.cursor/
+.cursorrules
+.cursorignore
+.aider*
+.windsurf/
+.windsurfrules
+.continue/
+.codeium/
+.cline/
+.roo/
+.specstory/
+.github/copilot-instructions.md

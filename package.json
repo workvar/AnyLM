@@ -1,0 +1,64 @@
+{
+  "name": "llmeter-app",
+  "version": "0.1.0",
+  "description": "LLMeter desktop app: projects with context, served by local Ollama models.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.js && node --check preload.js && node scripts/check.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "author": "Yash",
+  "license": "MIT",
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "optionalDependencies": {
+    "electron-liquid-glass": "^1.1.1"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.6",
+    "electron": "^42.5.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.llmeter.app",
+    "productName": "LLMeter",
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*"
+    ],
+    "asarUnpack": [
+      "**/node_modules/electron-liquid-glass/**"
+    ],
+    "protocols": [
+      {
+        "name": "LLMeter Auth",
+        "schemes": ["llmeter"]
+      }
+    ],
+    "publish": [
+      {
+        "provider": "generic",
+        "//": "Public base URL of your Cloudflare R2 bucket (r2.dev or custom domain). REPLACE this.",
+        "url": "https://REPLACE-WITH-YOUR-R2-PUBLIC-URL/llmeter"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "perMachine": false
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Utility"
+    }
+  }
+}
