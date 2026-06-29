@@ -17,6 +17,24 @@ async function listModels() {
   return (data.models || []).map((m) => m.name);
 }
 
+// Model details. Returns { contextLength } parsed from /api/show model_info.
+async function info(model) {
+  try {
+    const res = await fetch(`${HOST}/api/show`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model }),
+    });
+    if (!res.ok) return { contextLength: null };
+    const data = await res.json();
+    const mi = data.model_info || {};
+    const key = Object.keys(mi).find((k) => k.endsWith(".context_length"));
+    return { contextLength: key ? mi[key] : null };
+  } catch {
+    return { contextLength: null };
+  }
+}
+
 // Non-streaming generate, used for context summarization.
 async function generate(model, prompt) {
   const res = await fetch(`${HOST}/api/generate`, {
@@ -74,4 +92,4 @@ async function chatStream(model, messages, onToken) {
   return full;
 }
 
-module.exports = { status, listModels, generate, embed, chatStream, HOST };
+module.exports = { status, listModels, info, generate, embed, chatStream, HOST };

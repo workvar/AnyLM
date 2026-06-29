@@ -4,7 +4,7 @@ const { app } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
-const DEFAULTS = { theme: "system", checkUpdatesOnLaunch: null };
+const DEFAULTS = { theme: "system", checkUpdatesOnLaunch: null, sidebarCollapsed: false };
 
 function filePath() {
   return path.join(app.getPath("userData"), "llmeter-settings.json");

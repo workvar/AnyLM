@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, session } = require("electron");
 const path = require("path");
 const { registerIpc } = require("./src/main/ipc");
 const { registerProtocol } = require("./src/main/protocol");
@@ -34,6 +34,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Allow the camera (attach > Camera); deny other permission requests.
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) =>
+    cb(permission === "media")
+  );
   registerIpc();
   createWindow();
   app.on("activate", () => {

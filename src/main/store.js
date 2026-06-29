@@ -40,8 +40,10 @@ function get(pid) {
 function getPublic(pid) {
   const p = get(pid);
   if (!p) return null;
+  // Drop threads (fetched separately) to keep this payload lean.
+  const { threads, ...rest } = p;
   return {
-    ...p,
+    ...rest,
     contexts: (p.contexts || []).map((c) => ({
       id: c.id,
       name: c.name,
@@ -62,6 +64,9 @@ function create({ name, instructions, model }) {
     instructions: instructions || "",
     model: model || "",
     contexts: [],
+    // Knowledge flow vs the general store (default: isolated).
+    importGeneral: false,
+    exportToGeneral: false,
     createdAt: new Date().toISOString(),
   };
   projects.push(project);
@@ -103,6 +108,57 @@ function removeContext(pid, cid) {
   return true;
 }
 
+// --- Per-project chat threads ---
+function listThreads(pid) {
+  const p = get(pid);
+  if (!p) return [];
+  return (p.threads || [])
+    .map(({ id, title, messages, updatedAt }) => ({
+      id,
+      title,
+      msgCount: (messages || []).length,
+      updatedAt,
+    }))
+    .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+}
+
+function getThread(pid, tid) {
+  const p = get(pid);
+  return p ? (p.threads || []).find((t) => t.id === tid) || null : null;
+}
+
+function createThread(pid, { title } = {}) {
+  const projects = readAll();
+  const p = projects.find((x) => x.id === pid);
+  if (!p) return null;
+  const now = new Date().toISOString();
+  const thread = { id: id(), title: title || "New chat", messages: [], createdAt: now, updatedAt: now };
+  p.threads = p.threads || [];
+  p.threads.push(thread);
+  writeAll(projects);
+  return thread;
+}
+
+function updateThread(pid, tid, patch) {
+  const projects = readAll();
+  const p = projects.find((x) => x.id === pid);
+  if (!p) return null;
+  const t = (p.threads || []).find((x) => x.id === tid);
+  if (!t) return null;
+  Object.assign(t, patch, { updatedAt: new Date().toISOString() });
+  writeAll(projects);
+  return t;
+}
+
+function deleteThread(pid, tid) {
+  const projects = readAll();
+  const p = projects.find((x) => x.id === pid);
+  if (!p) return false;
+  p.threads = (p.threads || []).filter((x) => x.id !== tid);
+  writeAll(projects);
+  return true;
+}
+
 module.exports = {
   list,
   get,
@@ -112,5 +168,10 @@ module.exports = {
   remove,
   addContext,
   removeContext,
+  listThreads,
+  getThread,
+  createThread,
+  updateThread,
+  deleteThread,
   newId: id,
 };

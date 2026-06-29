@@ -15,8 +15,14 @@ async function save(patch) {
   settings = await window.api.setSettings(patch);
 }
 
+async function refreshKnowledge() {
+  const n = await window.api.knowledgeCount();
+  el("knowledge-count").textContent = `${n} chunk${n === 1 ? "" : "s"} stored`;
+}
+
 function open() {
   el("settings-modal").classList.remove("hidden");
+  refreshKnowledge();
 }
 function close() {
   el("settings-modal").classList.add("hidden");
@@ -40,6 +46,10 @@ function bind() {
 
   el("update-toggle").onchange = (e) => save({ checkUpdatesOnLaunch: e.target.checked });
   el("check-now").onclick = () => checkNow();
+  el("knowledge-clear").onclick = async () => {
+    await window.api.knowledgeClear();
+    await refreshKnowledge();
+  };
 }
 
 // Load settings, apply theme, and reflect values in the UI.

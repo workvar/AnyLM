@@ -50,8 +50,13 @@
           <span class="logo">LLMeter</span>
           <span id="status-dot" class="dot" title="Ollama status"></span>
         </div>
-        <button id="new-project" class="primary">+ New project</button>
-        <ul id="project-list"></ul>
+        <div id="sidebar-tabs" class="tabs">
+          <button class="tab active" data-tab="projects">Projects</button>
+          <button class="tab" data-tab="chats">Chats</button>
+        </div>
+        <button id="new-item" class="primary">+ New project</button>
+        <ul id="project-list" class="nav-list"></ul>
+        <ul id="chat-list" class="nav-list hidden"></ul>
         <div class="sidebar-foot" id="ollama-info">checking Ollama...</div>
         <div id="sidebar-actions">
           <button id="open-settings" class="ghost small">Settings</button>
@@ -63,50 +68,124 @@
       </aside>
 
       <main id="main">
-        <section id="empty-state" class="empty">
-          <h1>LLMeter</h1>
-          <p>Create a project, add reference context, and chat with your local models.</p>
+        <section id="empty-state">
+          <div class="convo-toolbar">
+            <button id="sidebar-toggle-empty" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+          </div>
+          <div class="empty-center">
+            <h1>LLMeter</h1>
+            <p>Create a project or start a chat with your local models.</p>
+          </div>
         </section>
 
-        <section id="project-view" class="hidden">
-          <header id="project-header">
-            <input id="project-name" class="name-input" />
+        <section id="convo-view" class="hidden">
+          <header id="convo-header">
+            <button id="sidebar-toggle" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <input id="convo-name" class="name-input" />
             <div class="header-right">
-              <select id="model-select"></select>
-              <button id="delete-project" class="danger ghost">Delete</button>
+              <div id="model-dropdown" class="dropdown">
+                <button
+                  id="model-trigger"
+                  class="dropdown-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                >
+                  <span id="model-current" class="dropdown-value">No models</span>
+                  <svg class="dropdown-chevrons" width="10" height="16" viewBox="0 0 10 16" aria-hidden="true">
+                    <path d="M2.5 6.5 5 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M2.5 9.5 5 12l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <div id="model-menu" class="dropdown-menu hidden" role="listbox">
+                  <div id="model-search-wrap" class="dropdown-search hidden">
+                    <input id="model-search" type="text" placeholder="Search models" autocomplete="off" spellcheck="false" />
+                  </div>
+                  <ul id="model-options" class="dropdown-options"></ul>
+                </div>
+              </div>
+              <button id="project-settings-btn" class="ghost small hidden">Project</button>
+              <button id="delete-convo" class="danger ghost">Delete</button>
             </div>
           </header>
 
-          <div id="project-body">
-            <div id="left-col">
-              <label class="field-label">Project instructions</label>
-              <textarea
-                id="instructions"
-                placeholder="System prompt / background for every chat in this project..."
-              ></textarea>
+          <div id="thread-bar" class="thread-bar hidden"></div>
 
-              <div class="ctx-head">
-                <label class="field-label">Context references</label>
-                <button id="add-context" class="ghost small">+ Add</button>
-                <input type="file" id="file-input" accept=".txt,.md,.json,.csv,.log" hidden />
+          <div id="chat-col">
+            <div id="messages"></div>
+            <div id="ctx-meter" class="ctx-meter hidden">
+              <div class="ctx-track"><div id="ctx-bar" class="ctx-bar"></div></div>
+              <span id="ctx-text" class="ctx-text"></span>
+              <button id="ctx-compact" class="ghost small hidden" type="button" title="Summarize and continue in a new chat">Compact</button>
+            </div>
+            <div id="attach-chips" class="attach-chips"></div>
+            <form id="chat-form">
+              <div class="attach-wrap">
+                <button type="button" id="attach-btn" class="icon-btn" title="Attach" aria-haspopup="true" aria-expanded="false">+</button>
+                <div id="attach-menu" class="attach-menu hidden" role="menu">
+                  <button type="button" data-attach="image">Image…</button>
+                  <button type="button" data-attach="document">Document…</button>
+                  <button type="button" data-attach="folder">Folder…</button>
+                  <button type="button" data-attach="camera">Camera…</button>
+                </div>
               </div>
-              <ul id="context-list"></ul>
-            </div>
-
-            <div id="chat-col">
-              <div id="messages"></div>
-              <form id="chat-form">
-                <textarea
-                  id="chat-input"
-                  placeholder="Message your project model..."
-                  rows="2"
-                ></textarea>
-                <button type="submit" id="send-btn" class="primary">Send</button>
-              </form>
-            </div>
+              <textarea id="chat-input" placeholder="Message…" rows="2"></textarea>
+              <button type="submit" id="send-btn" class="primary">Send</button>
+            </form>
+            <input type="file" id="attach-image-input" accept="image/*" multiple hidden />
+            <input type="file" id="attach-doc-input" accept=".txt,.md,.json,.csv,.log,.tsv,.yml,.yaml" multiple hidden />
+            <input type="file" id="attach-folder-input" webkitdirectory multiple hidden />
           </div>
         </section>
       </main>
+    </div>
+
+    <!-- Project settings -->
+    <div id="project-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Project settings</h2>
+        <p class="modal-sub">Instructions and reference context for this project.</p>
+
+        <label class="field-label">Instructions</label>
+        <textarea
+          id="instructions"
+          placeholder="System prompt / background for every chat in this project..."
+        ></textarea>
+
+        <div class="setting-row">
+          <div class="label">
+            Lock model to this project
+            <small>Use only this model here; disables the header picker.</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="model-lock" />
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div class="setting-col">
+          <div class="label">
+            Knowledge flow
+            <small>How this project shares with your general knowledge base.</small>
+          </div>
+          <div class="kflow" id="kflow">
+            <label><input type="radio" name="kflow" value="isolated" /> Isolated</label>
+            <label><input type="radio" name="kflow" value="import" /> Import only (in)</label>
+            <label><input type="radio" name="kflow" value="export" /> Export only (out)</label>
+            <label><input type="radio" name="kflow" value="open" /> Open (both ways)</label>
+          </div>
+        </div>
+
+        <div class="ctx-head">
+          <label class="field-label">Context references</label>
+          <button id="add-context" class="ghost small">+ Add</button>
+          <input type="file" id="file-input" accept=".txt,.md,.json,.csv,.log" hidden />
+        </div>
+        <ul id="context-list"></ul>
+
+        <div class="modal-foot">
+          <button id="project-modal-close" class="primary">Done</button>
+        </div>
+      </div>
     </div>
 
     <!-- First-launch update opt-in -->
@@ -120,6 +199,20 @@
         <div class="modal-foot">
           <button id="fr-no" class="ghost">Not now</button>
           <button id="fr-yes" class="primary">Check on every launch</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera capture -->
+    <div id="camera-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Camera</h2>
+        <p class="modal-sub">Capture a photo to attach.</p>
+        <video id="camera-video" autoplay playsinline muted></video>
+        <div id="camera-error" class="auth-error"></div>
+        <div class="modal-foot">
+          <button id="camera-cancel" class="ghost">Cancel</button>
+          <button id="camera-capture" class="primary">Capture</button>
         </div>
       </div>
     </div>
@@ -153,6 +246,14 @@
         <div class="setting-row">
           <div class="label">Updates</div>
           <button id="check-now" class="ghost small">Check now</button>
+        </div>
+
+        <div class="setting-row">
+          <div class="label">
+            General knowledge
+            <small id="knowledge-count">0 chunks stored</small>
+          </div>
+          <button id="knowledge-clear" class="ghost small">Clear</button>
         </div>
 
         <div class="settings-version" id="settings-version"></div>

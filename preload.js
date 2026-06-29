@@ -17,6 +17,10 @@ contextBridge.exposeInMainWorld("api", {
   setSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
   getVersion: () => ipcRenderer.invoke("app:version"),
 
+  // General knowledge base
+  knowledgeCount: () => ipcRenderer.invoke("knowledge:count"),
+  knowledgeClear: () => ipcRenderer.invoke("knowledge:clear"),
+
   // Updates
   checkForUpdate: () => ipcRenderer.invoke("update:check"),
   downloadUpdate: () => ipcRenderer.invoke("update:download"),
@@ -30,6 +34,8 @@ contextBridge.exposeInMainWorld("api", {
   // Ollama
   ollamaStatus: () => ipcRenderer.invoke("ollama:status"),
   listModels: () => ipcRenderer.invoke("models:list"),
+  modelInfo: (model) => ipcRenderer.invoke("models:info", model),
+  summarizeChat: (model, messages) => ipcRenderer.invoke("chat:summarize", { model, messages }),
 
   // Projects
   listProjects: () => ipcRenderer.invoke("projects:list"),
@@ -37,6 +43,22 @@ contextBridge.exposeInMainWorld("api", {
   createProject: (data) => ipcRenderer.invoke("projects:create", data),
   updateProject: (id, patch) => ipcRenderer.invoke("projects:update", { id, patch }),
   deleteProject: (id) => ipcRenderer.invoke("projects:delete", id),
+
+  // Standalone chats
+  listChats: () => ipcRenderer.invoke("chats:list"),
+  getChat: (id) => ipcRenderer.invoke("chats:get", id),
+  createChat: (data) => ipcRenderer.invoke("chats:create", data),
+  updateChat: (id, patch) => ipcRenderer.invoke("chats:update", { id, patch }),
+  deleteChat: (id) => ipcRenderer.invoke("chats:delete", id),
+
+  // Per-project chat threads
+  listThreads: (projectId) => ipcRenderer.invoke("threads:list", projectId),
+  getThread: (projectId, threadId) => ipcRenderer.invoke("threads:get", { projectId, threadId }),
+  createThread: (projectId, data) => ipcRenderer.invoke("threads:create", { projectId, data }),
+  updateThread: (projectId, threadId, patch) =>
+    ipcRenderer.invoke("threads:update", { projectId, threadId, patch }),
+  deleteThread: (projectId, threadId) =>
+    ipcRenderer.invoke("threads:delete", { projectId, threadId }),
 
   // Context references
   addContext: (projectId, file) => ipcRenderer.invoke("context:add", { projectId, file }),
@@ -51,7 +73,7 @@ contextBridge.exposeInMainWorld("api", {
       const done = (_e, m) => {
         if (m.id !== id) return;
         cleanup();
-        resolve(m.full);
+        resolve({ full: m.full, usage: m.usage });
       };
       const fail = (_e, m) => {
         if (m.id !== id) return;
