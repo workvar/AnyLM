@@ -29,8 +29,19 @@ function showAuth() {
 function enterApp(user) {
   el("auth-screen").classList.add("hidden");
   el("app").classList.remove("hidden");
-  el("user-email").textContent = user.email;
-  el("user-email").title = `${user.email} (${user.provider})`;
+
+  const displayName = user.name || user.email || "";
+  el("user-name").textContent = displayName;
+  el("user-name").title = `${user.email} (${user.provider})`;
+
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("");
+  el("user-avatar").textContent = initials || "?";
+
   onAuthed(user);
 }
 
@@ -86,6 +97,21 @@ function bind() {
       }
     };
   }
+
+  // User row popup toggle
+  const userRow = el("user-row");
+  const userPopup = el("user-popup");
+
+  userRow.onclick = (e) => {
+    e.stopPropagation();
+    userPopup.classList.toggle("hidden");
+  };
+
+  document.addEventListener("click", () => {
+    userPopup.classList.add("hidden");
+  });
+
+  userPopup.onclick = (e) => e.stopPropagation();
 
   el("logout-btn").onclick = async () => {
     await window.api.authLogout();

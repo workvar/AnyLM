@@ -1,86 +1,88 @@
 // Per-project chat threads: separate conversations inside one project that
 // share the project's instructions + context but keep their own history.
-import { el, node } from "./dom.js";
+import { el } from "./dom.js";
 import { state } from "./state.js";
-import { renderHistory } from "./convo.js";
+import { openConvo, renderHistory, updateModelLock } from "./convo.js";
 import { getSelectedModel } from "./dropdown.js";
 import { estimateContext } from "./contextmeter.js";
+import { loadRecents } from "./recents.js";
+import { maybeTitle } from "./titler.js";
 
-export async function loadProjectThreads() {
+// Fetch (or initialise) the active project's threads without opening one.
+export async function fetchThreads() {
   state.threads = await window.api.listThreads(state.current.id);
   if (!state.threads.length) {
     await window.api.createThread(state.current.id, { title: "New chat" });
     state.threads = await window.api.listThreads(state.current.id);
   }
-  await selectThread(state.threads[0].id);
+  return state.threads;
 }
 
-export async function selectThread(threadId) {
+// Open a thread in the conversation view.
+export async function openThread(threadId) {
   state.thread = await window.api.getThread(state.current.id, threadId);
   state.chat = (state.thread.messages || []).map((m) => ({ ...m }));
+  openConvo({
+    mode: "project",
+    name: state.thread.title,
+    model: state.current.model,
+    modelLocked: !!state.current.modelLocked,
+    placeholder: "Message your project model…",
+  });
   renderHistory(state.chat);
-  renderThreadBar();
-  estimateContext(getSelectedModel(), state.chat);
+  estimateContext(state.current.model, state.chat);
+  updateModelLock();
 }
 
 export async function createProjectThread() {
   const t = await window.api.createThread(state.current.id, { title: "New chat" });
-  state.threads = await window.api.listThreads(state.current.id);
-  await selectThread(t.id);
+  await fetchThreads();
+  await openThread(t.id);
 }
 
 // New thread pre-seeded with messages (used by the compact action).
 export async function newThreadSeeded(messages, title) {
   const t = await window.api.createThread(state.current.id, { title: title || "New chat" });
   await window.api.updateThread(state.current.id, t.id, { messages, title });
+  await fetchThreads();
+  await openThread(t.id);
+}
+
+let nameTimer;
+export function scheduleThreadName() {
+  clearTimeout(nameTimer);
+  nameTimer = setTimeout(saveThreadName, 400);
+}
+async function saveThreadName() {
+  if (state.mode !== "project" || !state.thread) return;
+  const title = el("convo-name").value || "New chat";
+  state.thread = { ...state.thread, title };
+  await window.api.updateThread(state.current.id, state.thread.id, { title });
   state.threads = await window.api.listThreads(state.current.id);
-  await selectThread(t.id);
+  await loadRecents();
 }
 
-async function removeThread(threadId) {
-  await window.api.deleteThread(state.current.id, threadId);
-  state.threads = await window.api.listThreads(state.current.id);
-  if (!state.threads.length) {
-    await window.api.createThread(state.current.id, { title: "New chat" });
-    state.threads = await window.api.listThreads(state.current.id);
-  }
-  const active = state.thread && state.threads.some((t) => t.id === state.thread.id);
-  await selectThread(active ? state.thread.id : state.threads[0].id);
+// Archive a thread (hidden, not deleted).
+export async function archiveThread(projectId, threadId) {
+  await window.api.updateThread(projectId, threadId, { archived: true });
+  await loadRecents();
 }
 
-export function renderThreadBar() {
-  const bar = el("thread-bar");
-  bar.innerHTML = "";
-  for (const t of state.threads) {
-    const active = state.thread && t.id === state.thread.id;
-    const pill = node("button", "thread-pill" + (active ? " active" : ""));
-    pill.type = "button";
-    pill.appendChild(node("span", "thread-title", t.title || "New chat"));
-    const x = node("span", "thread-x", "×");
-    x.onclick = (e) => {
-      e.stopPropagation();
-      removeThread(t.id);
-    };
-    pill.appendChild(x);
-    pill.onclick = () => selectThread(t.id);
-    bar.appendChild(pill);
-  }
-  const add = node("button", "thread-add", "+ New chat");
-  add.type = "button";
-  add.onclick = createProjectThread;
-  bar.appendChild(add);
-}
-
-// Persist the active thread after a turn; auto-title from the first message.
+// Persist the active thread after a turn, then auto-title (via an LLM summary)
+// while it is still untitled.
 export async function persistProjectThread() {
   if (state.mode !== "project" || !state.thread) return;
-  const patch = { messages: state.chat };
-  if (!state.thread.title || state.thread.title === "New chat") {
-    const firstUser = state.chat.find((m) => m.role === "user");
-    if (firstUser && firstUser.content) patch.title = firstUser.content.slice(0, 40);
-  }
-  state.thread = { ...state.thread, ...patch };
-  await window.api.updateThread(state.current.id, state.thread.id, patch);
+  state.thread = { ...state.thread, messages: state.chat };
+  await window.api.updateThread(state.current.id, state.thread.id, { messages: state.chat });
   state.threads = await window.api.listThreads(state.current.id);
-  renderThreadBar();
+  await loadRecents();
+
+  const title = await maybeTitle(state.current.model, state.chat, state.thread.title);
+  if (title && state.mode === "project" && state.thread) {
+    state.thread = { ...state.thread, title };
+    await window.api.updateThread(state.current.id, state.thread.id, { title });
+    state.threads = await window.api.listThreads(state.current.id);
+    if (state.view === "convo") el("convo-name").value = title;
+    await loadRecents();
+  }
 }

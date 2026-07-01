@@ -27,8 +27,10 @@ function id() {
 // Sidebar summaries, most-recently-updated first.
 function list() {
   return readAll()
+    .filter((c) => !c.archived)
     .map(({ id, title, model, messages, updatedAt }) => ({
       id,
+      kind: "chat",
       title,
       model,
       msgCount: (messages || []).length,

@@ -3,7 +3,10 @@ const ollama = require("./ollama");
 const store = require("./store");
 const chats = require("./chats");
 const context = require("./context");
+const memory = require("./memory");
+const chroma = require("./chroma");
 const vectorstore = require("./vectorstore");
+const embed = require("./embed");
 const auth = require("./auth");
 const settings = require("./settings");
 const updater = require("./updater");
@@ -16,9 +19,24 @@ function registerIpc() {
 
   // General knowledge base
   ipcMain.handle("knowledge:count", () => vectorstore.count());
-  ipcMain.handle("knowledge:clear", () => {
-    vectorstore.clear();
+  ipcMain.handle("knowledge:clear", async () => {
+    await vectorstore.clear();
     return true;
+  });
+
+  // Embedding model (RAG)
+  ipcMain.handle("embed:status", async () => ({
+    model: embed.EMBED_MODEL,
+    installed: await embed.isInstalled(),
+  }));
+  ipcMain.handle("embed:requirements", () => embed.requirements());
+  ipcMain.handle("embed:state", () => embed.getState());
+  // Streaming install: progress is pushed on "embed:progress".
+  ipcMain.on("embed:install", (event) => {
+    const send = (payload) => {
+      if (!event.sender.isDestroyed()) event.sender.send("embed:progress", payload);
+    };
+    embed.install(send);
   });
 
   // Updates
@@ -42,17 +60,50 @@ function registerIpc() {
     }
   });
 
+  // Memory backend (Chroma) reachability, for the sidebar status dot.
+  ipcMain.handle("chroma:status", async () => {
+    const s = settings.read();
+    return {
+      ok: await chroma.available(),
+      host: `${s.chromaHost || "localhost"}:${s.chromaPort || 8000}`,
+    };
+  });
+
   // Ollama
   ipcMain.handle("ollama:status", () => ollama.status());
   ipcMain.handle("models:list", () => ollama.listModels());
   ipcMain.handle("models:info", (_e, model) => modelContext(model));
+  ipcMain.handle("models:delete", (_e, model) => ollama.deleteModel(model));
+
+  // Streaming model pull: progress is pushed on "models:pull-progress".
+  ipcMain.on("models:pull", (event, model) => {
+    const send = (payload) => {
+      if (!event.sender.isDestroyed()) event.sender.send("models:pull-progress", payload);
+    };
+    ollama.pull(model, send).then(() => {
+      if (!event.sender.isDestroyed()) event.sender.send("models:pull-complete", {});
+    }).catch((err) => {
+      send({ error: err.message });
+    });
+  });
+
+  ipcMain.on("models:cancel-pull", (_e, model) => {
+    // Cancel is handled by the fetch abort in ollama.js
+    // For now, we will just log it
+    console.log("Cancel pull requested for:", model);
+  });
 
   // Projects
   ipcMain.handle("projects:list", () => store.list());
   ipcMain.handle("projects:get", (_e, id) => store.getPublic(id));
   ipcMain.handle("projects:create", (_e, data) => store.create(data));
   ipcMain.handle("projects:update", (_e, { id, patch }) => store.update(id, patch));
-  ipcMain.handle("projects:delete", (_e, id) => store.remove(id));
+  ipcMain.handle("projects:delete", (_e, id) => {
+    // Drop the project's context chunks and shared memory from Chroma.
+    context.removeProject(id).catch(() => {});
+    memory.forget(id).catch(() => {});
+    return store.remove(id);
+  });
 
   // Per-project chat threads
   ipcMain.handle("threads:list", (_e, projectId) => store.listThreads(projectId));
@@ -68,6 +119,29 @@ function registerIpc() {
   ipcMain.handle("threads:delete", (_e, { projectId, threadId }) =>
     store.deleteThread(projectId, threadId)
   );
+
+  // Subfolders inside a project
+  ipcMain.handle("folders:list", (_e, projectId) => store.listFolders(projectId));
+  ipcMain.handle("folders:add", (_e, { projectId, name }) => store.addFolder(projectId, name));
+  ipcMain.handle("folders:rename", (_e, { projectId, folderId, name }) =>
+    store.renameFolder(projectId, folderId, name)
+  );
+  ipcMain.handle("folders:remove", (_e, { projectId, folderId }) =>
+    store.removeFolder(projectId, folderId)
+  );
+
+  // Generate a short title from a conversation (for auto-naming chats).
+  ipcMain.handle("chat:title", async (_e, { model, messages }) => {
+    const transcript = (messages || [])
+      .slice(0, 6)
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n");
+    const prompt =
+      "Write a short, specific title (3 to 6 words) for this conversation. " +
+      "Reply with the title only — no quotes, no punctuation at the end.\n\n---\n" +
+      transcript;
+    return ollama.generate(model, prompt);
+  });
 
   // Summarize a conversation (used to "compact" into a fresh thread).
   ipcMain.handle("chat:summarize", async (_e, { model, messages }) => {
@@ -89,16 +163,34 @@ function registerIpc() {
   ipcMain.handle("chats:update", (_e, { id, patch }) => chats.update(id, patch));
   ipcMain.handle("chats:delete", (_e, id) => chats.remove(id));
 
+  // Global recents: standalone chats + project threads, newest first.
+  ipcMain.handle("recents:list", (_e, limit) => {
+    const standalone = chats.list();
+    const threads = store.recentThreads();
+    return [...standalone, ...threads]
+      .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))
+      .slice(0, limit || 40);
+  });
+
   // Context: chunk + embed on add so chunks (and vectors) are stored for retrieval.
   ipcMain.handle("context:add", async (_e, { projectId, file }) => {
     const project = store.get(projectId);
     if (!project) throw new Error("Project not found");
-    const { summary, chunks } = await context.ingest(project.model, file.name, file.content);
+    const contextId = store.newId();
+    const { summary, chunkCount, embedded } = await context.ingest({
+      projectId,
+      contextId,
+      model: project.model,
+      name: file.name,
+      content: file.content,
+    });
     store.addContext(projectId, {
+      id: contextId,
       name: file.name,
       chars: (file.content || "").length,
       summary,
-      chunks,
+      chunkCount,
+      embedded,
     });
     // Knowledge flowing OUT: mirror this doc into the general store.
     if (project.exportToGeneral) {
@@ -106,12 +198,13 @@ function registerIpc() {
     }
     return store.getPublic(projectId);
   });
-  ipcMain.handle("context:remove", (_e, { projectId, contextId }) =>
-    store.removeContext(projectId, contextId)
-  );
+  ipcMain.handle("context:remove", async (_e, { projectId, contextId }) => {
+    await context.removeContext(projectId, contextId).catch(() => {});
+    return store.removeContext(projectId, contextId);
+  });
 
   // Streaming chat
-  ipcMain.on("chat:start", async (event, { id, projectId, model, messages, attachments }) => {
+  ipcMain.on("chat:start", async (event, { id, projectId, threadId, model, messages, attachments }) => {
     const send = (channel, payload) => {
       if (!event.sender.isDestroyed()) event.sender.send(channel, payload);
     };
@@ -130,6 +223,15 @@ function registerIpc() {
           ? context.buildSystemPrompt(project, retrieved)
           : context.buildSummaryPrompt(project);
         if (base) blocks.push(base);
+        // Shared memory retrieved from the project's other threads (Chroma).
+        if (lastUser) {
+          const mem = await memory.recall({
+            projectId: project.id,
+            threadId,
+            query: lastUser.content,
+          });
+          if (mem) blocks.push(mem);
+        }
         // Knowledge flowing IN: also consult the general store.
         if (project.importGeneral && lastUser) {
           const gen = await vectorstore.search(lastUser.content, 3);
@@ -173,8 +275,13 @@ function registerIpc() {
       const percent = Math.min(100, Math.round((tokens / ctx) * 100));
       send("chat:done", { id, full: text, usage: { tokens, ctx, percent } });
 
-      // Content created in the Chats section feeds the general knowledge base.
-      if (!project && lastUser && text) {
+      // Persist the turn: project chats build shared project memory; standalone
+      // chats feed the general knowledge base.
+      if (project && lastUser && text) {
+        memory
+          .remember({ projectId: project.id, threadId, userText: lastUser.content, assistantText: text })
+          .catch(() => {});
+      } else if (!project && lastUser && text) {
         vectorstore.add([{ text: `${lastUser.content}\n${text}`, source: "chat" }]).catch(() => {});
       }
     } catch (e) {

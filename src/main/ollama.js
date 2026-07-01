@@ -59,6 +59,38 @@ async function embed(model, input) {
   return data.embeddings || [];
 }
 
+// Pull (download) a model. Calls onProgress({ percent, status }) as it streams.
+async function pull(model, onProgress = () => {}) {
+  const res = await fetch(`${HOST}/api/pull`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, stream: true }),
+  });
+  if (!res.ok) throw new Error(`Ollama pull responded ${res.status}`);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const obj = JSON.parse(line);
+      if (obj.error) throw new Error(obj.error);
+      const percent =
+        obj.total && obj.completed != null
+          ? Math.round((obj.completed / obj.total) * 100)
+          : null;
+      onProgress({ percent, status: obj.status || "" });
+    }
+  }
+}
+
 // Streaming chat. Calls onToken(text) per chunk, returns the full string.
 async function chatStream(model, messages, onToken) {
   const res = await fetch(`${HOST}/api/chat`, {
@@ -92,4 +124,16 @@ async function chatStream(model, messages, onToken) {
   return full;
 }
 
-module.exports = { status, listModels, info, generate, embed, chatStream, HOST };
+
+// Delete a model. Returns a promise that resolves when deletion is complete.
+async function deleteModel(model) {
+  const res = await fetch(`${HOST}/api/delete`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model }),
+  });
+  if (!res.ok) throw new Error(`Ollama delete responded ${res.status}`);
+  return true;
+}
+
+module.exports = { status, listModels, info, generate, embed, chatStream, pull, deleteModel, HOST };

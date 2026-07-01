@@ -4,7 +4,19 @@ const { app } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
-const DEFAULTS = { theme: "system", checkUpdatesOnLaunch: null, sidebarCollapsed: false };
+const DEFAULTS = {
+  theme: "system",
+  checkUpdatesOnLaunch: null,
+  sidebarCollapsed: false,
+  // Last model the user picked in a chat; new chats default to it.
+  lastModel: "",
+  // ChromaDB server (vector store / memory backend). Runs locally like Ollama.
+  chromaHost: "localhost",
+  chromaPort: 8000,
+  chromaSsl: false,
+  // null = not yet asked; true = user declined the embed-model install prompt.
+  embedInstallDeclined: null,
+};
 
 function filePath() {
   return path.join(app.getPath("userData"), "llmeter-settings.json");

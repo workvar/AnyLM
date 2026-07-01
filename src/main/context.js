@@ -1,32 +1,29 @@
-// Context ingestion (chunk + embed) and retrieval-augmented prompt assembly.
+// Project reference context: chunk + store in Chroma, and assemble the
+// retrieval-augmented system prompt. Chunk vectors live in Chroma (keyed by
+// projectId + contextId); the project JSON keeps only display metadata.
 const ollama = require("./ollama");
+const chroma = require("./chroma");
 const rag = require("./rag");
 
-const EMBED_MODEL = process.env.LLMETER_EMBED_MODEL || "nomic-embed-text";
 const MAX_SUMMARY_CHARS = 8000;
 const TOP_K = 4;
+const NAME = chroma.PROJECT_CONTEXT;
 
-// Ingest a reference: chunk it, embed each chunk, and make a short display summary.
-// Returns { summary, chunks: [{ text, vector }], embedded: bool }.
-async function ingest(summarizeModel, name, content) {
+// Ingest a reference: chunk it, store chunks in Chroma under {projectId,
+// contextId, name}, and make a short display summary.
+// Returns { summary, chunkCount, embedded }.
+async function ingest({ projectId, contextId, model, name, content }) {
   const text = content || "";
   const chunks = rag.chunkText(text);
-  let embedded = false;
-  let vectors = [];
-  try {
-    if (chunks.length) {
-      vectors = await ollama.embed(EMBED_MODEL, chunks);
-      embedded = vectors.length === chunks.length;
-    }
-  } catch {
-    embedded = false;
+  let stored = 0;
+  if (chunks.length) {
+    stored = await chroma.addTexts(
+      NAME,
+      chunks.map((t) => ({ text: t, metadata: { projectId, contextId, name } }))
+    );
   }
-  const stored = chunks.map((t, i) => ({
-    text: t,
-    vector: embedded ? vectors[i] : null,
-  }));
-  const summary = await makeSummary(summarizeModel, name, text);
-  return { summary, chunks: stored, embedded };
+  const summary = await makeSummary(model, name, text);
+  return { summary, chunkCount: chunks.length, embedded: chunks.length > 0 && stored === chunks.length };
 }
 
 async function makeSummary(model, name, content) {
@@ -43,23 +40,23 @@ async function makeSummary(model, name, content) {
   }
 }
 
+// Remove a reference's chunks from Chroma.
+async function removeContext(projectId, contextId) {
+  return chroma.remove(NAME, { $and: [{ projectId }, { contextId }] });
+}
+
+// Remove all of a project's reference chunks (on project delete).
+async function removeProject(projectId) {
+  return chroma.remove(NAME, { projectId });
+}
+
 // Retrieve the top-k chunks across a project's references for a query.
-// Returns [{ name, text, score }]. Empty array if retrieval is unavailable.
+// Returns [{ name, text, score }]. Empty when retrieval is unavailable.
 async function retrieve(project, query) {
-  const pool = [];
-  for (const c of project.contexts || []) {
-    for (const ch of c.chunks || []) {
-      if (Array.isArray(ch.vector)) pool.push({ name: c.name, text: ch.text, vector: ch.vector });
-    }
-  }
-  if (!pool.length || !query.trim()) return [];
-  try {
-    const [qVec] = await ollama.embed(EMBED_MODEL, [query]);
-    if (!qVec) return [];
-    return rag.topK(qVec, pool, TOP_K).filter((r) => r.score > 0);
-  } catch {
-    return [];
-  }
+  const res = await chroma.queryText(NAME, query, TOP_K, { projectId: project.id });
+  return res
+    .filter((r) => r.score > 0)
+    .map((r) => ({ name: r.metadata.name || "reference", text: r.text, score: r.score }));
 }
 
 // System prompt from instructions plus retrieved passages.
@@ -80,7 +77,7 @@ function buildSystemPrompt(project, retrieved) {
   return parts.join("\n\n---\n\n");
 }
 
-// Fallback when no embeddings exist: use stored summaries instead of retrieval.
+// Fallback when retrieval returns nothing: use stored summaries.
 function buildSummaryPrompt(project) {
   const parts = [];
   if (project.instructions && project.instructions.trim()) {
@@ -94,4 +91,11 @@ function buildSummaryPrompt(project) {
   return parts.join("\n\n---\n\n");
 }
 
-module.exports = { ingest, retrieve, buildSystemPrompt, buildSummaryPrompt, EMBED_MODEL };
+module.exports = {
+  ingest,
+  removeContext,
+  removeProject,
+  retrieve,
+  buildSystemPrompt,
+  buildSummaryPrompt,
+};

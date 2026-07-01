@@ -58,7 +58,7 @@ export async function initSettings() {
   applyTheme(settings.theme);
   paintThemeSeg();
   el("update-toggle").checked = settings.checkUpdatesOnLaunch === true;
-  el("settings-version").textContent = `LLMeter v${await window.api.getVersion()}`;
+  el("settings-version").textContent = `AnyLM v${await window.api.getVersion()}`;
   bind();
   return settings;
 }

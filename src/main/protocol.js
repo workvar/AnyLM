@@ -1,11 +1,11 @@
-// Registers the llmeter:// custom scheme and turns incoming deep links into
-// events. The OAuth flow resolves when llmeter://auth/callback arrives, so it
+// Registers the anylm:// custom scheme and turns incoming deep links into
+// events. The OAuth flow resolves when anylm://auth/callback arrives, so it
 // no longer depends on intercepting a localhost redirect on a fixed port.
 const { app } = require("electron");
 const path = require("path");
 const { EventEmitter } = require("events");
 
-const SCHEME = "llmeter";
+const SCHEME = "anylm";
 const emitter = new EventEmitter();
 
 // Register the scheme. Packaged builds register via the OS installer, but in
@@ -20,7 +20,7 @@ function claimScheme() {
   }
 }
 
-// Pull tokens out of an llmeter://auth/callback?accessToken=...&refreshToken=...
+// Pull tokens out of an anylm://auth/callback?accessToken=...&refreshToken=...
 function handleUrl(url) {
   if (!url || !url.startsWith(`${SCHEME}://`)) return;
   try {

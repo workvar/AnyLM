@@ -2,6 +2,8 @@
 import { el } from "./dom.js";
 import { state } from "./state.js";
 import { addMessage, addUserMessage, addThinking, setBubbleMarkdown } from "./views.js";
+import { createStreamRenderer } from "./stream.js";
+import { updateModelLock } from "./convo.js";
 import { getSelectedModel } from "./dropdown.js";
 import { persistCurrentChat } from "./chats.js";
 import { persistProjectThread } from "./threads.js";
@@ -27,33 +29,27 @@ export async function sendMessage() {
   input.value = "";
   addUserMessage(text, thumbs);
   state.chat.push({ role: "user", content: text });
+  updateModelLock(); // model is fixed once the conversation has started
 
   // Projects inject context server-side; standalone chats have no project.
   const projectId = state.mode === "project" ? state.current.id : null;
+  const threadId = state.mode === "project" ? state.thread?.id : null;
 
   const bubble = addThinking();
-  let acc = "";
-  let started = false;
+  const stream = createStreamRenderer(bubble);
   try {
     const result = await window.api.chat(
-      { projectId, model, messages: state.chat, attachments },
-      (piece) => {
-        acc += piece;
-        if (!started) {
-          started = true;
-          bubble.classList.remove("thinking");
-          bubble.classList.add("raw");
-          bubble.textContent = "";
-        }
-        bubble.textContent = acc;
-        el("messages").scrollTop = el("messages").scrollHeight;
-      }
+      { projectId, threadId, model, messages: state.chat, attachments },
+      (piece) => stream.push(piece)
     );
+    stream.cancel();
+    const acc = stream.text();
     setBubbleMarkdown(bubble, acc);
     el("messages").scrollTop = el("messages").scrollHeight;
     state.chat.push({ role: "assistant", content: acc });
     if (result && result.usage) setContextUsage(result.usage);
   } catch (e) {
+    stream.cancel();
     bubble.classList.remove("thinking", "raw");
     bubble.textContent = `Error: ${e.message}`;
   }

@@ -21,6 +21,22 @@ contextBridge.exposeInMainWorld("api", {
   knowledgeCount: () => ipcRenderer.invoke("knowledge:count"),
   knowledgeClear: () => ipcRenderer.invoke("knowledge:clear"),
 
+  // Embedding model (RAG)
+  embedStatus: () => ipcRenderer.invoke("embed:status"),
+  embedRequirements: () => ipcRenderer.invoke("embed:requirements"),
+  embedState: () => ipcRenderer.invoke("embed:state"),
+  // Kick off the download; onProgress(state) fires until done/error.
+  installEmbed: (onProgress) => {
+    const fn = (_e, s) => onProgress(s);
+    ipcRenderer.on("embed:progress", fn);
+    ipcRenderer.send("embed:install");
+  },
+  onEmbedProgress: (cb) => {
+    const fn = (_e, s) => cb(s);
+    ipcRenderer.on("embed:progress", fn);
+    return () => ipcRenderer.removeListener("embed:progress", fn);
+  },
+
   // Updates
   checkForUpdate: () => ipcRenderer.invoke("update:check"),
   downloadUpdate: () => ipcRenderer.invoke("update:download"),
@@ -33,6 +49,8 @@ contextBridge.exposeInMainWorld("api", {
 
   // Ollama
   ollamaStatus: () => ipcRenderer.invoke("ollama:status"),
+  // Memory backend (Chroma) status
+  chromaStatus: () => ipcRenderer.invoke("chroma:status"),
   listModels: () => ipcRenderer.invoke("models:list"),
   modelInfo: (model) => ipcRenderer.invoke("models:info", model),
   summarizeChat: (model, messages) => ipcRenderer.invoke("chat:summarize", { model, messages }),
@@ -44,12 +62,26 @@ contextBridge.exposeInMainWorld("api", {
   updateProject: (id, patch) => ipcRenderer.invoke("projects:update", { id, patch }),
   deleteProject: (id) => ipcRenderer.invoke("projects:delete", id),
 
+  // Global recents (standalone chats + project threads)
+  recentsList: (limit) => ipcRenderer.invoke("recents:list", limit),
+
   // Standalone chats
   listChats: () => ipcRenderer.invoke("chats:list"),
   getChat: (id) => ipcRenderer.invoke("chats:get", id),
   createChat: (data) => ipcRenderer.invoke("chats:create", data),
   updateChat: (id, patch) => ipcRenderer.invoke("chats:update", { id, patch }),
   deleteChat: (id) => ipcRenderer.invoke("chats:delete", id),
+
+  // Auto-title a conversation
+  titleChat: (model, messages) => ipcRenderer.invoke("chat:title", { model, messages }),
+
+  // Subfolders inside a project
+  listFolders: (projectId) => ipcRenderer.invoke("folders:list", projectId),
+  addFolder: (projectId, name) => ipcRenderer.invoke("folders:add", { projectId, name }),
+  renameFolder: (projectId, folderId, name) =>
+    ipcRenderer.invoke("folders:rename", { projectId, folderId, name }),
+  removeFolder: (projectId, folderId) =>
+    ipcRenderer.invoke("folders:remove", { projectId, folderId }),
 
   // Per-project chat threads
   listThreads: (projectId) => ipcRenderer.invoke("threads:list", projectId),
@@ -91,4 +123,30 @@ contextBridge.exposeInMainWorld("api", {
       ipcRenderer.send("chat:start", { id, ...payload });
     });
   },
+
+  // Model management
+  deleteModel: (model) => ipcRenderer.invoke("models:delete", model),
+  pullModel: (model, onProgress) => {
+    return new Promise((resolve, reject) => {
+      const fn = (_e, progress) => {
+        if (progress.error) {
+          cleanup();
+          reject(new Error(progress.error));
+        } else {
+          onProgress(progress);
+        }
+      };
+      const done = () => {
+        cleanup();
+        resolve();
+      };
+      function cleanup() {
+        ipcRenderer.removeListener("models:pull-progress", fn);
+      }
+      ipcRenderer.on("models:pull-progress", fn);
+      ipcRenderer.once("models:pull-complete", done);
+      ipcRenderer.send("models:pull", model);
+    });
+  },
+  cancelPullModel: (model) => ipcRenderer.send("models:cancel-pull", model),
 });

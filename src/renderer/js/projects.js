@@ -1,59 +1,187 @@
-// Project loading, selection, CRUD, autosave, settings modal, and context.
+// Projects: grid, a project's chats view, archive, settings modal, and context.
 import { el } from "./dom.js";
 import { state } from "./state.js";
-import { renderProjectList, renderContextList, addPendingContext } from "./views.js";
+import { renderProjectCards, renderProjectChats, renderContextList, addPendingContext } from "./views.js";
 import { getSelectedModel, setModelDropdownEnabled } from "./dropdown.js";
-import { openConvo, showEmpty } from "./convo.js";
-import { loadProjectThreads } from "./threads.js";
+import { showView } from "./nav.js";
+import { showMenu } from "./menu.js";
+import { promptText } from "./prompt.js";
+import { fetchThreads, openThread, archiveThread } from "./threads.js";
+import { loadRecents } from "./recents.js";
 
+// --- Grid ---
 export async function loadProjects() {
   state.projects = await window.api.listProjects();
-  const activeId = state.mode === "project" ? state.current?.id : null;
-  renderProjectList(state.projects, activeId, selectProject);
+  renderGrid();
 }
 
-export async function selectProject(id) {
+function visibleProjects() {
+  let list = state.projects.filter((p) => (state.showArchived ? p.archived : !p.archived));
+  const q = state.projectQuery.trim().toLowerCase();
+  if (q) list = list.filter((p) => (p.name || "").toLowerCase().includes(q));
+  list = list.slice();
+  if (state.projectSort === "name") list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  else list.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+  return list;
+}
+
+export function renderGrid() {
+  const empty = state.showArchived
+    ? "No archived projects."
+    : "No projects yet. Create one to get started.";
+  renderProjectCards(visibleProjects(), empty, { onOpen: openProject, onMenu: projectMenu });
+}
+
+function projectMenu(p, x, y) {
+  const items = [
+    { label: "Open", onClick: () => openProject(p.id) },
+    { label: "Manage", onClick: () => openProjectSettingsFor(p.id) },
+  ];
+  if (p.archived) items.push({ label: "Unarchive", onClick: () => unarchiveProject(p.id) });
+  else items.push({ label: "Archive", danger: true, onClick: () => archiveProject(p.id) });
+  showMenu(x, y, items);
+}
+
+// --- A single project's chats ---
+function renderDetail() {
+  renderProjectChats(state.viewProject.folders || [], state.threads, {
+    onOpen: openThread,
+    onChatMenu: threadMenu,
+    onFolderMenu: folderMenu,
+  });
+}
+
+export async function openProject(id) {
   state.current = await window.api.getProject(id);
-  openConvo({
-    mode: "project",
-    name: state.current.name,
-    model: state.current.model,
-    modelLocked: !!state.current.modelLocked,
-    showProjectBtn: true,
-    placeholder: "Message your project model…",
-  });
-  await loadProjectThreads(); // loads threads, selects one, renders history
-  renderProjectList(state.projects, id, selectProject);
+  state.viewProject = state.current;
+  state.mode = null;
+  el("detail-title").textContent = state.current.name || "Untitled project";
+  await fetchThreads();
+  renderDetail();
+  showView("project");
 }
 
+async function refreshDetail() {
+  state.current = await window.api.getProject(state.viewProject.id);
+  state.viewProject = state.current;
+  await fetchThreads();
+  renderDetail();
+}
+
+function threadMenu(t, x, y) {
+  showMenu(x, y, [
+    { label: "Open", onClick: () => openThread(t.id) },
+    { label: "Move to…", onClick: () => moveMenu(t, x, y) },
+    {
+      label: "Archive",
+      danger: true,
+      onClick: async () => {
+        await archiveThread(state.viewProject.id, t.id);
+        await refreshDetail();
+      },
+    },
+  ]);
+}
+
+// --- Subfolders ---
+function moveMenu(t, x, y) {
+  const folders = state.viewProject.folders || [];
+  const mark = (on) => (on ? " ✓" : "");
+  const items = [{ label: "Ungrouped" + mark(!t.folderId), onClick: () => moveThread(t.id, null) }];
+  for (const f of folders) {
+    items.push({ label: f.name + mark(f.id === t.folderId), onClick: () => moveThread(t.id, f.id) });
+  }
+  items.push({ label: "+ New folder…", onClick: () => newFolderForThread(t) });
+  showMenu(x, y, items);
+}
+
+async function moveThread(threadId, folderId) {
+  await window.api.updateThread(state.viewProject.id, threadId, { folderId });
+  await refreshDetail();
+}
+
+export async function newFolder() {
+  if (!state.viewProject) return;
+  const name = await promptText("New folder", "");
+  if (!name) return;
+  await window.api.addFolder(state.viewProject.id, name);
+  await refreshDetail();
+}
+
+async function newFolderForThread(t) {
+  const name = await promptText("New folder", "");
+  if (!name) return;
+  const f = await window.api.addFolder(state.viewProject.id, name);
+  if (f) await window.api.updateThread(state.viewProject.id, t.id, { folderId: f.id });
+  await refreshDetail();
+}
+
+function folderMenu(f, x, y) {
+  showMenu(x, y, [
+    {
+      label: "Rename",
+      onClick: async () => {
+        const name = await promptText("Rename folder", f.name);
+        if (!name) return;
+        await window.api.renameFolder(state.viewProject.id, f.id, name);
+        await refreshDetail();
+      },
+    },
+    {
+      label: "Delete folder",
+      danger: true,
+      onClick: async () => {
+        await window.api.removeFolder(state.viewProject.id, f.id);
+        await refreshDetail();
+      },
+    },
+  ]);
+}
+
+// Open a thread reached from the global recents list.
+export async function openRecentThread(projectId, threadId) {
+  state.current = await window.api.getProject(projectId);
+  state.viewProject = state.current;
+  await fetchThreads();
+  await openThread(threadId);
+}
+
+// --- CRUD ---
 export async function createProject() {
-  const p = await window.api.createProject({
-    name: "Untitled project",
-    model: state.models[0] || "",
-  });
+  const p = await window.api.createProject({ name: "Untitled project", model: state.models[0] || "" });
   await loadProjects();
-  await selectProject(p.id);
-  el("convo-name").focus();
+  await openProject(p.id);
+  openProjectSettings(); // let the user name and configure it right away
+  el("project-name-input").focus();
 }
 
-export async function deleteCurrentProject() {
-  if (!state.current) return;
-  await window.api.deleteProject(state.current.id);
-  showEmpty();
+export async function archiveProject(id) {
+  await window.api.updateProject(id, { archived: true });
   await loadProjects();
+  await loadRecents();
 }
 
-// --- Autosaved fields ---
+export async function unarchiveProject(id) {
+  await window.api.updateProject(id, { archived: false });
+  await loadProjects();
+  await loadRecents();
+}
+
+// --- Autosaved fields (settings modal) ---
 let nameTimer;
 export function scheduleProjectName() {
   clearTimeout(nameTimer);
   nameTimer = setTimeout(saveProjectName, 400);
 }
 async function saveProjectName() {
-  if (state.mode !== "project" || !state.current) return;
-  const patch = { name: el("convo-name").value || "Untitled project" };
-  state.current = { ...state.current, ...patch };
-  await window.api.updateProject(state.current.id, patch);
+  if (!state.current) return;
+  const name = el("project-name-input").value || "Untitled project";
+  state.current = { ...state.current, name };
+  await window.api.updateProject(state.current.id, { name });
+  if (state.viewProject && state.viewProject.id === state.current.id) {
+    state.viewProject.name = name;
+    el("detail-title").textContent = name;
+  }
   await loadProjects();
 }
 
@@ -70,7 +198,7 @@ async function saveInstructions() {
 }
 
 export async function saveProjectModel() {
-  if (state.mode !== "project" || !state.current) return;
+  if (!state.current) return;
   const patch = { model: getSelectedModel() };
   state.current = { ...state.current, ...patch };
   await window.api.updateProject(state.current.id, patch);
@@ -85,7 +213,6 @@ export async function toggleProjectLock(locked) {
 }
 
 // --- Settings modal + context ---
-// Map the project's import/export booleans to a single radio value.
 function flowValue(p) {
   if (p.importGeneral && p.exportToGeneral) return "open";
   if (p.importGeneral) return "import";
@@ -93,8 +220,16 @@ function flowValue(p) {
   return "isolated";
 }
 
+// Open settings for an arbitrary project id (used by the card "Manage" action).
+export async function openProjectSettingsFor(id) {
+  state.current = await window.api.getProject(id);
+  state.viewProject = state.current;
+  openProjectSettings();
+}
+
 export function openProjectSettings() {
-  if (state.mode !== "project" || !state.current) return;
+  if (!state.current) return;
+  el("project-name-input").value = state.current.name || "";
   el("instructions").value = state.current.instructions || "";
   el("model-lock").checked = !!state.current.modelLocked;
   const value = flowValue(state.current);
@@ -117,7 +252,7 @@ export async function saveKnowledgeFlow(value) {
 
 export async function addContextFile(file) {
   if (!state.current || !file) return;
-  addPendingContext(file.name); // immediate "Indexing…" row
+  addPendingContext(file.name);
   try {
     const content = await file.text();
     await window.api.addContext(state.current.id, { name: file.name, content });

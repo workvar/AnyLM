@@ -5,6 +5,7 @@ import { state } from "./state.js";
 import { setModelDropdown, setModelDropdownEnabled } from "./dropdown.js";
 import { clearMessages, addMessage, setBubbleMarkdown } from "./views.js";
 import { hideContext } from "./contextmeter.js";
+import { showView } from "./nav.js";
 
 export function showEmpty() {
   state.mode = null;
@@ -13,22 +14,25 @@ export function showEmpty() {
   state.chat = [];
   clearMessages();
   hideContext();
-  el("convo-view").classList.add("hidden");
-  el("empty-state").classList.remove("hidden");
+  showView("projects");
 }
 
-// Configure and reveal the conversation view for a project or chat.
-export function openConvo({ mode, name, model, modelLocked, showProjectBtn, placeholder }) {
+// Configure and reveal the conversation view for a project thread or chat.
+export function openConvo({ mode, name, model, modelLocked, placeholder }) {
   state.mode = mode;
-  el("empty-state").classList.add("hidden");
-  el("convo-view").classList.remove("hidden");
+  showView("convo");
   el("convo-name").value = name || "";
   setModelDropdown(state.models, model);
   setModelDropdownEnabled(!modelLocked);
-  el("project-settings-btn").classList.toggle("hidden", !showProjectBtn);
-  // Thread bar is project-only.
-  el("thread-bar").classList.toggle("hidden", !showProjectBtn);
   el("chat-input").placeholder = placeholder || "Message…";
+}
+
+// Model can only change on a fresh conversation. Once it has messages (or the
+// project locks its model) the composer picker is disabled.
+export function updateModelLock() {
+  const projectLocked = state.mode === "project" && !!state.current?.modelLocked;
+  const started = (state.chat?.length || 0) > 0;
+  setModelDropdownEnabled(!projectLocked && !started);
 }
 
 // Render a saved message history (assistant messages as markdown).

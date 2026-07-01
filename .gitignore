@@ -4,6 +4,9 @@ node_modules/
 .pnp.js
 jspm_packages/
 
+# Bundled Chroma server binary (fetched at build time via scripts/fetch-chroma.js)
+vendor/
+
 # Build output
 dist/
 out/

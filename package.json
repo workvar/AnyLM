@@ -1,17 +1,19 @@
 {
-  "name": "llmeter-app",
-  "version": "0.1.0",
-  "description": "LLMeter desktop app: projects with context, served by local Ollama models.",
+  "name": "anylm-app",
+  "version": "0.2.0",
+  "description": "AnyLM desktop app: projects with context, served by local Ollama models.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "check": "node --check main.js && node --check preload.js && node scripts/check.js",
+    "fetch-chroma": "node scripts/fetch-chroma.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
   },
   "author": "Yash",
   "license": "MIT",
   "dependencies": {
+    "chromadb": "^3.5.0",
     "electron-updater": "^6.3.9"
   },
   "optionalDependencies": {
@@ -23,20 +25,30 @@
     "electron-builder": "^26.15.3"
   },
   "build": {
-    "appId": "com.llmeter.app",
-    "productName": "LLMeter",
+    "appId": "com.anylm.app",
+    "productName": "AnyLM",
+    "icon": "build/icon.png",
+    "beforePack": "scripts/before-pack.js",
     "files": [
       "main.js",
       "preload.js",
       "src/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/chroma",
+        "to": "chroma"
+      }
     ],
     "asarUnpack": [
       "**/node_modules/electron-liquid-glass/**"
     ],
     "protocols": [
       {
-        "name": "LLMeter Auth",
-        "schemes": ["llmeter"]
+        "name": "AnyLM Auth",
+        "schemes": [
+          "anylm"
+        ]
       }
     ],
     "publish": [
@@ -48,16 +60,33 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": ["dmg", "zip"]
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64", "x64"]
+        }
+      ]
     },
     "win": {
-      "target": ["nsis"]
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        }
+      ]
     },
     "nsis": {
-      "perMachine": false
+      "perMachine": false,
+      "artifactName": "${productName}-${version}-${arch}-setup.${ext}"
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "category": "Utility"
     }
   }

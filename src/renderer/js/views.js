@@ -2,28 +2,121 @@
 import { el, node } from "./dom.js";
 import { renderMarkdown } from "./markdown.js";
 
-export function renderProjectList(projects, currentId, onSelect) {
-  const ul = el("project-list");
-  ul.innerHTML = "";
+// Human-friendly relative time ("Updated 3h ago").
+export function relTime(iso) {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.round(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.round(h / 24);
+  if (d < 30) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function dotsButton(onMenu) {
+  const b = node("button", "card-dots", "⋯");
+  b.type = "button";
+  b.setAttribute("aria-label", "More");
+  b.onclick = (e) => {
+    e.stopPropagation();
+    onMenu(e.clientX, e.clientY);
+  };
+  return b;
+}
+
+// Projects grid. handlers: { onOpen(id), onMenu(p, x, y) }
+export function renderProjectCards(projects, emptyText, handlers) {
+  const grid = el("projects-grid");
+  grid.innerHTML = "";
+  if (!projects.length) {
+    grid.appendChild(node("div", "grid-empty", emptyText));
+    return;
+  }
   for (const p of projects) {
-    const li = node("li", p.id === currentId ? "active" : "");
-    li.appendChild(node("span", "", p.name));
-    const meta = node("span", "meta", `${p.contextCount} refs . ${p.model || "no model"}`);
-    li.appendChild(meta);
-    li.onclick = () => onSelect(p.id);
-    ul.appendChild(li);
+    const card = node("div", "card");
+    const top = node("div", "card-top");
+    top.appendChild(node("div", "card-title", p.name || "Untitled project"));
+    top.appendChild(dotsButton((x, y) => handlers.onMenu(p, x, y)));
+    card.appendChild(top);
+    card.appendChild(node("div", "card-meta", `${p.chatCount || 0} chats · ${p.model || "no model"}`));
+    card.appendChild(node("div", "card-sub", `Updated ${relTime(p.updatedAt)}`));
+    card.onclick = () => handlers.onOpen(p.id);
+    card.oncontextmenu = (e) => {
+      e.preventDefault();
+      handlers.onMenu(p, e.clientX, e.clientY);
+    };
+    grid.appendChild(card);
   }
 }
 
-export function renderChatList(chats, currentId, onSelect) {
-  const ul = el("chat-list");
+function chatCard(t, handlers) {
+  const card = node("div", "card");
+  const top = node("div", "card-top");
+  top.appendChild(node("div", "card-title", t.title || "New chat"));
+  top.appendChild(dotsButton((x, y) => handlers.onChatMenu(t, x, y)));
+  card.appendChild(top);
+  card.appendChild(node("div", "card-meta", `${t.msgCount || 0} messages`));
+  card.appendChild(node("div", "card-sub", `Updated ${relTime(t.updatedAt)}`));
+  card.onclick = () => handlers.onOpen(t.id);
+  card.oncontextmenu = (e) => {
+    e.preventDefault();
+    handlers.onChatMenu(t, e.clientX, e.clientY);
+  };
+  return card;
+}
+
+// A project's chats grouped into folders.
+// handlers: { onOpen(id), onChatMenu(t, x, y), onFolderMenu(f, x, y) }
+export function renderProjectChats(folders, threads, handlers) {
+  const wrap = el("project-chats");
+  wrap.innerHTML = "";
+  const groups = [{ id: null, name: "Chats", items: threads.filter((t) => !t.folderId) }];
+  for (const f of folders || []) {
+    groups.push({ id: f.id, name: f.name, folder: f, items: threads.filter((t) => t.folderId === f.id) });
+  }
+
+  let any = false;
+  for (const g of groups) {
+    if (g.id === null && !g.items.length) continue; // hide empty default section
+    any = true;
+    const section = node("div", "folder-section");
+    const head = node("div", "folder-head");
+    head.appendChild(node("span", "folder-name", g.name));
+    head.appendChild(node("span", "folder-count", String(g.items.length)));
+    if (g.folder) head.appendChild(dotsButton((x, y) => handlers.onFolderMenu(g.folder, x, y)));
+    section.appendChild(head);
+
+    const grid = node("div", "folder-grid");
+    if (!g.items.length) grid.appendChild(node("div", "grid-empty", "No chats here yet."));
+    else for (const t of g.items) grid.appendChild(chatCard(t, handlers));
+    section.appendChild(grid);
+    wrap.appendChild(section);
+  }
+  if (!any) wrap.appendChild(node("div", "grid-empty", "No chats yet. Start one with “New chat”."));
+}
+
+// Sidebar recents. handlers: { onOpen(item), onMenu(item, x, y) }
+export function renderRecents(items, activeKey, handlers) {
+  const ul = el("recents-list");
   ul.innerHTML = "";
-  for (const c of chats) {
-    const li = node("li", c.id === currentId ? "active" : "");
-    li.appendChild(node("span", "", c.title || "New chat"));
-    const meta = node("span", "meta", `${c.msgCount || 0} msgs . ${c.model || "no model"}`);
-    li.appendChild(meta);
-    li.onclick = () => onSelect(c.id);
+  if (!items.length) {
+    ul.appendChild(node("li", "recents-empty", "No recent chats"));
+    return;
+  }
+  for (const it of items) {
+    const key = `${it.kind}:${it.id}`;
+    const li = node("li", key === activeKey ? "active" : "");
+    li.appendChild(node("span", "", it.title || "New chat"));
+    const sub = it.kind === "thread" ? it.projectName : "Chat";
+    li.appendChild(node("span", "meta", sub || ""));
+    li.onclick = () => handlers.onOpen(it);
+    li.oncontextmenu = (e) => {
+      e.preventDefault();
+      handlers.onMenu(it, e.clientX, e.clientY);
+    };
     ul.appendChild(li);
   }
 }
@@ -42,7 +135,9 @@ export function renderContextList(contexts, onRemove) {
     li.appendChild(node("div", "ctx-sum", c.summary || ""));
     const tag = c.embedded
       ? `indexed . ${c.chunkCount} chunks`
-      : "summary only (embedding model missing)";
+      : c.embedError
+      ? `summary only (embed failed: ${c.embedError})`
+      : "summary only (no embeddings)";
     li.appendChild(node("div", "ctx-meta", tag));
     ul.appendChild(li);
   }

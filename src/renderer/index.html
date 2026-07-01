@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LLMeter</title>
+    <title>AnyLM</title>
     <link rel="stylesheet" href="styles.css" />
     <script>
       // Tag the platform before paint so macOS glass styling applies with no flash.
@@ -15,7 +15,7 @@
   <body>
     <div id="auth-screen">
       <div class="auth-card">
-        <div class="auth-brand">LLMeter</div>
+        <div class="auth-brand">AnyLM</div>
         <p id="auth-sub">Sign in to your projects</p>
 
         <div class="oauth-row">
@@ -47,68 +47,73 @@
     <div id="app" class="hidden">
       <aside id="sidebar">
         <div class="brand">
-          <span class="logo">LLMeter</span>
-          <span id="status-dot" class="dot" title="Ollama status"></span>
+          <span class="logo">AnyLM</span>
+          <span class="status-dots">
+            <span id="status-dot" class="dot" title="Ollama status"></span>
+            <span id="chroma-dot" class="dot" title="Memory backend (Chroma) status"></span>
+          </span>
         </div>
-        <div id="sidebar-tabs" class="tabs">
-          <button class="tab active" data-tab="projects">Projects</button>
-          <button class="tab" data-tab="chats">Chats</button>
-        </div>
-        <button id="new-item" class="primary">+ New project</button>
-        <ul id="project-list" class="nav-list"></ul>
-        <ul id="chat-list" class="nav-list hidden"></ul>
-        <div class="sidebar-foot" id="ollama-info">checking Ollama...</div>
-        <div id="sidebar-actions">
-          <button id="open-settings" class="ghost small">Settings</button>
+        <button id="new-chat-btn" class="primary">＋ New chat</button>
+        <button id="projects-nav" class="side-nav">▦ Projects</button>
+        <button id="models-nav" class="side-nav">⬇ Models</button>
+        <div class="side-section-label">Recents</div>
+        <ul id="recents-list" class="nav-list"></ul>
+        <div class="sidebar-foot">
+          <div id="ollama-info">checking Ollama…</div>
+          <div id="chroma-info">checking memory…</div>
         </div>
         <div id="user-row">
-          <span id="user-email" class="user-email"></span>
-          <button id="logout-btn" class="ghost small">Sign out</button>
+          <div class="user-avatar" id="user-avatar"></div>
+          <span id="user-name" class="user-name"></span>
+          <div id="user-popup" class="user-popup hidden">
+            <button id="open-settings" class="ghost small">Settings</button>
+            <button id="logout-btn" class="ghost small danger">Sign out</button>
+          </div>
         </div>
       </aside>
 
       <main id="main">
-        <section id="empty-state">
-          <div class="convo-toolbar">
-            <button id="sidebar-toggle-empty" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+        <!-- Projects grid -->
+        <section id="projects-view">
+          <header class="view-toolbar">
+            <button id="sidebar-toggle-projects" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <h1 class="view-title">Projects</h1>
+            <div class="view-actions">
+              <label class="archived-toggle"><input type="checkbox" id="show-archived" /> Show archived</label>
+              <div class="seg" id="projects-sort">
+                <button data-sort="updated" class="active">Recent</button>
+                <button data-sort="name">Name</button>
+              </div>
+              <button id="new-project-btn" class="primary">New project</button>
+            </div>
+          </header>
+          <div class="view-search">
+            <input id="projects-search" type="text" placeholder="Search projects…" autocomplete="off" />
           </div>
-          <div class="empty-center">
-            <h1>LLMeter</h1>
-            <p>Create a project or start a chat with your local models.</p>
-          </div>
+          <div id="projects-grid" class="card-grid"></div>
+        </section>
+
+        <!-- A single project's chats -->
+        <section id="project-detail" class="hidden">
+          <header class="view-toolbar">
+            <button id="sidebar-toggle-detail" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <button id="detail-back" class="ghost small">‹ Projects</button>
+            <h1 class="view-title" id="detail-title">Project</h1>
+            <div class="view-actions">
+              <button id="detail-manage" class="ghost small">Manage</button>
+              <button id="detail-new-folder" class="ghost small">New folder</button>
+              <button id="detail-new-chat" class="primary">New chat</button>
+            </div>
+          </header>
+          <div id="project-chats" class="folders-wrap"></div>
         </section>
 
         <section id="convo-view" class="hidden">
           <header id="convo-header">
             <button id="sidebar-toggle" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <button id="convo-back" class="icon-btn" title="Back" aria-label="Back">‹</button>
             <input id="convo-name" class="name-input" />
-            <div class="header-right">
-              <div id="model-dropdown" class="dropdown">
-                <button
-                  id="model-trigger"
-                  class="dropdown-trigger"
-                  aria-haspopup="listbox"
-                  aria-expanded="false"
-                >
-                  <span id="model-current" class="dropdown-value">No models</span>
-                  <svg class="dropdown-chevrons" width="10" height="16" viewBox="0 0 10 16" aria-hidden="true">
-                    <path d="M2.5 6.5 5 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M2.5 9.5 5 12l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </button>
-                <div id="model-menu" class="dropdown-menu hidden" role="listbox">
-                  <div id="model-search-wrap" class="dropdown-search hidden">
-                    <input id="model-search" type="text" placeholder="Search models" autocomplete="off" spellcheck="false" />
-                  </div>
-                  <ul id="model-options" class="dropdown-options"></ul>
-                </div>
-              </div>
-              <button id="project-settings-btn" class="ghost small hidden">Project</button>
-              <button id="delete-convo" class="danger ghost">Delete</button>
-            </div>
           </header>
-
-          <div id="thread-bar" class="thread-bar hidden"></div>
 
           <div id="chat-col">
             <div id="messages"></div>
@@ -119,31 +124,80 @@
             </div>
             <div id="attach-chips" class="attach-chips"></div>
             <form id="chat-form">
-              <div class="attach-wrap">
-                <button type="button" id="attach-btn" class="icon-btn" title="Attach" aria-haspopup="true" aria-expanded="false">+</button>
-                <div id="attach-menu" class="attach-menu hidden" role="menu">
-                  <button type="button" data-attach="image">Image…</button>
-                  <button type="button" data-attach="document">Document…</button>
-                  <button type="button" data-attach="folder">Folder…</button>
-                  <button type="button" data-attach="camera">Camera…</button>
-                </div>
-              </div>
               <textarea id="chat-input" placeholder="Message…" rows="2"></textarea>
-              <button type="submit" id="send-btn" class="primary">Send</button>
+              <div class="composer-toolbar">
+                <div class="composer-left">
+                  <div class="attach-wrap">
+                    <button type="button" id="attach-btn" class="icon-btn" title="Attach" aria-haspopup="true" aria-expanded="false">+</button>
+                    <div id="attach-menu" class="attach-menu hidden" role="menu">
+                      <button type="button" data-attach="image">Image…</button>
+                      <button type="button" data-attach="document">Document…</button>
+                      <button type="button" data-attach="folder">Folder…</button>
+                      <button type="button" data-attach="camera">Camera…</button>
+                    </div>
+                  </div>
+                  <div id="model-dropdown" class="dropdown composer-model">
+                    <button
+                      id="model-trigger"
+                      class="dropdown-trigger"
+                      aria-haspopup="listbox"
+                      aria-expanded="false"
+                    >
+                      <span id="model-current" class="dropdown-value">No models</span>
+                      <svg class="dropdown-chevrons" width="10" height="16" viewBox="0 0 10 16" aria-hidden="true">
+                        <path d="M2.5 6.5 5 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M2.5 9.5 5 12l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                    <div id="model-menu" class="dropdown-menu hidden" role="listbox">
+                      <div id="model-search-wrap" class="dropdown-search hidden">
+                        <input id="model-search" type="text" placeholder="Search models" autocomplete="off" spellcheck="false" />
+                      </div>
+                      <ul id="model-options" class="dropdown-options"></ul>
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" id="send-btn" class="primary">Send</button>
+              </div>
             </form>
             <input type="file" id="attach-image-input" accept="image/*" multiple hidden />
             <input type="file" id="attach-doc-input" accept=".txt,.md,.json,.csv,.log,.tsv,.yml,.yaml" multiple hidden />
             <input type="file" id="attach-folder-input" webkitdirectory multiple hidden />
           </div>
         </section>
+        </section>
+
+        <!-- Models browser -->
+        <section id="models-view" class="hidden">
+          <header class="view-toolbar">
+            <button id="sidebar-toggle-models" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <h1 class="view-title">Models</h1>
+            <div class="view-actions">
+              <div class="view-search" style="flex: 1; margin-right: 1rem;">
+                <input id="models-search" type="text" placeholder="Search models…" autocomplete="off" />
+              </div>
+              <div class="seg" id="models-filter">
+                <button data-filter="all" class="active">All</button>
+                <button data-filter="installed">Installed</button>
+              </div>
+            </div>
+          </header>
+          <div id="models-container" class="models-grid"></div>
+        </section>
       </main>
+    </div>
+
+    <!-- Project settings -->
     </div>
 
     <!-- Project settings -->
     <div id="project-modal" class="modal-overlay hidden">
       <div class="modal">
         <h2>Project settings</h2>
-        <p class="modal-sub">Instructions and reference context for this project.</p>
+        <p class="modal-sub">Name, instructions, and reference context for this project.</p>
+
+        <label class="field-label">Project name</label>
+        <input id="project-name-input" class="auth-input" placeholder="Project name" />
 
         <label class="field-label">Instructions</label>
         <textarea
@@ -154,7 +208,7 @@
         <div class="setting-row">
           <div class="label">
             Lock model to this project
-            <small>Use only this model here; disables the header picker.</small>
+            <small>Use only this model here; disables the picker.</small>
           </div>
           <label class="switch">
             <input type="checkbox" id="model-lock" />
@@ -188,17 +242,70 @@
       </div>
     </div>
 
+    <!-- Text prompt (folder name, etc.) -->
+    <div id="prompt-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 id="prompt-title">Name</h2>
+        <input id="prompt-input" class="auth-input" autocomplete="off" />
+        <div class="modal-foot">
+          <button id="prompt-cancel" class="ghost">Cancel</button>
+          <button id="prompt-ok" class="primary">OK</button>
+        </div>
+      </div>
+    </div>
+
     <!-- First-launch update opt-in -->
     <div id="first-run" class="modal-overlay hidden">
       <div class="modal">
         <h2>Stay up to date?</h2>
         <p class="modal-sub">
-          LLMeter can check for new versions each time it launches. You can change
+          AnyLM can check for new versions each time it launches. You can change
           this anytime in Settings.
         </p>
         <div class="modal-foot">
           <button id="fr-no" class="ghost">Not now</button>
           <button id="fr-yes" class="primary">Check on every launch</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Embed-model install prompt (shown on launch when missing) -->
+    <div id="embed-prompt" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Install the embedding model?</h2>
+        <p class="modal-sub">
+          AnyLM uses the <strong id="embed-prompt-model">nomic-embed-text</strong> model to
+          search your documents and knowledge base. It isn't installed yet. This is optional —
+          you can install it now or anytime from Settings.
+        </p>
+        <div class="modal-foot">
+          <button id="embed-prompt-no" class="ghost">Not now</button>
+          <button id="embed-prompt-yes" class="primary">Install</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Embed-model download confirmation (size + requirements) -->
+    <div id="embed-confirm" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Download embedding model</h2>
+        <p class="modal-sub" id="embed-confirm-sub">Review the download details below.</p>
+        <div class="setting-row">
+          <div class="label">Model</div>
+          <small id="ec-model">nomic-embed-text</small>
+        </div>
+        <div class="setting-row">
+          <div class="label">Download size</div>
+          <small id="ec-size">—</small>
+        </div>
+        <div class="setting-row">
+          <div class="label">Requirements</div>
+          <small id="ec-req">—</small>
+        </div>
+        <div class="auth-error hidden" id="ec-warn"></div>
+        <div class="modal-foot">
+          <button id="embed-confirm-cancel" class="ghost">Cancel</button>
+          <button id="embed-confirm-start" class="primary">Start download</button>
         </div>
       </div>
     </div>
@@ -246,6 +353,23 @@
         <div class="setting-row">
           <div class="label">Updates</div>
           <button id="check-now" class="ghost small">Check now</button>
+        </div>
+
+        <div class="setting-row">
+          <div class="label">
+            Embedding model
+            <small id="embed-status">Checking…</small>
+          </div>
+          <div class="embed-actions">
+            <button id="embed-check" class="ghost small">Check now</button>
+            <button id="embed-download" class="primary small hidden">Download</button>
+          </div>
+        </div>
+        <div class="setting-row embed-progress-row hidden" id="embed-progress-row">
+          <div class="label" style="flex: 1">
+            <span id="embed-progress-label">Downloading…</span>
+            <div class="progress" id="embed-progress"><div class="bar" id="embed-bar"></div></div>
+          </div>
         </div>
 
         <div class="setting-row">

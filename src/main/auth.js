@@ -113,7 +113,7 @@ async function logout() {
 }
 
 // Open the provider's OAuth URL in the system browser, then wait for the
-// backend to hand tokens back via the llmeter:// deep link. Using the real
+// backend to hand tokens back via the anylm:// deep link. Using the real
 // browser (not an embedded window) is also required by Google, which blocks
 // sign-in inside embedded webviews.
 async function oauth(provider) {
