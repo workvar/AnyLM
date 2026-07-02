@@ -54,7 +54,6 @@
     "publish": [
       {
         "provider": "generic",
-        "//": "Public base URL of your Cloudflare R2 bucket (r2.dev or custom domain). REPLACE this.",
         "url": "https://REPLACE-WITH-YOUR-R2-PUBLIC-URL/llmeter"
       }
     ],
