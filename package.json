@@ -41,7 +41,8 @@
       }
     ],
     "asarUnpack": [
-      "**/node_modules/electron-liquid-glass/**"
+      "**/node_modules/electron-liquid-glass/**",
+      "**/node_modules/chromadb*/**"
     ],
     "protocols": [
       {

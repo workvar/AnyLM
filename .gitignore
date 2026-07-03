@@ -10,7 +10,10 @@ vendor/
 # Build output
 dist/
 out/
-build/
+# electron-builder buildResources dir holds source assets (icon), not output —
+# ignore its contents but keep the app icon so CI can package with it.
+build/*
+!build/icon.png
 app/dist/
 app/out/
 *.asar

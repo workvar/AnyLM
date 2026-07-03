@@ -51,35 +51,48 @@ jobs:
         run: bun install
 
       # Safety net: rebuild the native glass module against this Electron's ABI.
-      # macOS only; it's the sole native dep and is darwin-only.
+      # macOS only; it's the sole native dep and is darwin-only. Non-fatal:
+      # electron-builder runs @electron/rebuild itself during packaging, so a
+      # failure here must not kill the job.
       - name: Rebuild native modules (macOS)
         if: matrix.os == 'macos-latest'
-        run: bunx electron-rebuild -f -w electron-liquid-glass
+        run: bunx electron-rebuild -f -w electron-liquid-glass || echo "electron-rebuild failed; electron-builder will rebuild during packaging"
 
-      - name: Build installer
-        # beforePack downloads the Chroma server binary for this arch and bundles
-        # it via extraResources. Never publish from here; we release/upload below.
-        #
-        # Code signing is gated on secrets: set them and builds sign automatically;
-        # leave them empty and builds stay unsigned (CSC_IDENTITY_AUTO_DISCOVERY is
-        # 'false' when no cert is present, so the build still completes).
-        #   Required secrets to enable signing:
-        #     CSC_LINK                    base64 of the code-signing cert (.p12);
-        #                                 macOS: "Developer ID Application", Windows: your code-signing cert
-        #     CSC_KEY_PASSWORD            password for that .p12
-        #   Additional secrets for macOS notarization:
-        #     APPLE_ID                    Apple developer account email
-        #     APPLE_APP_SPECIFIC_PASSWORD app-specific password for that Apple ID
-        #     APPLE_TEAM_ID               your Apple Developer Team ID
-        run: bunx electron-builder --publish never ${{ matrix.args }}
+      # Configure code signing ONLY when the cert secret is actually set.
+      # An empty CSC_LINK makes electron-builder treat "" as a cert path and
+      # crash with "<projectDir> not a file", so we must not export it empty.
+      # Add these repo secrets to enable signing:
+      #   CSC_LINK (base64 .p12), CSC_KEY_PASSWORD, and for macOS notarization
+      #   APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID.
+      - name: Configure code signing
+        shell: bash
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Only attempt auto-discovery/signing when a cert secret is configured.
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
+        run: |
+          if [ -n "$CSC_LINK" ]; then
+            echo "Signing enabled."
+            echo "CSC_LINK=$CSC_LINK" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=$CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=true" >> "$GITHUB_ENV"
+            if [ -n "$APPLE_ID" ]; then
+              echo "APPLE_ID=$APPLE_ID" >> "$GITHUB_ENV"
+              echo "APPLE_APP_SPECIFIC_PASSWORD=$APPLE_APP_SPECIFIC_PASSWORD" >> "$GITHUB_ENV"
+              echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
+            fi
+          else
+            echo "No signing cert configured; building unsigned."
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build installer
+        # beforePack downloads the Chroma server binary for this arch and bundles
+        # it via extraResources. Never publish from here; we release/upload below.
+        # Signing env (if any) comes from the previous step via $GITHUB_ENV.
+        run: bunx electron-builder --publish never ${{ matrix.args }}
 
       - name: Upload installers as workflow artifacts
         uses: actions/upload-artifact@v4
