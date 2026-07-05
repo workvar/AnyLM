@@ -1,4 +1,4 @@
-const { app, ipcMain } = require("electron");
+const { app, ipcMain, dialog } = require("electron");
 const ollama = require("./ollama");
 const store = require("./store");
 const chats = require("./chats");
@@ -10,6 +10,20 @@ const embed = require("./embed");
 const auth = require("./auth");
 const settings = require("./settings");
 const updater = require("./updater");
+const governance = require("./governance");
+const identity = require("./identity");
+const scheduler = require("./scheduler");
+const toolsRegistry = require("./tools/registry");
+const toolsExec = require("./tools/exec");
+const skillsRegistry = require("./skills/registry");
+const skillsExec = require("./skills/exec");
+const workspace = require("./workspace");
+const { shell } = require("electron");
+const { waitForConnector } = require("./protocol");
+const projectFiles = require("./project-files");
+
+// Pending risky-tool confirmations, keyed by a one-time token.
+const pendingConfirms = new Map();
 
 function registerIpc() {
   // Settings
@@ -45,18 +59,108 @@ function registerIpc() {
   ipcMain.handle("update:install", () => updater.install());
 
   // Auth
-  ipcMain.handle("auth:register", (_e, { email, password, name }) =>
-    auth.register(email, password, name)
-  );
-  ipcMain.handle("auth:login", (_e, { email, password }) => auth.login(email, password));
-  ipcMain.handle("auth:oauth", (_e, provider) => auth.oauth(provider));
-  ipcMain.handle("auth:logout", () => auth.logout());
+  ipcMain.handle("auth:register", async (_e, { email, password, name }) => {
+    const user = await auth.register(email, password, name);
+    await identity.refresh(user);
+    return user;
+  });
+  ipcMain.handle("auth:login", async (_e, { email, password }) => {
+    const user = await auth.login(email, password);
+    await identity.refresh(user);
+    return user;
+  });
+  ipcMain.handle("auth:oauth", async (_e, provider) => {
+    const user = await auth.oauth(provider);
+    await identity.refresh(user);
+    return user;
+  });
+  ipcMain.handle("auth:logout", () => {
+    identity.clear();
+    governance.invalidate();
+    return auth.logout();
+  });
   ipcMain.handle("auth:me", async () => {
     if (!auth.loadTokens()) return null;
     try {
-      return await auth.me();
+      const user = await auth.me();
+      await identity.refresh(user);
+      return user;
     } catch {
       return null;
+    }
+  });
+
+  // Governance API bridge: orgs, policies, usage. Path-whitelisted.
+  ipcMain.handle("gov:api", async (_e, { method, path, body }) => {
+    const ok = ["/orgs", "/policies", "/usage", "/apikeys", "/invites"].some((p) =>
+      String(path).startsWith(p)
+    );
+    if (!ok) throw new Error("Path not allowed");
+    const result = await auth.request(method, path, body);
+    if (method !== "GET") {
+      governance.invalidate();
+      // Org membership may have changed (create/join); keep identity fresh.
+      if (String(path).startsWith("/orgs")) await identity.refresh();
+    }
+    return result;
+  });
+  ipcMain.handle("gov:effective", () => governance.effective(true));
+  ipcMain.handle("gov:identity", () => identity.get());
+
+  // Usage CSV export: pick a destination, fetch, save.
+  ipcMain.handle("gov:export-usage", async (_e, orgId) => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: "Export usage report",
+      defaultPath: `anylm-usage-${stamp}.csv`,
+      filters: [{ name: "CSV", extensions: ["csv"] }],
+    });
+    if (canceled || !filePath) return null;
+    await scheduler.exportUsageCsv(orgId, filePath);
+    return filePath;
+  });
+
+  // Background governance tasks (limit alerts, renewals, scheduled reports).
+  scheduler.start();
+
+  // Working folder for file tools
+  ipcMain.handle("workspace:get", () => workspace.get());
+  ipcMain.handle("workspace:pick", () => workspace.pick());
+  ipcMain.handle("workspace:clear", () => {
+    workspace.clear();
+    return true;
+  });
+
+  // Tools (model function calling)
+  ipcMain.handle("tools:list", () => toolsRegistry.list());
+  ipcMain.handle("tools:save", (_e, tool) => toolsRegistry.save(tool));
+  ipcMain.handle("tools:delete", (_e, id) => toolsRegistry.remove(id));
+  ipcMain.handle("tools:toggle", (_e, { id, enabled }) => toolsRegistry.toggle(id, enabled));
+  // Skills (instruction + tool bundles, incl. Google Calendar / Outlook)
+  ipcMain.handle("skills:list", () => skillsRegistry.list());
+  ipcMain.handle("skills:save", (_e, skill) => skillsRegistry.save(skill));
+  ipcMain.handle("skills:delete", (_e, id) => skillsRegistry.remove(id));
+  ipcMain.handle("skills:toggle", (_e, { id, enabled }) => skillsRegistry.toggle(id, enabled));
+  // Connector status for the Skills view (connected / configured flags).
+  ipcMain.handle("skills:connectors", () => auth.request("GET", "/connectors"));
+  // Connect flow: backend builds the consent URL, we open the browser and
+  // wait for the anylm://connectors/callback deep link.
+  ipcMain.handle("skills:connect", async (_e, provider) => {
+    const { url } = await auth.request("POST", `/connectors/${provider}/start`);
+    const pending = waitForConnector();
+    await shell.openExternal(url);
+    await pending;
+    return auth.request("GET", "/connectors");
+  });
+  ipcMain.handle("skills:disconnect", async (_e, provider) => {
+    await auth.request("DELETE", `/connectors/${provider}`);
+    return auth.request("GET", "/connectors");
+  });
+  ipcMain.on("chat:tool-confirm-reply", (_e, { token, approved }) => {
+    const resolve = pendingConfirms.get(token);
+    if (resolve) {
+      pendingConfirms.delete(token);
+      resolve(!!approved);
     }
   });
 
@@ -71,7 +175,11 @@ function registerIpc() {
 
   // Ollama
   ipcMain.handle("ollama:status", () => ollama.status());
-  ipcMain.handle("models:list", () => ollama.listModels());
+  // Chat-eligible models, filtered through model-allowlist policies.
+  ipcMain.handle("models:list", async () => {
+    const models = await ollama.listModels();
+    return governance.filterModels(models);
+  });
   ipcMain.handle("models:info", (_e, model) => modelContext(model));
   ipcMain.handle("models:delete", (_e, model) => ollama.deleteModel(model));
 
@@ -96,7 +204,14 @@ function registerIpc() {
   // Projects
   ipcMain.handle("projects:list", () => store.list());
   ipcMain.handle("projects:get", (_e, id) => store.getPublic(id));
-  ipcMain.handle("projects:create", (_e, data) => store.create(data));
+  ipcMain.handle("projects:create", (_e, data) => {
+    const project = store.create(data || {});
+    // Associate a folder on disk (Documents/AnyLM/Projects/<name> by default;
+    // a custom base directory can be chosen at creation).
+    const custom = data && data.folderBase ? projectFiles.childPath(data.folderBase, project.name) : null;
+    projectFiles.ensureFolder(project, custom);
+    return store.get(project.id);
+  });
   ipcMain.handle("projects:update", (_e, { id, patch }) => store.update(id, patch));
   ipcMain.handle("projects:delete", (_e, id) => {
     // Drop the project's context chunks and shared memory from Chroma.
@@ -104,6 +219,28 @@ function registerIpc() {
     memory.forget(id).catch(() => {});
     return store.remove(id);
   });
+
+  // Project folder on disk: generated files, viewer reads, exports.
+  ipcMain.handle("pfiles:default-base", () => projectFiles.defaultBase());
+  ipcMain.handle("pfiles:pick-folder", async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: "Choose project folder location",
+      properties: ["openDirectory", "createDirectory"],
+    });
+    return canceled || !filePaths.length ? null : filePaths[0];
+  });
+  ipcMain.handle("pfiles:list", (_e, projectId) => projectFiles.listFiles(projectId));
+  ipcMain.handle("pfiles:read", (_e, { projectId, name }) => projectFiles.readFile(projectId, name));
+  ipcMain.handle("pfiles:save-md", (_e, { projectId, title, markdown }) =>
+    projectFiles.saveMarkdown(projectId, title, markdown)
+  );
+  ipcMain.handle("pfiles:save-pdf", (_e, { projectId, title, html, text }) =>
+    projectFiles.savePdf(projectId, title, html, text)
+  );
+  ipcMain.handle("pfiles:reveal", (_e, projectId) => projectFiles.reveal(projectId));
+  ipcMain.handle("pfiles:set-location", (_e, { projectId, dir }) =>
+    projectFiles.ensureFolder(store.get(projectId), dir)
+  );
 
   // Per-project chat threads
   ipcMain.handle("threads:list", (_e, projectId) => store.listThreads(projectId));
@@ -192,9 +329,14 @@ function registerIpc() {
       chunkCount,
       embedded,
     });
-    // Knowledge flowing OUT: mirror this doc into the general store.
-    if (project.exportToGeneral) {
-      vectorstore.add([{ text: file.content || "", source: `project:${project.name}` }]).catch(() => {});
+    // Knowledge flowing OUT: mirror this doc into the general store, and into
+    // the organization's shared store when the project opts in.
+    if (project.exportToGeneral || project.shareToOrg) {
+      vectorstore
+        .add([{ text: file.content || "", source: `project:${project.name}` }], {
+          toOrg: !!project.shareToOrg,
+        })
+        .catch(() => {});
     }
     return store.getPublic(projectId);
   });
@@ -204,7 +346,7 @@ function registerIpc() {
   });
 
   // Streaming chat
-  ipcMain.on("chat:start", async (event, { id, projectId, threadId, model, messages, attachments }) => {
+  ipcMain.on("chat:start", async (event, { id, projectId, threadId, model, messages, attachments, useTools }) => {
     const send = (channel, payload) => {
       if (!event.sender.isDestroyed()) event.sender.send(channel, payload);
     };
@@ -214,6 +356,28 @@ function registerIpc() {
       if (!useModel) throw new Error("No model selected");
 
       const lastUser = [...messages].reverse().find((m) => m.role === "user");
+
+      // --- Governance: pre-flight limits/budget/rate/model, then content. ---
+      const warnings = [];
+      const pre = await governance.preflight(useModel, estimateTokens(messages));
+      if (pre.warnings) warnings.push(...pre.warnings);
+      if (!pre.allowed) throw new Error(pre.reason || "Blocked by organization policy.");
+      if (lastUser) {
+        const verdict = await governance.evaluatePrompt(lastUser.content);
+        if (verdict.blocked) throw new Error(verdict.reason);
+        warnings.push(...verdict.warnings);
+        lastUser.content = verdict.text; // may be redacted
+      }
+      if (attachments && attachments.docs) {
+        for (const d of attachments.docs) {
+          const v = await governance.evaluatePrompt(d.text || "");
+          if (v.blocked) throw new Error(`${v.reason} (attachment "${d.name}")`);
+          warnings.push(...v.warnings);
+          d.text = v.text;
+        }
+      }
+      if (warnings.length) send("chat:governance", { id, warnings });
+
       const blocks = [];
 
       if (project) {
@@ -250,6 +414,15 @@ function registerIpc() {
         );
       }
 
+      // Enabled skills add their usage instructions when tools are on.
+      if (useTools) {
+        const skillBlock = skillsRegistry.instructionsBlock();
+        if (skillBlock) blocks.push(skillBlock);
+        // Working folder: tells the model where file tools operate.
+        const wsBlock = workspace.promptBlock();
+        if (wsBlock) blocks.push(wsBlock);
+      }
+
       const system = blocks.join("\n\n---\n\n");
       const full = [];
       if (system) full.push({ role: "system", content: system });
@@ -265,15 +438,114 @@ function registerIpc() {
         }
       }
 
-      const text = await ollama.chatStream(useModel, full, (piece) =>
-        send("chat:chunk", { id, text: piece })
+      // Tool calling: when enabled, run an agent loop — the model may call
+      // tools; results are appended and the model is invoked again. Enabled
+      // skills contribute their tools alongside the global tool registry.
+      let toolDefs = null;
+      let skillToolAllow = null;
+      if (useTools) {
+        const base = toolsRegistry.ollamaTools();
+        const seen = new Set(base.map((d) => d.function.name));
+        const fromSkills = skillsRegistry.ollamaTools().filter((d) => !seen.has(d.function.name));
+        toolDefs = [...base, ...fromSkills];
+        skillToolAllow = skillsRegistry.customToolNames();
+      }
+      const confirm = (tool, args) =>
+        new Promise((resolve) => {
+          const token = Math.random().toString(36).slice(2);
+          pendingConfirms.set(token, resolve);
+          send("chat:tool-confirm", {
+            id,
+            token,
+            tool: { name: tool.name, description: tool.description },
+            args,
+          });
+          // Auto-deny if the user doesn't answer within 2 minutes.
+          setTimeout(() => {
+            if (pendingConfirms.has(token)) {
+              pendingConfirms.delete(token);
+              resolve(false);
+            }
+          }, 120_000);
+        });
+
+      let result;
+      let totalPrompt = 0;
+      let totalCompletion = 0;
+      let rounds = 0;
+      for (;;) {
+        result = await ollama.chatStream(
+          useModel,
+          full,
+          (piece) => send("chat:chunk", { id, text: piece }),
+          toolDefs
+        );
+        totalPrompt += result.promptTokens || 0;
+        totalCompletion += result.completionTokens || 0;
+        const calls = result.toolCalls || [];
+        // Folder organizing / coding tasks need more tool rounds than Q&A.
+        if (!toolDefs || !calls.length || rounds >= 15) break;
+        rounds += 1;
+        full.push({ role: "assistant", content: result.text, tool_calls: calls });
+        for (const call of calls) {
+          const fname = call.function?.name || "";
+          const fargs = call.function?.arguments || {};
+          send("chat:tool", { id, name: fname, args: fargs, status: "running" });
+          // Connector-skill tools (gcal_*, outlook_*) run through the skills
+          // executor; everything else goes to the plain tools executor.
+          const output = skillsExec.owns(fname)
+            ? await skillsExec.execute(fname, fargs, confirm)
+            : await toolsExec.execute(fname, fargs, confirm, skillToolAllow);
+          send("chat:tool", {
+            id,
+            name: fname,
+            args: fargs,
+            status: "done",
+            output: String(output).slice(0, 400),
+          });
+          full.push({ role: "tool", content: String(output), tool_name: fname });
+        }
+      }
+      const text = result.text;
+
+      // Meter real token consumption against the user's limits/budget.
+      governance.report(
+        useModel,
+        totalPrompt || estimateTokens(full),
+        totalCompletion || Math.round(text.length / 4)
       );
+      scheduler.checkSoon(); // fire limit alerts promptly if a threshold was crossed
+
+      // Compliance logging: stored server-side only for orgs that enabled it.
+      if (lastUser && text) {
+        auth
+          .request("POST", "/logs", {
+            model: useModel,
+            prompt: lastUser.content,
+            response: text,
+            flags: warnings,
+          })
+          .catch(() => {});
+      }
 
       // Context-window utilization: prompt sent + the new reply.
       const ctx = await modelContext(useModel);
-      const tokens = estimateTokens(full) + Math.round(text.length / 4);
+      const tokens =
+        (totalPrompt || estimateTokens(full)) +
+        (totalCompletion || Math.round(text.length / 4));
       const percent = Math.min(100, Math.round((tokens / ctx) * 100));
-      send("chat:done", { id, full: text, usage: { tokens, ctx, percent } });
+      send("chat:done", {
+        id,
+        full: text,
+        usage: {
+          tokens,
+          ctx,
+          percent,
+          promptTokens: totalPrompt || estimateTokens(full),
+          completionTokens: totalCompletion || Math.round(text.length / 4),
+          measured: !!(totalPrompt || totalCompletion), // real Ollama counts vs ~4 chars/token estimate
+        },
+      });
 
       // Persist the turn: project chats build shared project memory; standalone
       // chats feed the general knowledge base.
@@ -281,6 +553,8 @@ function registerIpc() {
         memory
           .remember({ projectId: project.id, threadId, userText: lastUser.content, assistantText: text })
           .catch(() => {});
+        // Append the exchange to the project folder's decisions log.
+        projectFiles.appendLog(project.id, { userText: lastUser.content, assistantText: text });
       } else if (!project && lastUser && text) {
         vectorstore.add([{ text: `${lastUser.content}\n${text}`, source: "chat" }]).catch(() => {});
       }

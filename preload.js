@@ -12,6 +12,52 @@ contextBridge.exposeInMainWorld("api", {
   authOAuth: (provider) => ipcRenderer.invoke("auth:oauth", provider),
   authLogout: () => ipcRenderer.invoke("auth:logout"),
 
+  // Governance: orgs, policies, usage metering.
+  gov: (method, path, body) => ipcRenderer.invoke("gov:api", { method, path, body }),
+  govEffective: () => ipcRenderer.invoke("gov:effective"),
+  govIdentity: () => ipcRenderer.invoke("gov:identity"),
+  exportUsage: (orgId) => ipcRenderer.invoke("gov:export-usage", orgId),
+
+  // Working folder (sandbox for file tools)
+  workspaceGet: () => ipcRenderer.invoke("workspace:get"),
+  workspacePick: () => ipcRenderer.invoke("workspace:pick"),
+  workspaceClear: () => ipcRenderer.invoke("workspace:clear"),
+
+  // Tools (model function calling)
+  toolsList: () => ipcRenderer.invoke("tools:list"),
+  toolsSave: (tool) => ipcRenderer.invoke("tools:save", tool),
+  toolsDelete: (id) => ipcRenderer.invoke("tools:delete", id),
+  toolsToggle: (id, enabled) => ipcRenderer.invoke("tools:toggle", { id, enabled }),
+  // Skills (instruction + tool bundles, incl. Google Calendar / Outlook)
+  skillsList: () => ipcRenderer.invoke("skills:list"),
+  skillsSave: (skill) => ipcRenderer.invoke("skills:save", skill),
+  skillsDelete: (id) => ipcRenderer.invoke("skills:delete", id),
+  skillsToggle: (id, enabled) => ipcRenderer.invoke("skills:toggle", { id, enabled }),
+  skillsConnectors: () => ipcRenderer.invoke("skills:connectors"),
+  skillsConnect: (provider) => ipcRenderer.invoke("skills:connect", provider),
+  skillsDisconnect: (provider) => ipcRenderer.invoke("skills:disconnect", provider),
+
+  // Tool activity during a chat (running/done events).
+  onToolEvent: (cb) => {
+    const fn = (_e, m) => cb(m);
+    ipcRenderer.on("chat:tool", fn);
+    return () => ipcRenderer.removeListener("chat:tool", fn);
+  },
+  // Risky-tool confirmations: main asks, renderer answers.
+  onToolConfirm: (cb) => {
+    const fn = (_e, m) => cb(m);
+    ipcRenderer.on("chat:tool-confirm", fn);
+    return () => ipcRenderer.removeListener("chat:tool-confirm", fn);
+  },
+  replyToolConfirm: (token, approved) =>
+    ipcRenderer.send("chat:tool-confirm-reply", { token, approved }),
+  // Policy warnings emitted while a chat request is being processed.
+  onGovernance: (cb) => {
+    const fn = (_e, m) => cb(m);
+    ipcRenderer.on("chat:governance", fn);
+    return () => ipcRenderer.removeListener("chat:governance", fn);
+  },
+
   // Settings
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
@@ -61,6 +107,19 @@ contextBridge.exposeInMainWorld("api", {
   createProject: (data) => ipcRenderer.invoke("projects:create", data),
   updateProject: (id, patch) => ipcRenderer.invoke("projects:update", { id, patch }),
   deleteProject: (id) => ipcRenderer.invoke("projects:delete", id),
+
+  // Project folder on disk (generated files, viewer, exports)
+  pfilesDefaultBase: () => ipcRenderer.invoke("pfiles:default-base"),
+  pfilesPickFolder: () => ipcRenderer.invoke("pfiles:pick-folder"),
+  pfilesList: (projectId) => ipcRenderer.invoke("pfiles:list", projectId),
+  pfilesRead: (projectId, name) => ipcRenderer.invoke("pfiles:read", { projectId, name }),
+  pfilesSaveMd: (projectId, title, markdown) =>
+    ipcRenderer.invoke("pfiles:save-md", { projectId, title, markdown }),
+  pfilesSavePdf: (projectId, title, html, text) =>
+    ipcRenderer.invoke("pfiles:save-pdf", { projectId, title, html, text }),
+  pfilesReveal: (projectId) => ipcRenderer.invoke("pfiles:reveal", projectId),
+  pfilesSetLocation: (projectId, dir) =>
+    ipcRenderer.invoke("pfiles:set-location", { projectId, dir }),
 
   // Global recents (standalone chats + project threads)
   recentsList: (limit) => ipcRenderer.invoke("recents:list", limit),

@@ -8,6 +8,7 @@ import { showMenu } from "./menu.js";
 import { promptText } from "./prompt.js";
 import { fetchThreads, openThread, archiveThread } from "./threads.js";
 import { loadRecents } from "./recents.js";
+import { resetDetailTabs } from "./project-files.js";
 
 // --- Grid ---
 export async function loadProjects() {
@@ -58,7 +59,9 @@ export async function openProject(id) {
   el("detail-title").textContent = state.current.name || "Untitled project";
   await fetchThreads();
   renderDetail();
+  resetDetailTabs();
   showView("project");
+  await loadRecents(); // clear any stale conversation highlight in the sidebar
 }
 
 async function refreshDetail() {
@@ -147,12 +150,67 @@ export async function openRecentThread(projectId, threadId) {
 }
 
 // --- CRUD ---
+// Creation dialog: name + storage location (defaults to Documents/AnyLM/Projects).
+let npBase = ""; // chosen base directory; "" = default
+let npDefault = "";
+
+export async function initNewProjectModal() {
+  el("np-browse").onclick = async () => {
+    const dir = await window.api.pfilesPickFolder();
+    if (!dir) return;
+    npBase = dir;
+    updateNpLocation();
+  };
+  el("np-cancel").onclick = () => el("new-project-modal").classList.add("hidden");
+  el("new-project-modal").onclick = (e) => {
+    if (e.target.id === "new-project-modal") el("new-project-modal").classList.add("hidden");
+  };
+  el("np-name").oninput = updateNpLocation;
+  el("np-name").onkeydown = (e) => {
+    if (e.key === "Enter") el("np-create").click();
+  };
+  el("np-create").onclick = async () => {
+    const name = el("np-name").value.trim() || "Untitled project";
+    el("new-project-modal").classList.add("hidden");
+    const p = await window.api.createProject({
+      name,
+      model: state.models[0] || "",
+      folderBase: npBase || null,
+    });
+    await loadProjects();
+    await openProject(p.id);
+    openProjectSettings(); // let the user configure it right away
+  };
+}
+
+function updateNpLocation() {
+  const name = el("np-name").value.trim() || "Untitled project";
+  const base = npBase || npDefault;
+  el("np-location").value = base ? `${base}/${name}` : "";
+}
+
 export async function createProject() {
-  const p = await window.api.createProject({ name: "Untitled project", model: state.models[0] || "" });
-  await loadProjects();
-  await openProject(p.id);
-  openProjectSettings(); // let the user name and configure it right away
-  el("project-name-input").focus();
+  npBase = "";
+  if (!npDefault) npDefault = await window.api.pfilesDefaultBase();
+  el("np-name").value = "";
+  updateNpLocation();
+  el("new-project-modal").classList.remove("hidden");
+  el("np-name").focus();
+}
+
+export async function changeProjectLocation() {
+  if (!state.current) return;
+  const dir = await window.api.pfilesPickFolder();
+  if (!dir) return;
+  const set = await window.api.pfilesSetLocation(state.current.id, dir);
+  if (set) {
+    state.current = { ...state.current, folderPath: set };
+    el("project-location").value = set;
+  }
+}
+
+export function revealProjectFolder() {
+  if (state.current) window.api.pfilesReveal(state.current.id);
 }
 
 export async function archiveProject(id) {
@@ -212,6 +270,12 @@ export async function toggleProjectLock(locked) {
   await window.api.updateProject(state.current.id, { modelLocked: locked });
 }
 
+export async function toggleOrgShare(shared) {
+  if (!state.current) return;
+  state.current = { ...state.current, shareToOrg: shared };
+  await window.api.updateProject(state.current.id, { shareToOrg: shared });
+}
+
 // --- Settings modal + context ---
 function flowValue(p) {
   if (p.importGeneral && p.exportToGeneral) return "open";
@@ -232,6 +296,8 @@ export function openProjectSettings() {
   el("project-name-input").value = state.current.name || "";
   el("instructions").value = state.current.instructions || "";
   el("model-lock").checked = !!state.current.modelLocked;
+  el("org-share").checked = !!state.current.shareToOrg;
+  el("project-location").value = state.current.folderPath || "";
   const value = flowValue(state.current);
   for (const r of document.querySelectorAll('#kflow input[name="kflow"]')) {
     r.checked = r.value === value;

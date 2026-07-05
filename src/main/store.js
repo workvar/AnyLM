@@ -93,13 +93,15 @@ function getPublic(pid) {
   };
 }
 
-function create({ name, instructions, model }) {
+function create({ name, instructions, model, folderPath }) {
   const projects = readAll();
   const project = {
     id: id(),
     name: name || "Untitled project",
     instructions: instructions || "",
     model: model || "",
+    // On-disk folder for generated files (set by project-files.ensureFolder).
+    folderPath: folderPath || "",
     contexts: [],
     archived: false,
     // Knowledge flow vs the general store (default: isolated).

@@ -91,12 +91,21 @@ async function pull(model, onProgress = () => {}) {
   }
 }
 
-// Streaming chat. Calls onToken(text) per chunk, returns the full string.
-async function chatStream(model, messages, onToken) {
+// Streaming chat. Calls onToken(text) per chunk. Returns
+// { text, promptTokens, completionTokens, toolCalls } — counts come from
+// Ollama's final stream frame (prompt_eval_count / eval_count) for exact usage
+// metering. Pass `tools` (Ollama function schemas) to enable tool calling;
+// any tool_calls the model emits are collected into `toolCalls`.
+async function chatStream(model, messages, onToken, tools) {
   const res = await fetch(`${HOST}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model, messages, stream: true }),
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: true,
+      ...(tools && tools.length ? { tools } : {}),
+    }),
   });
   if (!res.ok) throw new Error(`Ollama responded ${res.status}`);
 
@@ -104,6 +113,9 @@ async function chatStream(model, messages, onToken) {
   const decoder = new TextDecoder();
   let full = "";
   let buffer = "";
+  let promptTokens = 0;
+  let completionTokens = 0;
+  const toolCalls = [];
 
   while (true) {
     const { value, done } = await reader.read();
@@ -119,9 +131,16 @@ async function chatStream(model, messages, onToken) {
         full += piece;
         onToken(piece);
       }
+      if (Array.isArray(obj.message?.tool_calls)) {
+        toolCalls.push(...obj.message.tool_calls);
+      }
+      if (obj.done) {
+        promptTokens = obj.prompt_eval_count || 0;
+        completionTokens = obj.eval_count || 0;
+      }
     }
   }
-  return full;
+  return { text: full, promptTokens, completionTokens, toolCalls };
 }
 
 

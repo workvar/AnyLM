@@ -14,22 +14,31 @@ import {
   saveKnowledgeFlow,
   addContextFile,
   newFolder,
+  initNewProjectModal,
+  changeProjectLocation,
+  revealProjectFolder,
 } from "./projects.js";
+import { initDetailTabs, initFileViewer } from "./project-files.js";
 import { createChat, saveChatModel, scheduleChatName } from "./chats.js";
 import { createProjectThread, scheduleThreadName } from "./threads.js";
 import { loadRecents } from "./recents.js";
 import { showView } from "./nav.js";
 import { initPrompt } from "./prompt.js";
-import { sendMessage } from "./chat.js";
+import { sendMessage, initToolUse } from "./chat.js";
+import { openToolsView, initTools } from "./tools-view.js";
+import { openSkillsView, initSkills } from "./skills-view.js";
 import { initAuth } from "./auth.js";
 import { initSettings } from "./settings.js";
 import { initUpdates, runLaunchUpdateFlow } from "./updates.js";
 import { initEmbedModel, runEmbedLaunchFlow } from "./embedmodel.js";
 import { initModelDropdown } from "./dropdown.js";
 import { initAttach } from "./attach.js";
+import { initWorkspace } from "./workspace.js";
 import { updateDraft } from "./contextmeter.js";
 import { openModelsView, loadModels, bindEvents as bindModelEvents } from "./models.js";
 import { compactConversation } from "./compact.js";
+import { openOrgView, initOrg } from "./org.js";
+import { toggleOrgShare } from "./projects.js";
 
 async function refreshStatus() {
   const s = await window.api.ollamaStatus();
@@ -98,15 +107,36 @@ function openModelsViewHandler() {
   bindModelEvents();
 }
 
+function openOrgViewHandler() {
+  showView("org");
+  openOrgView();
+}
+
+function openToolsViewHandler() {
+  showView("tools");
+  openToolsView();
+}
+
+function openSkillsViewHandler() {
+  showView("skills");
+  openSkillsView();
+}
+
 function bindEvents() {
   // Sidebar
   el("new-chat-btn").onclick = createChat;
   el("projects-nav").onclick = openProjectsGrid;
   el("models-nav").onclick = openModelsViewHandler;
+  el("org-nav").onclick = openOrgViewHandler;
+  el("tools-nav").onclick = openToolsViewHandler;
+  el("skills-nav").onclick = openSkillsViewHandler;
   el("sidebar-toggle").onclick = toggleSidebar;
   el("sidebar-toggle-projects").onclick = toggleSidebar;
   el("sidebar-toggle-detail").onclick = toggleSidebar;
   el("sidebar-toggle-models").onclick = toggleSidebar;
+  el("sidebar-toggle-org").onclick = toggleSidebar;
+  el("sidebar-toggle-tools").onclick = toggleSidebar;
+  el("sidebar-toggle-skills").onclick = toggleSidebar;
 
   // Projects grid controls
   el("new-project-btn").onclick = createProject;
@@ -128,6 +158,8 @@ function bindEvents() {
   };
 
   // Project detail
+  initDetailTabs();
+  initFileViewer();
   el("detail-back").onclick = openProjectsGrid;
   el("detail-manage").onclick = openProjectSettings;
   el("detail-new-folder").onclick = newFolder;
@@ -141,6 +173,7 @@ function bindEvents() {
     state.mode === "project" ? saveProjectModel() : saveChatModel()
   );
   initAttach();
+  initWorkspace();
 
   // Project settings modal
   el("project-modal-close").onclick = () => closeModal("project-modal");
@@ -150,9 +183,12 @@ function bindEvents() {
   el("project-name-input").oninput = scheduleProjectName;
   el("instructions").oninput = scheduleInstructions;
   el("model-lock").onchange = (e) => toggleProjectLock(e.target.checked);
+  el("org-share").onchange = (e) => toggleOrgShare(e.target.checked);
   for (const r of document.querySelectorAll('#kflow input[name="kflow"]')) {
     r.onchange = (e) => saveKnowledgeFlow(e.target.value);
   }
+  el("project-location-change").onclick = changeProjectLocation;
+  el("project-location-reveal").onclick = revealProjectFolder;
   el("add-context").onclick = () => el("file-input").click();
   el("file-input").onchange = (e) => {
     if (e.target.files[0]) addContextFile(e.target.files[0]);
@@ -177,7 +213,12 @@ function bindEvents() {
 // Runs once the user is authenticated.
 async function startApp(settings) {
   bindEvents();
+  initNewProjectModal();
   initPrompt();
+  initOrg();
+  initTools();
+  initSkills();
+  initToolUse();
   state.lastModel = settings.lastModel || "";
   if (settings.sidebarCollapsed) el("app").classList.add("sidebar-collapsed");
   await refreshStatus();

@@ -56,6 +56,9 @@
         <button id="new-chat-btn" class="primary">＋ New chat</button>
         <button id="projects-nav" class="side-nav">▦ Projects</button>
         <button id="models-nav" class="side-nav">⬇ Models</button>
+        <button id="org-nav" class="side-nav">◈ Organization</button>
+        <button id="tools-nav" class="side-nav">⚒ Tools</button>
+        <button id="skills-nav" class="side-nav">✦ Skills</button>
         <div class="side-section-label">Recents</div>
         <ul id="recents-list" class="nav-list"></ul>
         <div class="sidebar-foot">
@@ -100,12 +103,17 @@
             <button id="detail-back" class="ghost small">‹ Projects</button>
             <h1 class="view-title" id="detail-title">Project</h1>
             <div class="view-actions">
+              <div class="seg" id="detail-tabs">
+                <button data-tab="chats" class="active">Chats</button>
+                <button data-tab="files">Files</button>
+              </div>
               <button id="detail-manage" class="ghost small">Manage</button>
               <button id="detail-new-folder" class="ghost small">New folder</button>
               <button id="detail-new-chat" class="primary">New chat</button>
             </div>
           </header>
           <div id="project-chats" class="folders-wrap"></div>
+          <div id="project-files" class="folders-wrap hidden"></div>
         </section>
 
         <section id="convo-view" class="hidden">
@@ -136,6 +144,9 @@
                       <button type="button" data-attach="camera">Camera…</button>
                     </div>
                   </div>
+                  <button type="button" id="tools-toggle" class="icon-btn tools-toggle" title="Let the model use tools">⚒</button>
+                  <button type="button" id="workspace-btn" class="icon-btn tools-toggle" title="Choose a working folder for file tools">📁</button>
+                  <span id="workspace-label" class="chip hidden"></span>
                   <div id="model-dropdown" class="dropdown composer-model">
                     <button
                       id="model-trigger"
@@ -165,6 +176,41 @@
             <input type="file" id="attach-folder-input" webkitdirectory multiple hidden />
           </div>
         </section>
+        </section>
+
+        <!-- Organization: governance, members, usage, billing -->
+        <section id="org-view" class="hidden">
+          <header class="view-toolbar">
+            <button id="sidebar-toggle-org" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <h1 class="view-title" id="org-title">Organization</h1>
+            <div class="view-actions" id="org-actions"></div>
+          </header>
+          <nav class="org-tabs seg" id="org-tabs"></nav>
+          <div id="org-body" class="org-body"></div>
+        </section>
+
+        <!-- Tools: model function calling -->
+        <section id="tools-view" class="hidden">
+          <header class="view-toolbar">
+            <button id="sidebar-toggle-tools" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <h1 class="view-title">Tools</h1>
+            <div class="view-actions">
+              <button id="new-tool-btn" class="primary">New tool</button>
+            </div>
+          </header>
+          <div id="tools-body" class="org-body"></div>
+        </section>
+
+        <!-- Skills: instruction + tool bundles (Google Calendar, Outlook, custom) -->
+        <section id="skills-view" class="hidden">
+          <header class="view-toolbar">
+            <button id="sidebar-toggle-skills" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <h1 class="view-title">Skills</h1>
+            <div class="view-actions">
+              <button id="new-skill-btn" class="primary">New skill</button>
+            </div>
+          </header>
+          <div id="skills-body" class="org-body"></div>
         </section>
 
         <!-- Models browser -->
@@ -216,6 +262,29 @@
           </label>
         </div>
 
+        <div class="setting-row">
+          <div class="label">
+            Share knowledge with organization
+            <small>Reference docs added here also feed your org's shared knowledge base.</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="org-share" />
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div class="setting-col">
+          <div class="label">
+            Storage folder
+            <small>Where this project's generated files (MD, PDF, decisions log) are saved.</small>
+          </div>
+          <div class="pol-row">
+            <input id="project-location" class="auth-input" readonly placeholder="No folder set" />
+            <button id="project-location-change" class="ghost small">Change…</button>
+            <button id="project-location-reveal" class="ghost small">Show</button>
+          </div>
+        </div>
+
         <div class="setting-col">
           <div class="label">
             Knowledge flow
@@ -239,6 +308,36 @@
         <div class="modal-foot">
           <button id="project-modal-close" class="primary">Done</button>
         </div>
+      </div>
+    </div>
+
+    <!-- New project (name + storage location) -->
+    <div id="new-project-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>New project</h2>
+        <p class="modal-sub">Everything this project generates is saved to its folder.</p>
+        <label class="field-label">Project name</label>
+        <input id="np-name" class="auth-input" placeholder="Project name" autocomplete="off" />
+        <label class="field-label">Storage location</label>
+        <div class="pol-row">
+          <input id="np-location" class="auth-input" readonly />
+          <button id="np-browse" class="ghost small">Change…</button>
+        </div>
+        <div class="modal-foot">
+          <button id="np-cancel" class="ghost">Cancel</button>
+          <button id="np-create" class="primary">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- In-app file viewer (MD, PDF, text) -->
+    <div id="file-viewer-modal" class="modal-overlay hidden">
+      <div class="modal modal-wide">
+        <div class="viewer-head">
+          <h2 id="viewer-title">File</h2>
+          <button id="viewer-close" class="ghost small">Close</button>
+        </div>
+        <div id="viewer-body" class="viewer-body"></div>
       </div>
     </div>
 
@@ -357,6 +456,41 @@
 
         <div class="setting-row">
           <div class="label">
+            Usage limit alerts
+            <small>System notification at 75%, 90%, and 100% of your allowance.</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="notify-usage" />
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div class="label">
+            Renewal notifications
+            <small>Notify when your token allowance resets.</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="notify-renewals" />
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div class="label">
+            Scheduled usage reports
+            <small>Save a CSV report to Documents/AnyLM Reports and notify. Managers and admins only.</small>
+          </div>
+          <select id="report-frequency">
+            <option value="off">Off</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+
+        <div class="setting-row">
+          <div class="label">
             Embedding model
             <small id="embed-status">Checking…</small>
           </div>
@@ -384,6 +518,175 @@
 
         <div class="modal-foot">
           <button id="settings-close" class="primary">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom tool editor -->
+    <div id="tool-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 id="tool-modal-title">New tool</h2>
+        <p class="modal-sub">Give the model a new capability. Use {param} placeholders in the command or URL.</p>
+
+        <label class="field-label">Name (snake_case)</label>
+        <input id="tool-name" class="auth-input" placeholder="open_spotify_playlist" />
+
+        <label class="field-label">Description (tells the model when to use it)</label>
+        <input id="tool-desc" class="auth-input" placeholder="Play a Spotify playlist by name" />
+
+        <label class="field-label">Kind</label>
+        <select id="tool-kind">
+          <option value="shell">Shell command</option>
+          <option value="http">HTTP request</option>
+        </select>
+
+        <div id="tool-cfg-shell">
+          <label class="field-label">Command (use {param} placeholders)</label>
+          <input id="tool-command" class="auth-input" placeholder='open -a Spotify "spotify:playlist:{playlist_id}"' />
+        </div>
+
+        <div id="tool-cfg-http" class="hidden">
+          <label class="field-label">URL (use {param} placeholders)</label>
+          <input id="tool-url" class="auth-input" placeholder="http://localhost:8080/search?q={query}" />
+          <label class="field-label">Method</label>
+          <select id="tool-method">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>DELETE</option>
+          </select>
+        </div>
+
+        <label class="field-label">Parameters (one per line: name | description | required?)</label>
+        <textarea id="tool-params" placeholder="playlist_id | The Spotify playlist ID | required"></textarea>
+
+        <div id="tool-error" class="auth-error"></div>
+        <div class="modal-foot">
+          <button id="tool-cancel" class="ghost">Cancel</button>
+          <button id="tool-save" class="primary">Save tool</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom skill editor -->
+    <div id="skill-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 id="skill-modal-title">New skill</h2>
+        <p class="modal-sub">Bundle instructions and tools into one capability the model can be given.</p>
+
+        <label class="field-label">Name</label>
+        <input id="skill-name" class="auth-input" placeholder="Meeting notes" />
+
+        <label class="field-label">Description (shown in this list)</label>
+        <input id="skill-desc" class="auth-input" placeholder="Summarize and file meeting notes" />
+
+        <label class="field-label">Instructions (added to the system prompt when enabled)</label>
+        <textarea
+          id="skill-instructions"
+          placeholder="When the user pastes meeting notes, summarize decisions and action items, then save them with the save_note tool..."
+        ></textarea>
+
+        <label class="field-label">Tools this skill can use</label>
+        <div id="skill-tools" class="skill-tools"></div>
+
+        <div id="skill-error" class="auth-error"></div>
+        <div class="modal-foot">
+          <button id="skill-cancel" class="ghost">Cancel</button>
+          <button id="skill-save" class="primary">Save skill</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Risky tool confirmation -->
+    <div id="tool-confirm-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Allow tool run?</h2>
+        <p class="modal-sub">The model wants to run a tool that can act on your computer.</p>
+        <div class="tool-confirm-box">
+          <div class="tool-confirm-name" id="tc-name"></div>
+          <pre class="tool-confirm-args" id="tc-args"></pre>
+        </div>
+        <div class="modal-foot">
+          <button id="tc-deny" class="ghost">Deny</button>
+          <button id="tc-allow" class="primary">Allow</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Governance policy editor -->
+    <div id="policy-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 id="policy-modal-title">New policy</h2>
+        <p class="modal-sub" id="policy-modal-sub">Define how prompts are governed.</p>
+
+        <label class="field-label">Name</label>
+        <input id="policy-name" class="auth-input" placeholder="e.g. Block secrets" />
+
+        <label class="field-label">Type</label>
+        <select id="policy-type">
+          <option value="content_filter">Content filter (keywords / regex)</option>
+          <option value="pii">PII detection</option>
+          <option value="model_allowlist">Model allowlist</option>
+          <option value="rate_limit">Rate / time limit</option>
+          <option value="token_limit">Token limit (per request / per day)</option>
+        </select>
+
+        <label class="field-label">Action</label>
+        <select id="policy-action">
+          <option value="block">Block the request</option>
+          <option value="warn">Allow with warning</option>
+          <option value="redact">Redact matched content</option>
+        </select>
+
+        <div id="policy-cfg-content" class="policy-cfg">
+          <label class="field-label">Patterns (one per line)</label>
+          <textarea id="policy-patterns" placeholder="confidential&#10;project-x"></textarea>
+          <label class="pol-check"><input type="checkbox" id="policy-regex" /> Treat patterns as regular expressions</label>
+        </div>
+
+        <div id="policy-cfg-pii" class="policy-cfg hidden">
+          <label class="field-label">Detect</label>
+          <div class="pol-checks" id="policy-pii-types">
+            <label class="pol-check"><input type="checkbox" value="email" checked /> Email addresses</label>
+            <label class="pol-check"><input type="checkbox" value="phone" checked /> Phone numbers</label>
+            <label class="pol-check"><input type="checkbox" value="ssn" checked /> SSNs</label>
+            <label class="pol-check"><input type="checkbox" value="credit_card" checked /> Credit cards</label>
+            <label class="pol-check"><input type="checkbox" value="ip_address" /> IP addresses</label>
+          </div>
+        </div>
+
+        <div id="policy-cfg-models" class="policy-cfg hidden">
+          <label class="field-label">Allowed models (comma-separated)</label>
+          <input id="policy-models" class="auth-input" placeholder="llama3.2, mistral" />
+        </div>
+
+        <div id="policy-cfg-rate" class="policy-cfg hidden">
+          <label class="field-label">Max requests per hour (blank = unlimited)</label>
+          <input id="policy-maxhour" class="auth-input" type="number" min="1" placeholder="60" />
+          <label class="field-label">Allowed hours (blank = always)</label>
+          <div class="pol-row">
+            <input id="policy-start" class="auth-input" type="number" min="0" max="23" placeholder="9" />
+            <span class="pol-sep">to</span>
+            <input id="policy-end" class="auth-input" type="number" min="0" max="23" placeholder="18" />
+          </div>
+        </div>
+
+        <div id="policy-cfg-tokens" class="policy-cfg hidden">
+          <label class="field-label">Max prompt tokens per request (blank = unlimited)</label>
+          <input id="policy-maxreq" class="auth-input" type="number" min="1" placeholder="4000" />
+          <label class="field-label">Max total tokens per day (blank = unlimited)</label>
+          <input id="policy-maxday" class="auth-input" type="number" min="1" placeholder="100000" />
+        </div>
+
+        <div id="policy-target-row" class="policy-cfg hidden">
+          <label class="field-label">Applies to</label>
+          <select id="policy-target"></select>
+        </div>
+
+        <div id="policy-error" class="auth-error"></div>
+        <div class="modal-foot">
+          <button id="policy-cancel" class="ghost">Cancel</button>
+          <button id="policy-save" class="primary">Save policy</button>
         </div>
       </div>
     </div>

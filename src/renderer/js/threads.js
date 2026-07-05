@@ -32,6 +32,8 @@ export async function openThread(threadId) {
   renderHistory(state.chat);
   estimateContext(state.current.model, state.chat);
   updateModelLock();
+  // Repaint recents so this thread shows as the selected item in the sidebar.
+  await loadRecents();
 }
 
 export async function createProjectThread() {

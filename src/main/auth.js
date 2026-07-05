@@ -103,6 +103,29 @@ async function me() {
   return authedGet("/auth/me");
 }
 
+// Generic authenticated request with one refresh retry. Used by the
+// governance layer (orgs, policies, usage metering).
+async function request(method, path, body) {
+  const tokens = loadTokens();
+  if (!tokens) throw new Error("Not authenticated");
+  const opts = (t) => ({
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${t.accessToken}`,
+    },
+    body: body != null ? JSON.stringify(body) : undefined,
+  });
+  let res = await fetch(`${API}${path}`, opts(tokens));
+  if (res.status === 401) {
+    await refresh();
+    res = await fetch(`${API}${path}`, opts(loadTokens()));
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || `Request failed (${res.status})`);
+  return data;
+}
+
 async function logout() {
   const tokens = loadTokens();
   if (tokens) {
@@ -124,4 +147,30 @@ async function oauth(provider) {
   return me();
 }
 
-module.exports = { register, login, refresh, me, logout, oauth, loadTokens, clearTokens, API };
+// Same as request(), but returns the raw response body (e.g. CSV exports).
+async function requestText(method, path) {
+  const tokens = loadTokens();
+  if (!tokens) throw new Error("Not authenticated");
+  const opts = (t) => ({ method, headers: { Authorization: `Bearer ${t.accessToken}` } });
+  let res = await fetch(`${API}${path}`, opts(tokens));
+  if (res.status === 401) {
+    await refresh();
+    res = await fetch(`${API}${path}`, opts(loadTokens()));
+  }
+  if (!res.ok) throw new Error(`Request failed (${res.status})`);
+  return res.text();
+}
+
+module.exports = {
+  register,
+  login,
+  refresh,
+  me,
+  logout,
+  oauth,
+  request,
+  requestText,
+  loadTokens,
+  clearTokens,
+  API,
+};

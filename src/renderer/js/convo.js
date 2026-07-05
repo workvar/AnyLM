@@ -6,6 +6,7 @@ import { setModelDropdown, setModelDropdownEnabled } from "./dropdown.js";
 import { clearMessages, addMessage, setBubbleMarkdown } from "./views.js";
 import { hideContext } from "./contextmeter.js";
 import { showView } from "./nav.js";
+import { attachExportActions } from "./exports.js";
 
 export function showEmpty() {
   state.mode = null;
@@ -40,7 +41,9 @@ export function renderHistory(messages) {
   clearMessages();
   for (const m of messages || []) {
     if (m.role === "assistant") {
-      setBubbleMarkdown(addMessage("assistant", ""), m.content);
+      const bubble = addMessage("assistant", "");
+      setBubbleMarkdown(bubble, m.content);
+      attachExportActions(bubble, m.content);
     } else {
       addMessage(m.role, m.content);
     }

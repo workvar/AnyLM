@@ -8,6 +8,7 @@
 const ollama = require("./ollama");
 const { EMBED_MODEL } = require("./embed");
 const settings = require("./settings");
+const identity = require("./identity");
 
 let ChromaClient = null;
 try {
@@ -16,13 +17,32 @@ try {
   ChromaClient = null; // dependency missing; stay soft.
 }
 
-// Collection names.
+// Logical collection names. Each is scoped per signed-in user at runtime, so
+// every account keeps a private knowledge base on the same Chroma server.
 const GENERAL = "anylm_general";
 const PROJECT_CONTEXT = "anylm_project_context";
 const PROJECT_MEMORY = "anylm_project_memory";
+// Sentinel for the organization's shared knowledge base (one per org).
+const ORG_SHARED = "@org_shared";
+
+// Chroma collection names allow [a-zA-Z0-9._-], 3-63 chars.
+function slug(v) {
+  return String(v || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 30);
+}
+
+// Resolve a logical name to the physical, identity-scoped collection.
+// Returns null for ORG_SHARED when the user has no organization.
+function resolveName(name) {
+  const who = identity.get();
+  if (name === ORG_SHARED) {
+    return who.orgId ? `anylm_org_${slug(who.orgId)}` : null;
+  }
+  return who.userId ? `${name}_u_${slug(who.userId)}` : name;
+}
 
 let client = null;
-const collections = new Map(); // name -> Collection handle (cached)
+const remoteClients = new Map(); // url -> ChromaClient (org remote endpoints)
+const collections = new Map(); // cacheKey -> Collection handle
 
 function getClient() {
   if (client) return client;
@@ -40,9 +60,46 @@ function getClient() {
   return client;
 }
 
-async function getCollection(name) {
-  if (collections.has(name)) return collections.get(name);
-  const c = getClient();
+// "https://chroma.acme.com:9000" -> { host, port, ssl } (null when invalid).
+function parseChromaUrl(url) {
+  try {
+    const u = new URL(url);
+    const ssl = u.protocol === "https:";
+    return { host: u.hostname, port: Number(u.port) || (ssl ? 443 : 8000), ssl };
+  } catch {
+    return null;
+  }
+}
+
+// The org's shared collection can live on a remote Chroma server, set by org
+// admins, so every member syncs to one central memory. Everything else stays
+// on the local server.
+function clientFor(logicalName) {
+  if (logicalName === ORG_SHARED) {
+    const url = identity.get().orgChromaUrl;
+    if (url) {
+      if (remoteClients.has(url)) return remoteClients.get(url);
+      const cfg = parseChromaUrl(url);
+      if (!cfg || !ChromaClient) return null;
+      try {
+        const c = new ChromaClient(cfg);
+        remoteClients.set(url, c);
+        return c;
+      } catch {
+        return null;
+      }
+    }
+  }
+  return getClient();
+}
+
+async function getCollection(logicalName) {
+  const name = resolveName(logicalName);
+  if (!name) return null; // e.g. ORG_SHARED without an org
+  const endpoint = (logicalName === ORG_SHARED && identity.get().orgChromaUrl) || "local";
+  const cacheKey = `${name}@${endpoint}`;
+  if (collections.has(cacheKey)) return collections.get(cacheKey);
+  const c = clientFor(logicalName);
   if (!c) return null;
   try {
     const col = await c.getOrCreateCollection({
@@ -50,7 +107,7 @@ async function getCollection(name) {
       embeddingFunction: null, // we always pass precomputed embeddings
       configuration: { hnsw: { space: "cosine" } },
     });
-    collections.set(name, col);
+    collections.set(cacheKey, col);
     return col;
   } catch (e) {
     console.warn(`[chroma] getOrCreateCollection(${name}) failed: ${e.message}`);
@@ -147,12 +204,16 @@ async function remove(name, where) {
 }
 
 // Drop an entire collection (used for "clear knowledge").
-async function clearCollection(name) {
-  const c = getClient();
+async function clearCollection(logicalName) {
+  const name = resolveName(logicalName);
+  if (!name) return false;
+  const c = clientFor(logicalName);
   if (!c) return false;
   try {
     await c.deleteCollection({ name });
-    collections.delete(name);
+    for (const key of [...collections.keys()]) {
+      if (key.startsWith(`${name}@`)) collections.delete(key);
+    }
     return true;
   } catch (e) {
     console.warn(`[chroma] clear "${name}" failed: ${e.message}`);
@@ -189,6 +250,7 @@ module.exports = {
   GENERAL,
   PROJECT_CONTEXT,
   PROJECT_MEMORY,
+  ORG_SHARED,
   addTexts,
   queryText,
   remove,

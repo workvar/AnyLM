@@ -16,6 +16,15 @@ const DEFAULTS = {
   chromaSsl: false,
   // null = not yet asked; true = user declined the embed-model install prompt.
   embedInstallDeclined: null,
+  // System notifications (managed in Settings).
+  notifyUsage: true, // approaching / exceeded token limits
+  notifyRenewals: true, // allowance period renewed
+  notifyReports: true, // scheduled report ready
+  // Scheduled usage reports: off | daily | weekly | monthly
+  reportFrequency: "off",
+  lastReportAt: null,
+  // Internal: last alert level per org so we don't re-notify (see scheduler).
+  govAlerts: {},
 };
 
 function filePath() {

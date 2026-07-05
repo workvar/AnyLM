@@ -45,6 +45,9 @@ function bind() {
   }
 
   el("update-toggle").onchange = (e) => save({ checkUpdatesOnLaunch: e.target.checked });
+  el("notify-usage").onchange = (e) => save({ notifyUsage: e.target.checked });
+  el("notify-renewals").onchange = (e) => save({ notifyRenewals: e.target.checked });
+  el("report-frequency").onchange = (e) => save({ reportFrequency: e.target.value });
   el("check-now").onclick = () => checkNow();
   el("knowledge-clear").onclick = async () => {
     await window.api.knowledgeClear();
@@ -58,6 +61,9 @@ export async function initSettings() {
   applyTheme(settings.theme);
   paintThemeSeg();
   el("update-toggle").checked = settings.checkUpdatesOnLaunch === true;
+  el("notify-usage").checked = settings.notifyUsage !== false;
+  el("notify-renewals").checked = settings.notifyRenewals !== false;
+  el("report-frequency").value = settings.reportFrequency || "off";
   el("settings-version").textContent = `AnyLM v${await window.api.getVersion()}`;
   bind();
   return settings;

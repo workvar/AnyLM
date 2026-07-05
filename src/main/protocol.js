@@ -20,11 +20,18 @@ function claimScheme() {
   }
 }
 
-// Pull tokens out of an anylm://auth/callback?accessToken=...&refreshToken=...
+// Route incoming deep links:
+//   anylm://auth/callback?accessToken=…&refreshToken=…  → "tokens"
+//   anylm://connectors/callback?provider=…              → "connector"
 function handleUrl(url) {
   if (!url || !url.startsWith(`${SCHEME}://`)) return;
   try {
-    const q = new URL(url).searchParams;
+    const parsed = new URL(url);
+    const q = parsed.searchParams;
+    if (parsed.host === "connectors") {
+      emitter.emit("connector", { provider: q.get("provider") });
+      return;
+    }
     const accessToken = q.get("accessToken");
     const refreshToken = q.get("refreshToken");
     if (accessToken && refreshToken) {
@@ -72,4 +79,19 @@ function waitForTokens(timeoutMs = 300000) {
   });
 }
 
-module.exports = { registerProtocol, waitForTokens, SCHEME };
+// Resolve when a connector OAuth flow lands back in the app.
+function waitForConnector(timeoutMs = 300000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      emitter.off("connector", onConnector);
+      reject(new Error("Connecting timed out"));
+    }, timeoutMs);
+    function onConnector(info) {
+      clearTimeout(timer);
+      resolve(info);
+    }
+    emitter.once("connector", onConnector);
+  });
+}
+
+module.exports = { registerProtocol, waitForTokens, waitForConnector, SCHEME };
