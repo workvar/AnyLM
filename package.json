@@ -1,6 +1,6 @@
 {
   "name": "anylm-app",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AnyLM desktop app: projects with context, served by local Ollama models.",
   "main": "main.js",
   "scripts": {
