@@ -1,6 +1,6 @@
 {
   "name": "anylm-app",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AnyLM desktop app: projects with context, served by local Ollama models.",
   "main": "main.js",
   "scripts": {
@@ -63,11 +63,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ]
     },
@@ -75,7 +81,10 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         }
       ]
     },

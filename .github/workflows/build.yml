@@ -136,22 +136,44 @@ jobs:
     needs: build
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: false
-          generate_release_notes: true
-          fail_on_unmatched_files: false
-          files: |
-            artifacts/**/*.dmg
-            artifacts/**/*.zip
-            artifacts/**/*.exe
-            artifacts/**/*.AppImage
-            artifacts/**/*.blockmap
-            artifacts/**/*.yml
+      # Flatten every arch's installers into one folder. Duplicate names across
+      # artifacts (e.g. builder-debug.yml) collapse to one copy, which is fine.
+      - name: Collect installers
+        shell: bash
+        run: |
+          shopt -s globstar nullglob
+          mkdir -p release-assets
+          for f in artifacts/**/*.{dmg,zip,exe,AppImage,blockmap,yml}; do
+            cp -f "$f" release-assets/
+          done
+          echo "Assets to upload:"
+          ls -1 release-assets
+
+      # Create the release if it doesn't exist yet, then upload with --clobber.
+      # gh uploads sequentially and overwrites existing assets, avoiding the
+      # flaky delete+update asset races that fail action-gh-release on re-runs
+      # or when the release was created before the workflow ran.
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$TAG" \
+              --generate-notes \
+              --verify-tag
+          fi
+          gh release upload "$TAG" release-assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
