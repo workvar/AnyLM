@@ -2,37 +2,57 @@
   "name": "anylm-app",
   "version": "0.3.0",
   "description": "AnyLM desktop app: projects with context, served by local Ollama models.",
-  "main": "main.js",
+  "main": "dist/main.js",
   "scripts": {
-    "start": "electron .",
-    "check": "node --check main.js && node --check preload.js && node scripts/check.js",
+    "build:env": "node scripts/build-env.js",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "tsc -p tsconfig.renderer.json",
+    "build:assets": "node scripts/copy-assets.js",
+    "build": "bun run build:env && bun run build:main && bun run build:renderer && bun run build:assets",
+    "watch": "bun run build:env && tsc -p tsconfig.main.json --watch",
+    "typecheck": "bun run build:env && tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
+    "check": "bun run typecheck",
+    "clean": "rm -rf dist src/main/env.generated.ts",
+    "start": "bun run build && electron .",
     "fetch-chroma": "node scripts/fetch-chroma.js",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "pack": "bun run build && electron-builder --dir",
+    "dist": "bun run build && electron-builder"
   },
   "author": "Yash",
   "license": "MIT",
   "dependencies": {
     "chromadb": "^3.5.0",
-    "electron-updater": "^6.3.9"
+    "docx": "^9.5.0",
+    "electron-updater": "^6.3.9",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.9.0",
+    "pptxgenjs": "^3.12.0"
   },
   "optionalDependencies": {
     "electron-liquid-glass": "^1.1.1"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.6",
+    "@types/node": "^22.10.0",
     "electron": "^42.5.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "typescript": "^5.6.3"
   },
   "build": {
     "appId": "com.anylm.app",
     "productName": "AnyLM",
     "icon": "build/icon.png",
     "beforePack": "scripts/before-pack.js",
+    "directories": {
+      "output": "release"
+    },
     "files": [
-      "main.js",
-      "preload.js",
-      "src/**/*"
+      "dist/**/*",
+      "build/icon.png",
+      "package.json",
+      "!dist/**/*.map",
+      "!**/.env",
+      "!**/.env.*"
     ],
     "extraResources": [
       {
@@ -54,8 +74,10 @@
     ],
     "publish": [
       {
-        "provider": "generic",
-        "url": "https://REPLACE-WITH-YOUR-R2-PUBLIC-URL/llmeter"
+        "provider": "github",
+        "owner": "workvar",
+        "repo": "AnyLM",
+        "releaseType": "release"
       }
     ],
     "mac": {
