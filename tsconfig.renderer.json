@@ -8,5 +8,6 @@
     "outDir": "dist/renderer",
     "tsBuildInfoFile": "dist/.tsbuildinfo-renderer"
   },
-  "include": ["src/renderer/**/*.ts", "src/types/**/*.d.ts"]
+  "include": ["src/renderer/**/*.ts", "src/types/**/*.d.ts"],
+  "exclude": ["src/renderer/**/*.test.ts"]
 }

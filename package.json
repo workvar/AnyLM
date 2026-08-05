@@ -12,6 +12,7 @@
     "watch": "bun run build:env && tsc -p tsconfig.main.json --watch",
     "typecheck": "bun run build:env && tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "check": "bun run typecheck",
+    "test": "bun test",
     "clean": "rm -rf dist src/main/env.generated.ts",
     "start": "bun run build && electron .",
     "fetch-chroma": "node scripts/fetch-chroma.js",

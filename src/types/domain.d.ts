@@ -51,6 +51,24 @@ interface ChatMessage {
   tool_name?: string;
 }
 
+interface FileArtifactMessage {
+  role: "artifact";
+  type: "file";
+  name: string;
+  ext: string;
+  dir: string;
+  createdAt: number;
+}
+
+interface AskMessage {
+  role: "ask";
+  question: string;
+  /** null means skipped */
+  answer: string | null;
+}
+
+type StoredMessage = ChatMessage | FileArtifactMessage | AskMessage;
+
 interface ChatUsage {
   tokens: number;
   ctx: number;
@@ -110,7 +128,7 @@ interface ProjectThread {
   id: string;
   title: string;
   folderId: string | null;
-  messages: ChatMessage[];
+  messages: StoredMessage[];
   createdAt: string;
   updatedAt: string;
   archived?: boolean;
@@ -161,7 +179,7 @@ interface StandaloneChat {
   id: string;
   title: string;
   model: string;
-  messages: ChatMessage[];
+  messages: StoredMessage[];
   createdAt: string;
   updatedAt: string;
   archived?: boolean;
