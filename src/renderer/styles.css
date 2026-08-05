@@ -1781,40 +1781,120 @@ button.full {
   margin-bottom: 4px;
 }
 
-/* Inline document cards: permission prompts + generated-file cards */
+/* Inline document cards: permission prompts + generated-file rows */
 .doc-card {
-  align-self: flex-start;
+  align-self: stretch;
   display: flex;
   align-items: center;
   gap: 10px;
-  max-width: 70%;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
   margin: 4px 0;
-  padding: 10px 14px;
-  background: var(--panel-2);
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--panel-2) 80%, transparent);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 8px;
+  min-height: 0;
 }
 .doc-card.doc-file {
-  cursor: pointer;
-}
-.doc-card.doc-file:hover {
-  border-color: color-mix(in srgb, var(--text) 30%, var(--border));
+  cursor: default;
 }
 .doc-card-icon {
-  font-size: 22px;
+  flex-shrink: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+.doc-card-body {
+  flex: 1;
+  min-width: 0;
 }
 .doc-card-name {
   font-size: 13px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .doc-card-sub {
   font-size: 11px;
   color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .doc-card-actions {
   display: flex;
+  align-items: center;
+  gap: 0;
+  margin-left: 8px;
+  flex-shrink: 0;
+  position: relative;
+}
+.doc-open {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.doc-open-main,
+.doc-open-chevron {
+  font-size: 12px;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+}
+.doc-open-main {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  margin-left: 10px;
+  border-right: 1px solid var(--border);
+}
+.doc-open-main:hover,
+.doc-open-chevron:hover {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+.doc-open-chevron {
+  padding: 4px 6px;
+  color: var(--muted);
+}
+.doc-open-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 35%, transparent);
+}
+.doc-open-menu.hidden {
+  display: none;
+}
+.doc-open-item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+}
+.doc-open-item:hover {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+.doc-open-item:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 /* Per-response token counts under assistant bubbles */
@@ -2340,3 +2420,77 @@ button.full {
   word-break: break-word;
   font-size: 12px;
 }
+
+/* ===== Permission prompt (compact full-width request) ================== */
+.perm-card {
+  align-self: stretch;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  margin: 4px 0;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--warn) 8%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--border));
+  border-left: 3px solid var(--warn);
+  border-radius: 8px;
+}
+.perm-ask {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+.perm-desc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.perm-ext {
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border-radius: 4px;
+}
+.perm-file {
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.perm-where {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.perm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.perm-result {
+  margin-top: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.perm-card.denied {
+  padding: 6px 10px;
+  background: transparent;
+  border-color: var(--border);
+  border-left-color: var(--muted);
+}
+.perm-card.denied .perm-ask,
+.perm-card.denied .perm-where {
+  display: none;
+}
+.perm-card.denied .perm-desc {
+  margin: 0;
+}
+

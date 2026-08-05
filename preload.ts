@@ -134,6 +134,8 @@ const api: AnyLmApi = {
   pfilesSavePdf: (projectId, title, html, text) =>
     ipcRenderer.invoke("pfiles:save-pdf", { projectId, title, html, text }),
   pfilesReveal: (projectId) => ipcRenderer.invoke("pfiles:reveal", projectId),
+  pfilesShow: (dir, name) => ipcRenderer.invoke("pfiles:show", { dir, name }),
+  pfilesOpen: (dir, name) => ipcRenderer.invoke("pfiles:open", { dir, name }),
   pfilesSetLocation: (projectId, dir) =>
     ipcRenderer.invoke("pfiles:set-location", { projectId, dir }),
 

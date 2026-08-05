@@ -139,6 +139,8 @@ interface AnyLmApi {
   pfilesSaveMd(projectId: string, title: string, markdown: string): Promise<GeneratedFile>;
   pfilesSavePdf(projectId: string, title: string, html: string, text: string): Promise<GeneratedFile>;
   pfilesReveal(projectId: string): Promise<boolean>;
+  pfilesShow(dir: string, name: string): Promise<boolean>;
+  pfilesOpen(dir: string, name: string): Promise<boolean>;
   pfilesSetLocation(projectId: string, dir: string): Promise<string | null>;
 
   // Recents

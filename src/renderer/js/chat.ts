@@ -82,8 +82,8 @@ export function initToolUse() {
     el("tc-deny").onclick = () => done(false);
   });
 
-  // Generated documents surface as clickable file cards.
-  window.api.onFileGenerated(({ name, ext }) => showFileCard({ name, ext }));
+  // Generated documents surface as Open-with file rows.
+  window.api.onFileGenerated(({ name, ext, dir }) => showFileCard({ name, ext, dir }));
 }
 
 function summarizeArgs(args) {

@@ -212,5 +212,38 @@ function reveal(projectId) {
   return !!dir;
 }
 
-export { defaultBase, childPath, ensureFolder, listFiles, readFile, previewFile, saveMarkdown, savePdf, savePathFor, indexText, appendLog, reveal };
+
+function resolveGenerated(dir: string, name: string): string | null {
+  const target = path.resolve(String(dir || ""), path.basename(String(name || "")));
+  const allowed = [
+    path.resolve(defaultBase()),
+    path.resolve(app.getPath("documents"), "AnyLM", "Documents"),
+    ...store
+      .list()
+      .map((p) => folderOf(p.id))
+      .filter(Boolean)
+      .map((d) => path.resolve(d as string)),
+  ].filter(Boolean) as string[];
+  const inside = allowed.some((root) => target === root || target.startsWith(root + path.sep));
+  if (!inside || !fs.existsSync(target)) return null;
+  return target;
+}
+
+// Reveal a generated file in the OS file manager. Only paths AnyLM itself
+// writes to are accepted: project folders and the standalone documents folder.
+function showGenerated(dir: string, name: string): boolean {
+  const target = resolveGenerated(dir, name);
+  if (!target) return false;
+  shell.showItemInFolder(target);
+  return true;
+}
+
+async function openGenerated(dir: string, name: string): Promise<boolean> {
+  const target = resolveGenerated(dir, name);
+  if (!target) return false;
+  const err = await shell.openPath(target);
+  return !err;
+}
+
+export { defaultBase, childPath, ensureFolder, listFiles, readFile, previewFile, saveMarkdown, savePdf, savePathFor, indexText, appendLog, reveal, showGenerated, openGenerated };
 

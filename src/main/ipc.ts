@@ -256,6 +256,8 @@ function registerIpc() {
     projectFiles.savePdf(projectId, title, html, text)
   );
   ipcMain.handle("pfiles:reveal", (_e, projectId) => projectFiles.reveal(projectId));
+  ipcMain.handle("pfiles:show", (_e, { dir, name }) => projectFiles.showGenerated(dir, name));
+  ipcMain.handle("pfiles:open", (_e, { dir, name }) => projectFiles.openGenerated(dir, name));
   ipcMain.handle("pfiles:set-location", (_e, { projectId, dir }) =>
     projectFiles.ensureFolder(store.get(projectId), dir)
   );
