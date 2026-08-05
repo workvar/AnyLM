@@ -6,10 +6,6 @@ import { state } from "./state.js";
 function navFor(view) {
   if (view === "projects" || view === "project") return "projects-nav";
   if (view === "convo") return state.mode === "project" ? "projects-nav" : null;
-  if (view === "models") return "models-nav";
-  if (view === "org") return "org-nav";
-  if (view === "tools") return "tools-nav";
-  if (view === "skills") return "skills-nav";
   return null;
 }
 
@@ -25,7 +21,8 @@ export function showView(view) {
 
   // Sidebar selected state (this was previously never updated).
   const active = navFor(view);
-  for (const id of ["projects-nav", "models-nav", "org-nav", "tools-nav", "skills-nav"]) {
-    el(id).classList.toggle("active", id === active);
+  for (const id of ["projects-nav"]) {
+    const node = el(id);
+    if (node) node.classList.toggle("active", id === active);
   }
 }

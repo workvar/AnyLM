@@ -39,6 +39,7 @@ import { openModelsView, loadModels, bindEvents as bindModelEvents } from "./mod
 import { compactConversation } from "./compact.js";
 import { openOrgView, initOrg } from "./org.js";
 import { toggleOrgShare, toggleAutoLog } from "./projects.js";
+import { initSidebar } from "./sidebar/index.js";
 
 async function refreshStatus() {
   const s = await window.api.ollamaStatus();
@@ -101,42 +102,22 @@ function openProjectsGrid() {
   loadProjects();
 }
 
-function openModelsViewHandler() {
-  showView("models");
-  openModelsView();
-  bindModelEvents();
-}
-
-function openOrgViewHandler() {
-  showView("org");
-  openOrgView();
-}
-
-function openToolsViewHandler() {
-  showView("tools");
-  openToolsView();
-}
-
-function openSkillsViewHandler() {
-  showView("skills");
-  openSkillsView();
+function bindClick(id: string, handler: (this: UiElement, ev: MouseEvent) => void) {
+  const node = el(id);
+  if (node) node.onclick = handler;
 }
 
 function bindEvents() {
   // Sidebar
-  el("new-chat-btn").onclick = createChat;
-  el("projects-nav").onclick = openProjectsGrid;
-  el("models-nav").onclick = openModelsViewHandler;
-  el("org-nav").onclick = openOrgViewHandler;
-  el("tools-nav").onclick = openToolsViewHandler;
-  el("skills-nav").onclick = openSkillsViewHandler;
-  el("sidebar-toggle").onclick = toggleSidebar;
-  el("sidebar-toggle-projects").onclick = toggleSidebar;
-  el("sidebar-toggle-detail").onclick = toggleSidebar;
-  el("sidebar-toggle-models").onclick = toggleSidebar;
-  el("sidebar-toggle-org").onclick = toggleSidebar;
-  el("sidebar-toggle-tools").onclick = toggleSidebar;
-  el("sidebar-toggle-skills").onclick = toggleSidebar;
+  bindClick("new-chat-btn", createChat);
+  bindClick("projects-nav", openProjectsGrid);
+  bindClick("sidebar-toggle", toggleSidebar);
+  bindClick("sidebar-toggle-projects", toggleSidebar);
+  bindClick("sidebar-toggle-detail", toggleSidebar);
+  bindClick("sidebar-toggle-models", toggleSidebar);
+  bindClick("sidebar-toggle-org", toggleSidebar);
+  bindClick("sidebar-toggle-tools", toggleSidebar);
+  bindClick("sidebar-toggle-skills", toggleSidebar);
 
   // Projects grid controls
   el("new-project-btn").onclick = createProject;
@@ -220,6 +201,7 @@ async function startApp(settings) {
   initTools();
   initSkills();
   initToolUse();
+  initSidebar();
   state.lastModel = settings.lastModel || "";
   if (settings.sidebarCollapsed) el("app").classList.add("sidebar-collapsed");
   await refreshStatus();

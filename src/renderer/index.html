@@ -54,13 +54,15 @@
           </span>
         </div>
         <button id="new-chat-btn" class="primary">＋ New chat</button>
+        <div class="side-search">
+          <input id="sidebar-search" type="search" placeholder="Search chats…" autocomplete="off" />
+        </div>
         <button id="projects-nav" class="side-nav">▦ Projects</button>
-        <button id="models-nav" class="side-nav">⬇ Models</button>
-        <button id="org-nav" class="side-nav">◈ Organization</button>
-        <button id="tools-nav" class="side-nav">⚒ Tools</button>
-        <button id="skills-nav" class="side-nav">✦ Skills</button>
-        <div class="side-section-label">Recents</div>
-        <ul id="recents-list" class="nav-list"></ul>
+
+        <div class="side-scroll">
+          <div class="side-section-label"><span id="side-chats-label">Chats</span></div>
+          <ul id="recents-list" class="nav-list"></ul>
+        </div>
         <div class="sidebar-foot">
           <div id="ollama-info">checking Ollama…</div>
           <div id="chroma-info">checking memory…</div>
