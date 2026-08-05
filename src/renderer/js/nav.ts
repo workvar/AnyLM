@@ -14,12 +14,11 @@ export function showView(view) {
   el("projects-view").classList.toggle("hidden", view !== "projects");
   el("project-detail").classList.toggle("hidden", view !== "project");
   el("convo-view").classList.toggle("hidden", view !== "convo");
-  el("models-view").classList.toggle("hidden", view !== "models");
-  el("org-view").classList.toggle("hidden", view !== "org");
-  el("tools-view").classList.toggle("hidden", view !== "tools");
-  el("skills-view").classList.toggle("hidden", view !== "skills");
+  el("settings-view").classList.toggle("hidden", view !== "settings");
 
-  // Sidebar selected state (this was previously never updated).
+  // Models/org/tools/skills live as panels inside #settings-view; visibility
+  // is owned by settings-hub selectSettingsSection, not by showView.
+
   const active = navFor(view);
   for (const id of ["projects-nav"]) {
     const node = el(id);

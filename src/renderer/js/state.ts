@@ -1,6 +1,7 @@
 // Shared renderer state.
 export const state = {
-  view: "projects", // main area: "projects" | "project" | "convo"
+  view: "projects", // main area: "projects" | "project" | "convo" | "settings"
+  settingsSection: "general", // Settings hub section
   mode: null, // active conversation kind: "project" | "chat" | null
   projects: [], // project grid summaries
   recents: [], // global recent conversations (sidebar)

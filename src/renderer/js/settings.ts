@@ -1,4 +1,4 @@
-// Settings modal: theme choice, update-on-launch toggle, manual check, version.
+// General settings panel: theme, updates, notifications, knowledge.
 import { el, qsa } from "./dom.js";
 import { applyTheme } from "./theme.js";
 import { checkNow } from "./updates/index.js";
@@ -20,21 +20,12 @@ async function refreshKnowledge() {
   el("knowledge-count").textContent = `${n} chunk${n === 1 ? "" : "s"} stored`;
 }
 
-function open() {
-  el("settings-modal").classList.remove("hidden");
+/** Re-paint general panel values when the hub opens that section. */
+export function refreshSettingsGeneral() {
   refreshKnowledge();
-}
-function close() {
-  el("settings-modal").classList.add("hidden");
 }
 
 function bind() {
-  el("open-settings").onclick = open;
-  el("settings-close").onclick = close;
-  el("settings-modal").onclick = (e) => {
-    if ((e.target as UiElement).id === "settings-modal") close();
-  };
-
   for (const b of qsa("#theme-seg button")) {
     b.onclick = async () => {
       const theme = b.dataset.themeChoice;

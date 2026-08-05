@@ -25,8 +25,8 @@ import { loadRecents } from "./recents.js";
 import { showView } from "./nav.js";
 import { initPrompt } from "./prompt.js";
 import { sendMessage, initToolUse } from "./chat.js";
-import { openToolsView, initTools } from "./tools-view.js";
-import { openSkillsView, initSkills } from "./skills-view.js";
+import { initTools } from "./tools-view.js";
+import { initSkills } from "./skills-view.js";
 import { initAuth } from "./auth.js";
 import { initSettings } from "./settings.js";
 import { initUpdates, runLaunchUpdateFlow } from "./updates/index.js";
@@ -35,11 +35,13 @@ import { initModelDropdown } from "./dropdown.js";
 import { initAttach } from "./attach.js";
 import { initWorkspace } from "./workspace.js";
 import { updateDraft } from "./contextmeter.js";
-import { openModelsView, loadModels, bindEvents as bindModelEvents } from "./models.js";
+import { bindEvents as bindModelEvents } from "./models.js";
 import { compactConversation } from "./compact.js";
-import { openOrgView, initOrg } from "./org.js";
+import { initOrg } from "./org.js";
 import { toggleOrgShare, toggleAutoLog } from "./projects.js";
 import { initSidebar } from "./sidebar/index.js";
+import { initCustomize } from "./customize.js";
+import { initSettingsHub } from "./settings-hub.js";
 
 async function refreshStatus() {
   const s = await window.api.ollamaStatus();
@@ -118,6 +120,8 @@ function bindEvents() {
   bindClick("sidebar-toggle-org", toggleSidebar);
   bindClick("sidebar-toggle-tools", toggleSidebar);
   bindClick("sidebar-toggle-skills", toggleSidebar);
+  bindClick("sidebar-toggle-settings", toggleSidebar);
+  bindClick("sidebar-toggle-customize", toggleSidebar);
 
   // Projects grid controls
   el("new-project-btn").onclick = createProject;
@@ -202,6 +206,9 @@ async function startApp(settings) {
   initSkills();
   initToolUse();
   initSidebar();
+  initSettingsHub();
+  initCustomize();
+  bindModelEvents();
   state.lastModel = settings.lastModel || "";
   if (settings.sidebarCollapsed) el("app").classList.add("sidebar-collapsed");
   await refreshStatus();

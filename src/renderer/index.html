@@ -180,57 +180,227 @@
         </section>
         </section>
 
-        <!-- Organization: governance, members, usage, billing -->
-        <section id="org-view" class="hidden">
-          <header class="view-toolbar">
-            <button id="sidebar-toggle-org" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
-            <h1 class="view-title" id="org-title">Organization</h1>
-            <div class="view-actions" id="org-actions"></div>
-          </header>
-          <nav class="org-tabs seg" id="org-tabs"></nav>
-          <div id="org-body" class="org-body"></div>
-        </section>
+        <!-- Settings hub: General + Models/Org/Tools/Skills/Customize -->
+        <section id="settings-view" class="hidden">
+          <aside id="settings-nav">
+            <button type="button" data-settings="general" class="active">General</button>
+            <button type="button" data-settings="models">Models</button>
+            <button type="button" data-settings="org">Organization</button>
+            <button type="button" data-settings="tools">Tools</button>
+            <button type="button" data-settings="skills">Skills</button>
+            <button type="button" data-settings="customize">Customize</button>
+          </aside>
+          <div id="settings-panels">
+            <div id="settings-panel-general" class="settings-panel">
+              <header class="view-toolbar">
+                <button id="sidebar-toggle-settings" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+                <h1 class="view-title">General</h1>
+              </header>
+              <div class="settings-panel-body">
+                <p class="settings-panel-sub">Appearance and updates.</p>
+                <div class="setting-row">
+                <div class="label">Theme</div>
+                <div class="seg" id="theme-seg">
+                <button data-theme-choice="system">System</button>
+                <button data-theme-choice="light">Light</button>
+                <button data-theme-choice="dark">Dark</button>
+                </div>
+                </div>
 
-        <!-- Tools: model function calling -->
-        <section id="tools-view" class="hidden">
-          <header class="view-toolbar">
-            <button id="sidebar-toggle-tools" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
-            <h1 class="view-title">Tools</h1>
-            <div class="view-actions">
-              <button id="new-tool-btn" class="primary">New tool</button>
-            </div>
-          </header>
-          <div id="tools-body" class="org-body"></div>
-        </section>
+                <div class="setting-row">
+                <div class="label">
+                Check for updates on launch
+                <small>Look for a new version every time the app starts.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="update-toggle" />
+                <span class="track"></span>
+                </label>
+                </div>
 
-        <!-- Skills: instruction + tool bundles (Google Calendar, Outlook, custom) -->
-        <section id="skills-view" class="hidden">
-          <header class="view-toolbar">
-            <button id="sidebar-toggle-skills" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
-            <h1 class="view-title">Skills</h1>
-            <div class="view-actions">
-              <button id="new-skill-btn" class="primary">New skill</button>
-            </div>
-          </header>
-          <div id="skills-body" class="org-body"></div>
-        </section>
+                <div class="setting-row">
+                <div class="label">
+                Download updates automatically
+                <small>Skip the prompt and fetch new versions in the background.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="auto-download-toggle" />
+                <span class="track"></span>
+                </label>
+                </div>
 
-        <!-- Models browser -->
-        <section id="models-view" class="hidden">
-          <header class="view-toolbar">
-            <button id="sidebar-toggle-models" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
-            <h1 class="view-title">Models</h1>
-            <div class="view-actions">
-              <div class="view-search" style="flex: 1; margin-right: 1rem;">
-                <input id="models-search" type="text" placeholder="Search models…" autocomplete="off" />
+                <div class="setting-row">
+                <div class="label">
+                Install on quit
+                <small>Apply a downloaded update the next time you quit AnyLM.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="install-on-quit-toggle" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Updates
+                <small>Delivered from GitHub Releases. No app store required.</small>
+                </div>
+                <button id="check-now" class="ghost small">Check now</button>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Usage limit alerts
+                <small>System notification at 75%, 90%, and 100% of your allowance.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="notify-usage" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Renewal notifications
+                <small>Notify when your token allowance resets.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="notify-renewals" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Scheduled usage reports
+                <small>Save a CSV report to Documents/AnyLM Reports and notify. Managers and admins only.</small>
+                </div>
+                <select id="report-frequency">
+                <option value="off">Off</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                </select>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Embedding model
+                <small id="embed-status">Checking…</small>
+                </div>
+                <div class="embed-actions">
+                <button id="embed-check" class="ghost small">Check now</button>
+                <button id="embed-download" class="primary small hidden">Download</button>
+                </div>
+                </div>
+                <div class="setting-row embed-progress-row hidden" id="embed-progress-row">
+                <div class="label" style="flex: 1">
+                <span id="embed-progress-label">Downloading…</span>
+                <div class="progress" id="embed-progress"><div class="bar" id="embed-bar"></div></div>
+                </div>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                General knowledge
+                <small id="knowledge-count">0 chunks stored</small>
+                </div>
+                <button id="knowledge-clear" class="ghost small">Clear</button>
+                </div>
+
+                <div class="settings-version" id="settings-version"></div>
+
+
               </div>
-              <div class="seg" id="models-filter">
-                <button data-filter="all" class="active">All</button>
-                <button data-filter="installed">Installed</button>
+            </div>
+          <!-- Organization: governance, members, usage, billing -->
+          <section id="org-view" class="hidden">
+            <header class="view-toolbar">
+              <button id="sidebar-toggle-org" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+              <h1 class="view-title" id="org-title">Organization</h1>
+              <div class="view-actions" id="org-actions"></div>
+            </header>
+            <nav class="org-tabs seg" id="org-tabs"></nav>
+            <div id="org-body" class="org-body"></div>
+          </section>
+
+          <!-- Tools: model function calling -->
+          <section id="tools-view" class="hidden">
+            <header class="view-toolbar">
+              <button id="sidebar-toggle-tools" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+              <h1 class="view-title">Tools</h1>
+              <div class="view-actions">
+                <button id="new-tool-btn" class="primary">New tool</button>
+              </div>
+            </header>
+            <div id="tools-body" class="org-body"></div>
+          </section>
+
+          <!-- Skills: instruction + tool bundles (Google Calendar, Outlook, custom) -->
+          <section id="skills-view" class="hidden">
+            <header class="view-toolbar">
+              <button id="sidebar-toggle-skills" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+              <h1 class="view-title">Skills</h1>
+              <div class="view-actions">
+                <button id="new-skill-btn" class="primary">New skill</button>
+              </div>
+            </header>
+            <div id="skills-body" class="org-body"></div>
+          </section>
+
+          <!-- Models browser -->
+          <section id="models-view" class="hidden">
+            <header class="view-toolbar">
+              <button id="sidebar-toggle-models" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+              <h1 class="view-title">Models</h1>
+              <div class="view-actions">
+                <div class="view-search" style="flex: 1; margin-right: 1rem;">
+                  <input id="models-search" type="text" placeholder="Search models…" autocomplete="off" />
+                </div>
+                <div class="seg" id="models-filter">
+                  <button data-filter="all" class="active">All</button>
+                  <button data-filter="installed">Installed</button>
+                </div>
+              </div>
+            </header>
+            <div id="models-container" class="models-grid"></div>
+          </section>
+            <div id="settings-panel-customize" class="settings-panel hidden">
+              <header class="view-toolbar">
+                <button id="sidebar-toggle-customize" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+                <h1 class="view-title">Customize</h1>
+              </header>
+              <div class="settings-panel-body">
+
+                <p class="settings-panel-sub">
+                  Context about you, added to every chat in every project. Project
+                  instructions still apply on top of this.
+                </p>
+                <div class="setting-row">
+                  <div class="label">
+                    Use my context
+                    <small>Turn off to leave it out of prompts without deleting it.</small>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="uc-enabled" />
+                    <span class="track"></span>
+                  </label>
+                </div>
+                <label class="field-label">What should the model call you?</label>
+                <input id="uc-name" class="auth-input" placeholder="Yash" autocomplete="off" />
+                <label class="field-label">About you</label>
+                <textarea id="uc-about" placeholder="Role, background, what you're responsible for…"></textarea>
+                <label class="field-label">What you work on</label>
+                <textarea id="uc-work" placeholder="Products, stacks, teams, recurring projects…"></textarea>
+                <label class="field-label">How replies should be written</label>
+                <textarea id="uc-style" placeholder="Concise. No preamble. Code in small modules…"></textarea>
+                <label class="field-label">Anything else</label>
+                <textarea id="uc-extra" placeholder="Constraints, preferences, things to avoid…"></textarea>
+                <div class="settings-panel-foot"><span id="uc-saved" class="modal-note"></span></div>
+
               </div>
             </div>
-          </header>
-          <div id="models-container" class="models-grid"></div>
+          </div>
         </section>
       </main>
     </div>
@@ -436,129 +606,6 @@
       </div>
     </div>
 
-    <!-- Settings -->
-    <div id="settings-modal" class="modal-overlay hidden">
-      <div class="modal">
-        <h2>Settings</h2>
-        <p class="modal-sub">Appearance and updates.</p>
-
-        <div class="setting-row">
-          <div class="label">Theme</div>
-          <div class="seg" id="theme-seg">
-            <button data-theme-choice="system">System</button>
-            <button data-theme-choice="light">Light</button>
-            <button data-theme-choice="dark">Dark</button>
-          </div>
-        </div>
-
-        <div class="setting-row">
-          <div class="label">
-            Check for updates on launch
-            <small>Look for a new version every time the app starts.</small>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="update-toggle" />
-            <span class="track"></span>
-          </label>
-        </div>
-
-        <div class="setting-row">
-          <div class="label">
-            Download updates automatically
-            <small>Skip the prompt and fetch new versions in the background.</small>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="auto-download-toggle" />
-            <span class="track"></span>
-          </label>
-        </div>
-
-        <div class="setting-row">
-          <div class="label">
-            Install on quit
-            <small>Apply a downloaded update the next time you quit AnyLM.</small>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="install-on-quit-toggle" />
-            <span class="track"></span>
-          </label>
-        </div>
-
-        <div class="setting-row">
-          <div class="label">
-            Updates
-            <small>Delivered from GitHub Releases. No app store required.</small>
-          </div>
-          <button id="check-now" class="ghost small">Check now</button>
-        </div>
-
-        <div class="setting-row">
-          <div class="label">
-            Usage limit alerts
-            <small>System notification at 75%, 90%, and 100% of your allowance.</small>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="notify-usage" />
-            <span class="track"></span>
-          </label>
-        </div>
-
-        <div class="setting-row">
-          <div class="label">
-            Renewal notifications
-            <small>Notify when your token allowance resets.</small>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="notify-renewals" />
-            <span class="track"></span>
-          </label>
-        </div>
-
-        <div class="setting-row">
-          <div class="label">
-            Scheduled usage reports
-            <small>Save a CSV report to Documents/AnyLM Reports and notify. Managers and admins only.</small>
-          </div>
-          <select id="report-frequency">
-            <option value="off">Off</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-        </div>
-
-        <div class="setting-row">
-          <div class="label">
-            Embedding model
-            <small id="embed-status">Checking…</small>
-          </div>
-          <div class="embed-actions">
-            <button id="embed-check" class="ghost small">Check now</button>
-            <button id="embed-download" class="primary small hidden">Download</button>
-          </div>
-        </div>
-        <div class="setting-row embed-progress-row hidden" id="embed-progress-row">
-          <div class="label" style="flex: 1">
-            <span id="embed-progress-label">Downloading…</span>
-            <div class="progress" id="embed-progress"><div class="bar" id="embed-bar"></div></div>
-          </div>
-        </div>
-
-        <div class="setting-row">
-          <div class="label">
-            General knowledge
-            <small id="knowledge-count">0 chunks stored</small>
-          </div>
-          <button id="knowledge-clear" class="ghost small">Clear</button>
-        </div>
-
-        <div class="settings-version" id="settings-version"></div>
-
-        <div class="modal-foot">
-          <button id="settings-close" class="primary">Done</button>
-        </div>
-      </div>
-    </div>
 
     <!-- Custom tool editor -->
     <div id="tool-modal" class="modal-overlay hidden">
