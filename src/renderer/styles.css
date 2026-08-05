@@ -147,11 +147,15 @@ body {
   font-size: 14px;
   overflow: hidden;
 }
-.nav-list li > span:first-child {
+.nav-list li > .conv-dot {
+  flex: 0 0 auto;
+}
+.nav-list li > .conv-title {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 .nav-list li:hover {
   background: var(--panel-2);
@@ -159,6 +163,7 @@ body {
 .nav-list li.active {
   background: var(--accent-grad);
   color: var(--accent-contrast);
+  border-radius: 10px;
 }
 .nav-list .meta {
   font-size: 11px;

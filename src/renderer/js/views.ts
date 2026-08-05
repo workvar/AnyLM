@@ -117,7 +117,7 @@ export function renderRecents(items, activeKey, handlers) {
   for (const it of items) {
     const key = `${it.kind}:${it.id}`;
     const li = node("li", key === activeKey ? "active" : "");
-    li.appendChild(node("span", "", it.title || "New chat"));
+    li.appendChild(node("span", "conv-title", it.title || "New chat"));
     const sub = it.kind === "thread" ? it.projectName : "Chat";
     li.appendChild(node("span", "meta", sub || ""));
     li.onclick = () => handlers.onOpen(it);
