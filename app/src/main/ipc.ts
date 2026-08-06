@@ -18,6 +18,7 @@ import * as toolsExec from "./tools/exec";
 import * as skillsRegistry from "./skills/registry";
 import * as skillsExec from "./skills/exec";
 import * as workspace from "./workspace";
+import * as documentIntent from "./documents/intent";
 import * as proxy from "./proxy/server";
 import * as projectFiles from "./project-files";
 import * as openWith from "./open-with";
@@ -495,6 +496,12 @@ function registerIpc() {
         // Working folder: tells the model where file tools operate.
         const wsBlock = workspace.promptBlock();
         if (wsBlock) blocks.push(wsBlock);
+        // "Create a PDF" etc: nudge the model to call generate_document
+        // instead of pasting the document into its reply.
+        if (lastUser) {
+          const wantedFormat = documentIntent.detect(lastUser.content);
+          if (wantedFormat) blocks.push(documentIntent.promptBlock(wantedFormat));
+        }
       }
 
       // Personal context the user set in Customize, applied to every chat.
@@ -578,9 +585,14 @@ function registerIpc() {
         thought.start();
         thinkingOpen = true;
         act({ kind: "thinking", phase: "start" });
-        act({ kind: "status", text: rounds === 0 ? "Generating…" : "Continuing…" });
+        if (rounds > 0) act({ kind: "status", text: "Continuing with tool results…" });
+        let wroteStatus = false;
         const onPiece = (piece: string) => {
-          endThinking();
+          if (!wroteStatus) {
+            wroteStatus = true;
+            endThinking();
+            act({ kind: "status", text: "Writing reply…" });
+          }
           send("chat:chunk", { id, text: piece });
         };
         result = await ollama.chatStream(useModel, full, onPiece, toolDefs);
@@ -591,6 +603,7 @@ function registerIpc() {
         // Folder organizing / coding tasks need more tool rounds than Q&A.
         if (!toolDefs || !calls.length || rounds >= 15) break;
         rounds += 1;
+        act({ kind: "status", text: `Running ${calls.length} tool${calls.length === 1 ? "" : "s"}…` });
         full.push({ role: "assistant", content: result.text, tool_calls: calls });
         for (const call of calls) {
           const fname = call.function?.name || "";

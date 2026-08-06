@@ -18,14 +18,14 @@
     <div id="auth-screen">
       <div class="auth-card">
         <div class="auth-brand">
-          <img class="brand-mark lg" src="../../build/icon.png" alt="" />
+          <img class="brand-mark lg" src="../../build/icon.png" alt="AnyLM" width="56" height="56" />
           <span>AnyLM</span>
         </div>
         <p id="auth-sub">Sign in to your projects</p>
 
         <div class="oauth-row">
-          <button class="oauth" data-provider="google">Continue with Google</button>
-          <button class="oauth" data-provider="github">Continue with GitHub</button>
+          <button type="button" class="oauth" data-provider="google">Continue with Google</button>
+          <button type="button" class="oauth" data-provider="github">Continue with GitHub</button>
         </div>
         <div class="divider"><span>or</span></div>
 
@@ -39,7 +39,7 @@
             placeholder="Password"
             autocomplete="current-password"
           />
-          <div id="auth-error" class="auth-error"></div>
+          <div id="auth-error" class="auth-error" role="alert"></div>
           <button id="auth-submit" type="submit" class="primary full">Sign in</button>
         </form>
         <div class="auth-toggle">

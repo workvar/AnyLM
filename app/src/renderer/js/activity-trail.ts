@@ -15,6 +15,12 @@ export type PaintTrailOpts = {
   onDeny?: (token: string) => void;
 };
 
+function bullet(done: boolean, running: boolean): HTMLElement {
+  const b = node("span", `act-bullet${done ? " done" : ""}${running ? " run" : ""}`);
+  b.textContent = done ? "✓" : running ? "●" : "•";
+  return b;
+}
+
 export function paintTrail(
   host: HTMLElement,
   events: ActivityEvent[],
@@ -26,27 +32,45 @@ export function paintTrail(
 
   for (const ev of events) {
     if (ev.kind === "thinking") {
-      const ms = ev.phase === "start" ? opts.thoughtTickMs ?? 0 : ev.ms ?? 0;
-      trail.appendChild(node("div", "act-row act-thinking", formatThought(ms)));
+      const live = opts.live && ev.phase === "start";
+      const ms = live ? opts.thoughtTickMs ?? 0 : ev.ms ?? 0;
+      const row = node("div", `act-row act-thinking${live ? " live" : ""}`);
+      row.appendChild(bullet(false, live));
+      const label = node("span", "act-text", formatThought(ms));
+      row.appendChild(label);
+      if (live) row.appendChild(node("span", "act-live-tag", "thinking"));
+      trail.appendChild(row);
       continue;
     }
     if (ev.kind === "status") {
-      trail.appendChild(node("div", "act-row act-status", ev.text));
+      const row = node("div", "act-row act-status");
+      row.appendChild(bullet(false, opts.live));
+      row.appendChild(node("span", "act-text", ev.text));
+      trail.appendChild(row);
       continue;
     }
     if (ev.kind === "tool") {
-      const row = node("div", "act-row act-tool");
+      const running = ev.status === "running";
+      const done = ev.status === "done";
+      const row = node("div", `act-row act-tool${running ? " live" : ""}`);
+      row.appendChild(bullet(done, running));
+      const body = node("div", "act-tool-body");
+      const head = node("div", "act-tool-head");
       const toggle = node("button", "act-tool-toggle", ev.label);
       toggle.type = "button";
-      row.appendChild(toggle);
-      if (ev.detail) row.appendChild(node("div", "act-tool-detail", ev.detail));
+      head.appendChild(toggle);
+      if (running) head.appendChild(node("span", "act-live-tag", "running"));
+      body.appendChild(head);
+      if (ev.detail) body.appendChild(node("div", "act-tool-detail", ev.detail));
       if (ev.output) {
         const out = node("pre", "act-tool-out hidden", ev.output);
-        if (ev.status === "done") {
+        if (done) {
+          toggle.title = "Show tool output";
           toggle.onclick = () => out.classList.toggle("hidden");
         }
-        row.appendChild(out);
+        body.appendChild(out);
       }
+      row.appendChild(body);
       trail.appendChild(row);
       continue;
     }
@@ -54,6 +78,7 @@ export function paintTrail(
       // generate_document uses the file-card permission UI — skip duplicate Allow/Deny.
       if (ev.tool?.name === "generate_document") continue;
       const row = node("div", "act-row act-confirm");
+      row.appendChild(bullet(false, true));
       row.appendChild(node("span", "act-confirm-prompt", `Allow ${ev.label}?`));
       const showActions =
         opts.live &&
@@ -73,7 +98,10 @@ export function paintTrail(
       continue;
     }
     if (ev.kind === "ask") {
-      trail.appendChild(node("div", "act-row act-ask", ev.question));
+      const row = node("div", "act-row act-ask");
+      row.appendChild(bullet(false, opts.live));
+      row.appendChild(node("span", "act-text", ev.question));
+      trail.appendChild(row);
     }
   }
 }
@@ -83,9 +111,10 @@ export function paintCollapsed(host: HTMLElement, activity: MessageActivity): vo
   host.innerHTML = "";
   const btn = node("button", "activity-summary", activity.summary);
   btn.type = "button";
+  btn.title = "Show what the model did";
   btn.onclick = () => {
     paintTrail(host, activity.events, { live: false });
-    const collapse = node("button", "activity-summary", activity.summary);
+    const collapse = node("button", "activity-summary is-expanded", "Hide steps");
     collapse.type = "button";
     collapse.onclick = () => paintCollapsed(host, activity);
     host.insertBefore(collapse, host.firstChild);
