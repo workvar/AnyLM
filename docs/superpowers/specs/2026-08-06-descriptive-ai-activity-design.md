@@ -14,7 +14,7 @@ While the model works, LLMeter mostly looks idle: typing dots in the bubble, too
 | Topic | Choice |
 |-------|--------|
 | Where activity lives | **C** — Inline transcript trail + upgraded rail Progress |
-| Event richness | **C** — Full Cursor-like log (thinking time, status lines, tool rows, inline Allow/Stop) |
+| Event richness | **C** — Full Cursor-like log (thinking time, status lines, tool rows, inline Allow/Deny) |
 | After turn completes | **A** — Collapse under the answer; expandable anytime |
 | Sticky Working strip | **A** — Yes, above composer while the open chat is busy |
 | Architecture | **3** — Main emits typed `chat:activity`; renderer paints only |
@@ -25,7 +25,7 @@ While the model works, LLMeter mostly looks idle: typing dots in the bubble, too
 2. One source of truth for labels/status: main process activity events.
 3. Mirror the same events in the right-rail Progress panel.
 4. Persist a compact activity trail on assistant messages so history is not empty after reload.
-5. Surface pending tool confirms inline + in the sticky strip (Allow / Stop).
+5. Surface pending tool confirms inline + in the sticky strip (Allow / Deny); Stop cancels the turn.
 
 ## Non-goals
 
@@ -138,7 +138,7 @@ When painting stored messages, if `activity` exists, show the collapsed summary;
 
 ### Ask / confirm
 
-- Confirm: activity `confirm` + sticky Allow; reply via existing `replyToolConfirm`.
+- Confirm: activity `confirm` + sticky Allow/Deny; reply via existing `replyToolConfirm`.
 - Ask: existing ask-card; also emit `status` (“Waiting for your answer…”) for trail + strip.
 
 ### Cancel / error
@@ -202,4 +202,4 @@ Thinking time is wall-clock on the main side (sum of intervals where the model w
 - User can follow every tool and wait phase without opening the rail.
 - Rail and inline trail never disagree on labels for the same tool.
 - Completed turns show a one-line expandable summary; history restores it after restart.
-- Sticky strip appears only for the open busy chat and supports Stop + pending Allow.
+- Sticky strip appears only for the open busy chat and supports Stop plus pending Allow/Deny.
