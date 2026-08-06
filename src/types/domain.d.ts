@@ -27,6 +27,17 @@ interface AppSettings {
   govAlerts: Record<string, GovAlert>;
   proxyEnabled: boolean;
   proxyPort: number;
+  /** Customize: personal context added to every chat. */
+  userContext: UserContext;
+}
+
+interface UserContext {
+  enabled: boolean;
+  name: string;
+  about: string;
+  work: string;
+  style: string;
+  extra: string;
 }
 
 interface GovAlert {
@@ -376,6 +387,8 @@ interface ProxyStatus {
 interface GeneratedFile {
   name: string;
   ext: string;
+  /** Folder the file was written to. */
+  dir?: string;
   /** Absolute path, when the generator wrote straight to disk. */
   path?: string;
   projectId?: string | null;

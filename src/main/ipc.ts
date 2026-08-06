@@ -22,6 +22,7 @@ import * as proxy from "./proxy/server";
 import { shell } from "electron";
 import { waitForConnector } from "./protocol";
 import * as projectFiles from "./project-files";
+import * as userContext from "./user-context";
 
 // Pending risky-tool confirmations, keyed by a one-time token.
 const pendingConfirms = new Map();
@@ -51,6 +52,10 @@ function registerIpc() {
     await vectorstore.clear();
     return true;
   });
+
+  // Customize: personal context applied to every chat.
+  ipcMain.handle("usercontext:get", () => userContext.get());
+  ipcMain.handle("usercontext:set", (_e, patch) => userContext.set(patch));
 
   // Embedding model (RAG)
   ipcMain.handle("embed:status", async () => ({
@@ -442,6 +447,10 @@ function registerIpc() {
         const wsBlock = workspace.promptBlock();
         if (wsBlock) blocks.push(wsBlock);
       }
+
+      // Personal context the user set in Customize, applied to every chat.
+      const userBlock = userContext.promptBlock();
+      if (userBlock) blocks.push(userBlock);
 
       const system = blocks.join("\n\n---\n\n");
       const full = [];

@@ -36,6 +36,8 @@ const DEFAULTS: AppSettings = {
   proxyEnabled: true,
   // Build default from app/.env; the user's saved value overrides it.
   proxyPort: env.proxyPort,
+  // Customize: personal context prepended to every chat (see user-context.ts).
+  userContext: { enabled: true, name: "", about: "", work: "", style: "", extra: "" },
 };
 
 function filePath(): string {

@@ -102,6 +102,10 @@ interface AnyLmApi {
   knowledgeCount(): Promise<number>;
   knowledgeClear(): Promise<boolean>;
 
+  // Customize (personal context applied to every chat)
+  userContextGet(): Promise<UserContext>;
+  userContextSet(patch: Partial<UserContext>): Promise<UserContext>;
+
   // Embedding model
   embedStatus(): Promise<{ model: string; installed: boolean }>;
   embedRequirements(): Promise<EmbedRequirements>;

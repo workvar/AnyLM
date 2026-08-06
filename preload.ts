@@ -82,6 +82,10 @@ const api: AnyLmApi = {
   knowledgeCount: () => ipcRenderer.invoke("knowledge:count"),
   knowledgeClear: () => ipcRenderer.invoke("knowledge:clear"),
 
+  // Customize (personal context applied to every chat)
+  userContextGet: () => ipcRenderer.invoke("usercontext:get"),
+  userContextSet: (patch) => ipcRenderer.invoke("usercontext:set", patch),
+
   // Embedding model (RAG)
   embedStatus: () => ipcRenderer.invoke("embed:status"),
   embedRequirements: () => ipcRenderer.invoke("embed:requirements"),
