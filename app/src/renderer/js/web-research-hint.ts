@@ -22,6 +22,14 @@ function nextWebResearchHintDismissed(dismissed: boolean, text: string): boolean
   return hasHttpUrl(text) ? dismissed : false;
 }
 
+function nextWebResearchSkillOverrides(
+  overrides: string[],
+  keepGlobally: boolean
+): string[] {
+  if (keepGlobally) return overrides.filter((id) => id !== SKILL_ID);
+  return [...new Set([...overrides, SKILL_ID])];
+}
+
 let dismissed = false;
 let bound = false;
 
@@ -42,13 +50,50 @@ type ConversationPatch = {
   useTools?: boolean;
 };
 
-async function persistPatch(patch: ConversationPatch): Promise<void> {
+type ConversationTarget =
+  | { mode: "chat"; chatId: string; overrides: string[] }
+  | { mode: "project"; projectId: string; threadId: string; overrides: string[] };
+
+function captureConversationTarget(): ConversationTarget | null {
   if (state.mode === "chat" && state.current) {
-    state.current = { ...state.current, ...patch };
-    await window.api.updateChat(state.current.id, patch);
-  } else if (state.mode === "project" && state.current && state.thread) {
-    state.thread = { ...state.thread, ...patch };
-    await window.api.updateThread(state.current.id, state.thread.id, patch);
+    return {
+      mode: "chat",
+      chatId: state.current.id,
+      overrides: [...(state.current.skillOverrides || [])],
+    };
+  }
+  if (state.mode === "project" && state.current && state.thread) {
+    return {
+      mode: "project",
+      projectId: state.current.id,
+      threadId: state.thread.id,
+      overrides: [...(state.thread.skillOverrides || [])],
+    };
+  }
+  return null;
+}
+
+function isCurrentTarget(target: ConversationTarget): boolean {
+  if (target.mode === "chat") {
+    return state.mode === "chat" && state.current?.id === target.chatId;
+  }
+  return (
+    state.mode === "project" &&
+    state.current?.id === target.projectId &&
+    state.thread?.id === target.threadId
+  );
+}
+
+async function persistPatchFor(
+  target: ConversationTarget,
+  patch: ConversationPatch
+): Promise<void> {
+  if (target.mode === "chat") {
+    if (isCurrentTarget(target)) state.current = { ...state.current, ...patch };
+    await window.api.updateChat(target.chatId, patch);
+  } else {
+    if (isCurrentTarget(target)) state.thread = { ...state.thread, ...patch };
+    await window.api.updateThread(target.projectId, target.threadId, patch);
   }
 }
 
@@ -78,10 +123,14 @@ async function syncWebResearchHint(): Promise<void> {
   enable.className = "primary-hint";
   enable.textContent = "Enable";
   enable.onclick = async () => {
-    const next = [...new Set([...currentOverrides(), SKILL_ID])];
-    await persistPatch({ skillOverrides: next, useTools: true });
-    setUseTools(true, { persist: false });
-    dismissed = false;
+    const target = captureConversationTarget();
+    if (!target) return;
+    const next = nextWebResearchSkillOverrides(target.overrides, false);
+    await persistPatchFor(target, { skillOverrides: next, useTools: true });
+    if (isCurrentTarget(target)) {
+      setUseTools(true, { persist: false });
+      dismissed = false;
+    }
     await syncWebResearchHint();
   };
 
@@ -89,11 +138,15 @@ async function syncWebResearchHint(): Promise<void> {
   keep.type = "button";
   keep.textContent = "Keep enabled";
   keep.onclick = async () => {
+    const target = captureConversationTarget();
+    if (!target) return;
+    const next = nextWebResearchSkillOverrides(target.overrides, true);
     await window.api.skillsToggle(SKILL_ID, true);
-    const next = currentOverrides().filter((id) => id !== SKILL_ID);
-    await persistPatch({ skillOverrides: next, useTools: true });
-    setUseTools(true, { persist: false });
-    dismissed = false;
+    await persistPatchFor(target, { skillOverrides: next, useTools: true });
+    if (isCurrentTarget(target)) {
+      setUseTools(true, { persist: false });
+      dismissed = false;
+    }
     await syncWebResearchHint();
   };
 
@@ -135,6 +188,7 @@ function resetWebResearchHintDismiss(): void {
 export {
   shouldShowWebResearchHint,
   nextWebResearchHintDismissed,
+  nextWebResearchSkillOverrides,
   SKILL_ID,
   initWebResearchHint,
   syncWebResearchHint,

@@ -2,6 +2,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   nextWebResearchHintDismissed,
+  nextWebResearchSkillOverrides,
   shouldShowWebResearchHint,
 } from "./web-research-hint";
 
@@ -38,5 +39,21 @@ describe("dismiss state", () => {
 
   test("clears dismissal after the URL is removed", () => {
     expect(nextWebResearchHintDismissed(true, "no link here")).toBe(false);
+  });
+});
+
+describe("override snapshots", () => {
+  test("adds Web research once for per-conversation enable", () => {
+    expect(nextWebResearchSkillOverrides(["other", "web-research"], false)).toEqual([
+      "other",
+      "web-research",
+    ]);
+  });
+
+  test("removes Web research from a captured snapshot for global enable", () => {
+    const snapshot = ["other", "web-research"];
+
+    expect(nextWebResearchSkillOverrides(snapshot, true)).toEqual(["other"]);
+    expect(snapshot).toEqual(["other", "web-research"]);
   });
 });
