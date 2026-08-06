@@ -56,6 +56,11 @@ function enabledSkills() {
   return list().filter((s) => s.enabled);
 }
 
+function skillsForTurn(extraIds?: string[]) {
+  const extras = new Set(extraIds || []);
+  return list().filter((s) => s.enabled || extras.has(s.id));
+}
+
 function toggle(id, enabled) {
   const store = readStore();
   if (BUILTIN_SKILLS.some((s) => s.id === id)) {
@@ -117,9 +122,9 @@ function findConnectorTool(name) {
 }
 
 // System-prompt block for all enabled skills (shown only when tools are on).
-function instructionsBlock() {
+function instructionsBlock(extraIds?: string[]) {
   const parts = [];
-  for (const s of enabledSkills()) {
+  for (const s of skillsForTurn(extraIds)) {
     const instructions = s.builtin ? builtinSkill(s.id).instructions : s.instructions;
     if (instructions && instructions.trim()) {
       parts.push(`Skill "${s.name}":\n${instructions.trim()}`);
@@ -132,10 +137,10 @@ function instructionsBlock() {
 // bring their own connector tools; custom skills pull the registry tools
 // they reference (even ones globally disabled — enabling the skill is the
 // user's opt-in).
-function ollamaTools() {
+function ollamaTools(extraIds?: string[]) {
   const defs = [];
   const seen = new Set();
-  for (const s of enabledSkills()) {
+  for (const s of skillsForTurn(extraIds)) {
     if (s.builtin) {
       const full = builtinSkill(s.id);
       const names = (full as { toolNames?: string[] })?.toolNames;
@@ -171,9 +176,9 @@ function ollamaTools() {
 // Registry-tool names referenced by enabled custom skills, plus `toolNames`
 // declared by enabled built-in skills (e.g. Web research) — the chat loop
 // lets these execute even when globally disabled.
-function customToolNames() {
+function customToolNames(extraIds?: string[]) {
   const names = new Set<string>();
-  for (const s of enabledSkills()) {
+  for (const s of skillsForTurn(extraIds)) {
     if (s.builtin) {
       const full = builtinSkill(s.id);
       const tn = (full as { toolNames?: string[] })?.toolNames;
