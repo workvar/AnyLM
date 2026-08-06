@@ -273,6 +273,17 @@
           </label>
         </div>
 
+        <div class="setting-row">
+          <div class="label">
+            Auto-log exchanges to folder
+            <small>Append every chat exchange to decisions-log.md in the storage folder. Off by default.</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="auto-log" />
+            <span class="track"></span>
+          </label>
+        </div>
+
         <div class="setting-col">
           <div class="label">
             Storage folder
@@ -450,7 +461,32 @@
         </div>
 
         <div class="setting-row">
-          <div class="label">Updates</div>
+          <div class="label">
+            Download updates automatically
+            <small>Skip the prompt and fetch new versions in the background.</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="auto-download-toggle" />
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div class="label">
+            Install on quit
+            <small>Apply a downloaded update the next time you quit AnyLM.</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="install-on-quit-toggle" />
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div class="label">
+            Updates
+            <small>Delivered from GitHub Releases. No app store required.</small>
+          </div>
           <button id="check-now" class="ghost small">Check now</button>
         </div>
 
@@ -692,11 +728,29 @@
     </div>
 
     <!-- Update banner -->
-    <div id="update-banner" class="hidden">
-      <div class="up-title" id="up-title"></div>
-      <div class="progress hidden" id="up-progress"><div class="bar" id="up-bar"></div></div>
-      <div class="up-msg" id="up-msg"></div>
-      <div class="up-actions" id="up-actions"></div>
+    <!-- Update toast: expands to a card, collapses to a progress pill -->
+    <div id="update-toast" class="hidden" data-collapsed="false">
+      <button id="up-pill" type="button" title="Show update details">
+        <span id="up-toast-ring" class="up-ring hidden">
+          <svg viewBox="0 0 22 22" aria-hidden="true">
+            <circle class="up-ring-track" cx="11" cy="11" r="9" />
+            <circle id="up-ring-fill" class="up-ring-fill" cx="11" cy="11" r="9" />
+          </svg>
+        </span>
+        <span id="up-pill-text"></span>
+      </button>
+
+      <div class="up-card">
+        <div class="up-head">
+          <div class="up-title" id="up-title"></div>
+          <button id="up-collapse" type="button" class="up-min" title="Minimize">−</button>
+        </div>
+        <div class="up-msg" id="up-msg"></div>
+        <div class="up-notes hidden" id="up-notes"></div>
+        <div class="progress hidden" id="up-progress"><div class="bar" id="up-bar"></div></div>
+        <div class="up-stats hidden" id="up-stats"></div>
+        <div class="up-actions" id="up-actions"></div>
+      </div>
     </div>
 
     <script type="module" src="js/app.js"></script>
