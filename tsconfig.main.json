@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "rootDir": ".",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo-main"
+  },
+  "include": ["main.ts", "preload.ts", "src/main/**/*.ts", "src/types/**/*.d.ts"],
+  "exclude": ["src/main/**/*.test.ts"]
+}

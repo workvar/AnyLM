@@ -36,6 +36,8 @@ release/
 .prisma/
 coverage/
 .nyc_output/
+# Written by scripts/build-env.js from app/.env at build time.
+src/main/env.generated.ts
 
 # Env + secrets
 .env
