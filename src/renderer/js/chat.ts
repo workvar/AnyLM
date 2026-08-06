@@ -7,10 +7,10 @@ import { getSelectedModel } from "./dropdown.js";
 import { persistCurrentChat } from "./chats.js";
 import { persistProjectThread } from "./threads.js";
 import { getAttachments, getImageThumbs, hasAttachments, clearAttachments } from "./attach.js";
-import { showDocConfirm, showFileCard } from "./file-cards.js";
+import { showDocConfirm } from "./file-cards.js";
 import { llmMessages } from "./messages.js";
 import { activeKey } from "./activity.js";
-import { runTurn, answerFromComposer, stopTurn } from "./turns.js";
+import { runTurn, answerFromComposer, stopTurn, handleFileGenerated } from "./turns.js";
 
 // Governance policy warnings (redactions, near-limit notices) surfaced inline.
 let govBound = false;
@@ -81,8 +81,8 @@ export function initToolUse() {
     el("tc-deny").onclick = () => done(false);
   });
 
-  // Generated documents surface as Open-with file rows.
-  window.api.onFileGenerated(({ name, ext, dir }) => showFileCard({ name, ext, dir }));
+  // Generated documents surface as Open-with file rows and persist as artifacts.
+  window.api.onFileGenerated(handleFileGenerated);
 }
 
 function summarizeArgs(args) {

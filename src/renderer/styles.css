@@ -1816,6 +1816,15 @@ button.full {
 .doc-card.doc-file {
   cursor: default;
 }
+.doc-card.doc-file.missing {
+  opacity: 0.65;
+}
+.doc-card.doc-file.missing .doc-card-icon {
+  filter: grayscale(1);
+}
+.doc-card.doc-file.missing .doc-card-sub {
+  color: var(--danger, #c44);
+}
 .doc-card-icon {
   flex-shrink: 0;
   font-size: 18px;

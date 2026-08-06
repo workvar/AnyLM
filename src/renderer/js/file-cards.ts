@@ -86,83 +86,117 @@ export function showDocConfirm({ token, args }, reply) {
 }
 
 // Card for a generated file with split Open-with control.
-export function showFileCard({ name, ext, dir }) {
-  const wrap = messagesEl();
+export async function renderFileCard(
+  { name, ext, dir }: { name: string; ext: string; dir: string },
+  opts: { missing?: boolean; mount?: HTMLElement } = {}
+) {
+  const wrap = opts.mount || messagesEl();
   const projectId = currentProjectId();
 
-  const card = node("div", "doc-card doc-file");
+  const card = node("div", "doc-card doc-file" + (opts.missing ? " missing" : ""));
   card.appendChild(node("div", "doc-card-icon", ICONS[ext] || "📄"));
 
   const body = node("div", "doc-card-body");
   body.appendChild(node("div", "doc-card-name", name));
-  body.appendChild(
-    node("div", "doc-card-sub", TYPE_LINE[ext] || String(ext || "").replace(/^\./, "").toUpperCase())
-  );
+  if (opts.missing) {
+    body.appendChild(node("div", "doc-card-sub", "File missing"));
+  } else {
+    body.appendChild(
+      node("div", "doc-card-sub", TYPE_LINE[ext] || String(ext || "").replace(/^\./, "").toUpperCase())
+    );
+  }
   card.appendChild(body);
 
-  const actions = node("div", "doc-card-actions");
-  const split = node("div", "doc-open");
-  const main = node("button", "doc-open-main", "Open with Default app");
-  const chevron = node("button", "doc-open-chevron", "▾");
-  chevron.setAttribute("aria-label", "More open options");
-  const menu = node("div", "doc-open-menu hidden");
+  if (!opts.missing) {
+    const { defaultApp, apps } = await window.api.pfilesAppsFor(dir, name).catch(() => ({
+      defaultApp: null,
+      apps: [],
+    }));
+    const defaultLabel = defaultApp?.name
+      ? `Open with ${defaultApp.name}`
+      : "Open with Default app";
 
-  const openDefault = () => {
-    closeOpenMenus();
-    if (dir) window.api.pfilesOpen(dir, name);
-  };
-  const preview = () => {
-    closeOpenMenus();
-    if (projectId) openFileViewer(projectId, name);
-  };
-  const showFolder = () => {
-    closeOpenMenus();
-    if (dir) window.api.pfilesShow(dir, name);
-  };
+    const actions = node("div", "doc-card-actions");
+    const split = node("div", "doc-open");
+    const main = node("button", "doc-open-main", defaultLabel);
+    const chevron = node("button", "doc-open-chevron", "▾");
+    chevron.setAttribute("aria-label", "More open options");
+    const menu = node("div", "doc-open-menu hidden");
 
-  const itemDefault = node("button", "doc-open-item", "Open with Default app");
-  itemDefault.onclick = (e) => {
-    e.stopPropagation();
-    openDefault();
-  };
-  menu.appendChild(itemDefault);
-
-  if (projectId) {
-    const itemPreview = node("button", "doc-open-item", "Preview in AnyLM");
-    itemPreview.onclick = (e) => {
-      e.stopPropagation();
-      preview();
+    const openDefault = () => {
+      closeOpenMenus();
+      if (!dir) return;
+      if (defaultApp) window.api.pfilesOpenWith(dir, name, defaultApp.id);
+      else window.api.pfilesOpen(dir, name);
     };
-    menu.appendChild(itemPreview);
-  }
+    const preview = () => {
+      closeOpenMenus();
+      if (projectId) openFileViewer(projectId, name);
+    };
+    const showFolder = () => {
+      closeOpenMenus();
+      if (dir) window.api.pfilesShow(dir, name);
+    };
 
-  const itemFolder = node("button", "doc-open-item", "Show in folder");
-  itemFolder.onclick = (e) => {
-    e.stopPropagation();
-    showFolder();
-  };
-  menu.appendChild(itemFolder);
+    if (!apps.length) {
+      const itemDefault = node("button", "doc-open-item", defaultLabel);
+      itemDefault.onclick = (e) => {
+        e.stopPropagation();
+        openDefault();
+      };
+      menu.appendChild(itemDefault);
+    }
 
-  main.onclick = (e) => {
-    e.stopPropagation();
-    openDefault();
-  };
-  chevron.onclick = (e) => {
-    e.stopPropagation();
-    const opening = menu.classList.contains("hidden");
-    closeOpenMenus();
-    if (opening) menu.classList.remove("hidden");
-  };
+    for (const app of apps) {
+      const item = node("button", "doc-open-item", `Open with ${app.name}`);
+      item.onclick = (e) => {
+        e.stopPropagation();
+        window.api.pfilesOpenWith(dir, name, app.id);
+      };
+      menu.appendChild(item);
+    }
 
-  split.append(main, chevron);
-  actions.append(split, menu);
-  card.appendChild(actions);
+    if (projectId) {
+      const itemPreview = node("button", "doc-open-item", "Preview in AnyLM");
+      itemPreview.onclick = (e) => {
+        e.stopPropagation();
+        preview();
+      };
+      menu.appendChild(itemPreview);
+    }
 
-  if (!openMenuBound) {
-    openMenuBound = true;
-    document.addEventListener("click", () => closeOpenMenus());
+    const itemFolder = node("button", "doc-open-item", "Show in folder");
+    itemFolder.onclick = (e) => {
+      e.stopPropagation();
+      showFolder();
+    };
+    menu.appendChild(itemFolder);
+
+    main.onclick = (e) => {
+      e.stopPropagation();
+      openDefault();
+    };
+    chevron.onclick = (e) => {
+      e.stopPropagation();
+      const opening = menu.classList.contains("hidden");
+      closeOpenMenus();
+      if (opening) menu.classList.remove("hidden");
+    };
+
+    split.append(main, chevron);
+    actions.append(split, menu);
+    card.appendChild(actions);
+
+    if (!openMenuBound) {
+      openMenuBound = true;
+      document.addEventListener("click", () => closeOpenMenus());
+    }
   }
 
   wrap.appendChild(card);
   wrap.scrollTop = wrap.scrollHeight;
+}
+
+export function showFileCard(info: { name: string; ext: string; dir: string }) {
+  return renderFileCard(info);
 }

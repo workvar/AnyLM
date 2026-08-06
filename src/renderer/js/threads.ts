@@ -32,7 +32,7 @@ export async function openThread(threadId) {
     modelLocked: !!state.current.modelLocked,
     placeholder: "Message your project model…",
   });
-  renderHistory(state.chat);
+  await renderHistory(state.chat);
   attachTurn(`thread:${threadId}`);
   estimateContext(state.current.model, state.chat);
   updateModelLock();

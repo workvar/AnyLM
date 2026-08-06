@@ -7,6 +7,7 @@ import { clearMessages, addMessage, setBubbleMarkdown } from "./views.js";
 import { hideContext } from "./contextmeter.js";
 import { showView } from "./nav.js";
 import { appendAskAnswered } from "./turns.js";
+import { renderFileCard } from "./file-cards.js";
 
 export function showEmpty() {
   state.mode = null;
@@ -37,10 +38,12 @@ export function updateModelLock() {
 }
 
 // Render a saved message history (assistant messages as markdown).
-export function renderHistory(messages) {
+export async function renderHistory(messages) {
   clearMessages();
   for (const m of messages || []) {
     if (m.role === "artifact" && m.type === "file") {
+      const missing = !(await window.api.pfilesExists(m.dir, m.name));
+      await renderFileCard(m, { missing });
       continue;
     }
     if (m.role === "ask") {

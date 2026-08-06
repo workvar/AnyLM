@@ -21,7 +21,7 @@ export async function selectChat(id) {
     modelLocked: false,
     placeholder: "Message…",
   });
-  renderHistory(state.chat);
+  await renderHistory(state.chat);
   attachTurn(`chat:${id}`);
   estimateContext(state.current.model, state.chat);
   updateModelLock();

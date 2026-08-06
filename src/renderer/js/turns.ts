@@ -13,7 +13,8 @@ import { renderAsk, clearAsk } from "./ask-card.js";
 import { attachTokenStats } from "./tokenstats.js";
 import { setContextUsage } from "./contextmeter.js";
 import { maybeTitle } from "./titler.js";
-import { askArtifact, llmMessages } from "./messages.js";
+import { askArtifact, fileArtifact, llmMessages } from "./messages.js";
+import { renderFileCard } from "./file-cards.js";
 
 const turns = new Map<string, any>();
 const byRequest = new Map<string, any>();
@@ -33,6 +34,31 @@ export function pendingAsk() {
 }
 
 // --- persistence ------------------------------------------------------------
+
+// Persist a file artifact to the conversation that owns the in-flight request.
+export async function handleFileGenerated({
+  id,
+  name,
+  ext,
+  dir,
+}: GeneratedFile & { id: string }) {
+  const turn = id ? byRequest.get(id) : null;
+  const artifact = fileArtifact({ name, ext, dir: dir || "" });
+  if (turn) {
+    await persistStoredMessage(turn, artifact);
+    if (activeKey() === turn.key) await renderFileCard(artifact);
+    return;
+  }
+  // Fallback when the request id is unknown: persist to the active conversation.
+  if (!activeKey()) return;
+  state.chat.push(artifact);
+  if (state.mode === "project" && state.current && state.thread) {
+    await window.api.updateThread(state.current.id, state.thread.id, { messages: state.chat });
+  } else if (state.mode === "chat" && state.current) {
+    await window.api.updateChat(state.current.id, { messages: state.chat });
+  }
+  await renderFileCard(artifact);
+}
 
 async function persistStoredMessage(turn, artifact: StoredMessage) {
   if (turn.mode === "project") {
