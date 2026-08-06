@@ -69,6 +69,13 @@ const api: AnyLmApi = {
     ipcRenderer.on("chat:governance", fn);
     return () => ipcRenderer.removeListener("chat:governance", fn);
   },
+  onAsk: (cb) => {
+    const fn = (_e, m) => cb(m);
+    ipcRenderer.on("chat:ask", fn);
+    return () => ipcRenderer.removeListener("chat:ask", fn);
+  },
+  replyAsk: (token, answer) => ipcRenderer.send("chat:ask-reply", { token, answer }),
+  cancelChat: (id) => ipcRenderer.send("chat:cancel", { id }),
 
   // Settings
   getSettings: () => ipcRenderer.invoke("settings:get"),
@@ -183,14 +190,15 @@ const api: AnyLmApi = {
     ipcRenderer.invoke("context:remove", { projectId, contextId }),
 
   // Streaming chat. onChunk(text) called per token; resolves on done.
-  chat: (payload, onChunk) => {
+  chat: (payload, onChunk, onId) => {
     return new Promise((resolve, reject) => {
       const id = Math.random().toString(36).slice(2);
+      if (onId) onId(id);
       const chunk = (_e, m) => m.id === id && onChunk(m.text);
       const done = (_e, m) => {
         if (m.id !== id) return;
         cleanup();
-        resolve({ full: m.full, usage: m.usage });
+        resolve({ full: m.full, usage: m.usage, stopped: !!m.stopped });
       };
       const fail = (_e, m) => {
         if (m.id !== id) return;

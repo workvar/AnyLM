@@ -27,6 +27,14 @@ interface GovernanceEvent {
   warnings: string[];
 }
 
+interface AskEvent {
+  id: string;
+  token: string;
+  question: string;
+  options?: string[];
+  recommended?: string;
+}
+
 interface UpdateStatus {
   state: string;
   version?: string;
@@ -89,6 +97,9 @@ interface AnyLmApi {
   replyToolConfirm(token: string, approved: boolean): void;
   onFileGenerated(cb: (f: GeneratedFile & { id: string }) => void): Unsubscribe;
   onGovernance(cb: (e: GovernanceEvent) => void): Unsubscribe;
+  onAsk(cb: (e: AskEvent) => void): Unsubscribe;
+  replyAsk(token: string, answer: string | null): void;
+  cancelChat(id: string): void;
 
   // Settings
   getSettings(): Promise<AppSettings>;
@@ -192,8 +203,9 @@ interface AnyLmApi {
   /** Streaming chat. onChunk(text) fires per token; resolves when done. */
   chat(
     payload: ChatPayload,
-    onChunk: (text: string) => void
-  ): Promise<{ full: string; usage: ChatUsage }>;
+    onChunk: (text: string) => void,
+    onId?: (id: string) => void
+  ): Promise<{ full: string; usage: ChatUsage; stopped?: boolean }>;
 
   // Model management
   deleteModel(model: string): Promise<boolean>;

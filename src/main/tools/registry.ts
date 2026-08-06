@@ -140,6 +140,28 @@ const BUILTINS = [
     ],
   },
   {
+    id: "ask_user",
+    name: "ask_user",
+    builtin: true,
+    risky: false,
+    description:
+      "Ask the user one clarifying question and wait for their answer. Use when a choice " +
+      "would change the result and you cannot infer it.",
+    params: [
+      { name: "question", description: "The question, one sentence", required: true },
+      {
+        name: "options",
+        description: "2-4 short answers separated by | (optional)",
+        required: false,
+      },
+      {
+        name: "recommended",
+        description: "Which option you recommend (optional)",
+        required: false,
+      },
+    ],
+  },
+  {
     id: "generate_document",
     name: "generate_document",
     builtin: true,

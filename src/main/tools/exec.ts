@@ -60,6 +60,23 @@ function isRisky(tool, args) {
 
 async function execBuiltin(tool, args, context) {
   switch (tool.name) {
+    case "ask_user": {
+      if (!context || !context.ask) return "Error: cannot reach the user right now.";
+      const question = String(args.question || "").trim();
+      if (!question) return "Error: question required";
+      const options = String(args.options || "")
+        .split("|")
+        .map((o) => o.trim())
+        .filter(Boolean)
+        .slice(0, 4);
+      const answer = await context.ask({
+        question,
+        options,
+        recommended: String(args.recommended || "").trim(),
+      });
+      if (answer == null) return "The user skipped the question. Use your best judgement.";
+      return `The user answered: ${answer}`;
+    }
     case "generate_document": {
       if (!context || !context.projectId)
         return "Error: documents can only be generated inside a project chat. Ask the user to open a project first.";
@@ -155,7 +172,8 @@ async function execCustom(tool, args) {
 // confirm(tool, args) → Promise<boolean>; only invoked for risky calls.
 // allow: optional Set of names permitted even when globally disabled
 // (tools referenced by an enabled skill).
-// context: { projectId, onFile } — chat context for tools that write project files.
+// context: { projectId, onFile, ask } — chat context for tools that write
+// project files or need an answer from the user.
 async function execute(name, args, confirm, allow, context) {
   const tool = registry.get(name);
   const allowed = tool && (tool.enabled !== false || (allow && allow.has(name)));

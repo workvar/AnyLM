@@ -24,8 +24,8 @@ const POPULAR_MODELS = [
   { name: "phi", display: "Phi", description: "Microsoft's efficient model", size: "1.4GB" },
 ];
 
-let allModels = [];
-let installedModels = new Set();
+let allModels: string[] = [];
+let installedModels = new Set<string>();
 let downloadingModels = new Set();
 
 export async function loadModels() {
@@ -55,7 +55,8 @@ export function render() {
     installedOnly: true,
   }));
 
-  let rows;
+  type ModelRow = { name: string; display: string };
+  let rows: ModelRow[] = [];
 
   if (filter === "installed") {
     rows = installedCards.filter((m) => !query || m.name.toLowerCase().includes(query));

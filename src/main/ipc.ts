@@ -27,6 +27,10 @@ import * as userContext from "./user-context";
 
 // Pending risky-tool confirmations, keyed by a one-time token.
 const pendingConfirms = new Map();
+// Pending ask_user replies, keyed by token.
+const pendingAsks = new Map();
+// Chat request ids the user stopped.
+const cancelledChats = new Set();
 
 function registerIpc() {
   // Settings
@@ -183,6 +187,16 @@ function registerIpc() {
       pendingConfirms.delete(token);
       resolve(!!approved);
     }
+  });
+  ipcMain.on("chat:ask-reply", (_e, { token, answer }) => {
+    const resolve = pendingAsks.get(token);
+    if (resolve) {
+      pendingAsks.delete(token);
+      resolve(answer);
+    }
+  });
+  ipcMain.on("chat:cancel", (_e, { id }) => {
+    if (id) cancelledChats.add(id);
   });
 
   // Memory backend (Chroma) reachability, for the sidebar status dot.
@@ -503,12 +517,24 @@ function registerIpc() {
             }
           }, 120_000);
         });
+      const ask = (payload) =>
+        new Promise((resolve) => {
+          const token = Math.random().toString(36).slice(2);
+          pendingAsks.set(token, resolve);
+          send("chat:ask", { id, token, ...payload });
+        });
 
       let result;
       let totalPrompt = 0;
       let totalCompletion = 0;
       let rounds = 0;
+      let stopped = false;
       for (;;) {
+        if (cancelledChats.has(id)) {
+          cancelledChats.delete(id);
+          stopped = true;
+          break;
+        }
         result = await ollama.chatStream(
           useModel,
           full,
@@ -534,6 +560,7 @@ function registerIpc() {
                 projectId: project ? project.id : null,
                 // Generated documents surface as a clickable file card in the chat.
                 onFile: (file) => send("chat:file", { id, ...file }),
+                ask,
               });
           send("chat:tool", {
             id,
@@ -545,7 +572,7 @@ function registerIpc() {
           full.push({ role: "tool", content: String(output), tool_name: fname });
         }
       }
-      const text = result.text;
+      const text = (result && result.text) || "";
 
       // Meter real token consumption against the user's limits/budget.
       governance.report(
@@ -576,6 +603,7 @@ function registerIpc() {
       send("chat:done", {
         id,
         full: text,
+        stopped,
         usage: {
           tokens,
           ctx,
