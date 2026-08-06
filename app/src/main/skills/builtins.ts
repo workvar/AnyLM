@@ -28,6 +28,41 @@ async function api(url: string, bearer: string, opts: RequestInit = {}): Promise
 
 const p = (name, description, required = false) => ({ name, description, required });
 
+type BuiltinTool = {
+  name: string;
+  description: string;
+  risky: boolean;
+  params: ReturnType<typeof p>[];
+  run: (args: any, bearer: string) => Promise<string>;
+};
+
+type BuiltinSkill = {
+  id: string;
+  name: string;
+  builtin: boolean;
+  connector?: string;
+  description: string;
+  instructions: string;
+  tools: BuiltinTool[];
+  toolNames?: string[];
+};
+
+const webResearch = {
+  id: "web-research",
+  name: "Web research",
+  builtin: true,
+  description:
+    "Search the web and fetch page contents when answering about live URLs or current facts.",
+  instructions:
+    "You can search the web with web_search and read pages with http_fetch. " +
+    "For live URLs or current facts: call web_search and/or http_fetch — do not invent page contents. " +
+    "Never paste example JSON or pretend a tool ran; use the tool-calling interface. " +
+    "If the user says \"do it\", \"go ahead\", or similar after you proposed a tool, call that tool " +
+    "(usually http_fetch or web_search) — do not treat their message as a shell command.",
+  tools: [] as [],
+  toolNames: ["web_search", "http_fetch"],
+};
+
 // ---------- Google Calendar ----------
 
 const GCAL = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
@@ -208,5 +243,5 @@ const outlook = {
   ],
 };
 
-export const BUILTIN_SKILLS = [googleCalendar, outlook];
+export const BUILTIN_SKILLS: BuiltinSkill[] = [webResearch, googleCalendar, outlook];
 

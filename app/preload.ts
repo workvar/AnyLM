@@ -200,11 +200,14 @@ const api: AnyLmApi = {
     ipcRenderer.invoke("context:remove", { projectId, contextId }),
 
   // Streaming chat. onChunk(text) called per token; resolves on done.
-  chat: (payload, onChunk, onId) => {
+  // onReplace(text), if given, fires when the main process rewrites the
+  // accumulated reply in place (e.g. stripping recovered tool-call JSON).
+  chat: (payload, onChunk, onId, onReplace) => {
     return new Promise((resolve, reject) => {
       const id = Math.random().toString(36).slice(2);
       if (onId) onId(id);
       const chunk = (_e, m) => m.id === id && onChunk(m.text);
+      const replace = (_e, m) => m.id === id && onReplace && onReplace(m.text);
       const done = (_e, m) => {
         if (m.id !== id) return;
         cleanup();
@@ -217,10 +220,12 @@ const api: AnyLmApi = {
       };
       function cleanup() {
         ipcRenderer.removeListener("chat:chunk", chunk);
+        ipcRenderer.removeListener("chat:replace", replace);
         ipcRenderer.removeListener("chat:done", done);
         ipcRenderer.removeListener("chat:error", fail);
       }
       ipcRenderer.on("chat:chunk", chunk);
+      ipcRenderer.on("chat:replace", replace);
       ipcRenderer.on("chat:done", done);
       ipcRenderer.on("chat:error", fail);
       ipcRenderer.send("chat:start", { id, ...payload });

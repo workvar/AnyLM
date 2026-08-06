@@ -39,10 +39,14 @@ function list() {
     id: s.id,
     name: s.name,
     description: s.description,
-    connector: s.connector,
+    connector: s.connector || null,
     builtin: true,
     enabled: store.enabledBuiltins ? store.enabledBuiltins.includes(s.id) : false,
-    toolNames: s.tools.map((t) => t.name),
+    toolNames:
+      Array.isArray((s as { toolNames?: string[] }).toolNames) &&
+      (s as { toolNames?: string[] }).toolNames!.length
+        ? (s as { toolNames: string[] }).toolNames
+        : (s.tools || []).map((t) => t.name),
   }));
   const custom = (store.custom || []).map((s) => ({ ...s, builtin: false, connector: null }));
   return [...builtins, ...custom];
@@ -133,10 +137,22 @@ function ollamaTools() {
   const seen = new Set();
   for (const s of enabledSkills()) {
     if (s.builtin) {
-      for (const t of builtinSkill(s.id).tools) {
-        if (!seen.has(t.name)) {
-          seen.add(t.name);
-          defs.push(toOllama(t));
+      const full = builtinSkill(s.id);
+      const names = (full as { toolNames?: string[] })?.toolNames;
+      if (names && names.length) {
+        for (const name of names) {
+          const t = toolsRegistry.get(name);
+          if (t && !seen.has(t.name)) {
+            seen.add(t.name);
+            defs.push(toOllama(t));
+          }
+        }
+      } else {
+        for (const t of full.tools) {
+          if (!seen.has(t.name)) {
+            seen.add(t.name);
+            defs.push(toOllama(t));
+          }
         }
       }
     } else {
@@ -152,12 +168,19 @@ function ollamaTools() {
   return defs;
 }
 
-// Registry-tool names referenced by enabled custom skills — the chat loop
+// Registry-tool names referenced by enabled custom skills, plus `toolNames`
+// declared by enabled built-in skills (e.g. Web research) — the chat loop
 // lets these execute even when globally disabled.
 function customToolNames() {
-  const names = new Set();
+  const names = new Set<string>();
   for (const s of enabledSkills()) {
-    if (!s.builtin) for (const n of s.toolNames || []) names.add(n);
+    if (s.builtin) {
+      const full = builtinSkill(s.id);
+      const tn = (full as { toolNames?: string[] })?.toolNames;
+      if (tn) for (const n of tn) names.add(n);
+    } else {
+      for (const n of s.toolNames || []) names.add(n);
+    }
   }
   return names;
 }

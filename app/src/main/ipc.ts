@@ -15,6 +15,7 @@ import * as identity from "./identity";
 import * as scheduler from "./scheduler";
 import * as toolsRegistry from "./tools/registry";
 import * as toolsExec from "./tools/exec";
+import { recoverToolCalls } from "./tools/recover-tool-calls";
 import * as skillsRegistry from "./skills/registry";
 import * as skillsExec from "./skills/exec";
 import * as workspace from "./workspace";
@@ -608,7 +609,21 @@ function registerIpc() {
         endThinking();
         totalPrompt += result.promptTokens || 0;
         totalCompletion += result.completionTokens || 0;
-        const calls = result.toolCalls || [];
+        let calls = result.toolCalls || [];
+        // Small models often paste tool JSON in the reply instead of emitting
+        // structured tool_calls — recover those so http_fetch / etc. actually run.
+        if (toolDefs && !calls.length && result.text) {
+          const allowed = toolDefs.map((d) => d.function.name);
+          const recovered = recoverToolCalls(result.text, allowed);
+          if (recovered.calls.length) {
+            calls = recovered.calls;
+            result = { ...result, text: recovered.cleanedText };
+            // Strip the recovered JSON from the visible/persisted reply too,
+            // not just the model-facing history — the renderer keeps its own
+            // accumulated text independent of `result.text`.
+            send("chat:replace", { id, text: recovered.cleanedText });
+          }
+        }
         // Folder organizing / coding tasks need more tool rounds than Q&A.
         if (!toolDefs || !calls.length || rounds >= 15) break;
         rounds += 1;

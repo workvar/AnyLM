@@ -19,7 +19,7 @@ export async function openSkillsView() {
       "div",
       "org-hint",
       "A skill bundles instructions and tools the model gets when the ⚒ toggle is on in a chat. " +
-        "Built-in skills need their account connected first. Write actions always ask before running."
+        "Connector skills (Calendar, Outlook) need their account connected first. Write actions always ask before running."
     )
   );
 

@@ -217,11 +217,17 @@ interface AnyLmApi {
   ): Promise<PublicProject | null>;
   removeContext(projectId: string, contextId: string): Promise<boolean>;
 
-  /** Streaming chat. onChunk(text) fires per token; resolves when done. */
+  /**
+   * Streaming chat. onChunk(text) fires per token; resolves when done.
+   * onReplace(text), if provided, fires when the main process rewrites the
+   * accumulated reply in place (e.g. stripping recovered tool-call JSON so
+   * the visible/persisted reply doesn't keep the pasted JSON).
+   */
   chat(
     payload: ChatPayload,
     onChunk: (text: string) => void,
-    onId?: (id: string) => void
+    onId?: (id: string) => void,
+    onReplace?: (text: string) => void
   ): Promise<{ full: string; usage: ChatUsage; stopped?: boolean }>;
 
   // Model management

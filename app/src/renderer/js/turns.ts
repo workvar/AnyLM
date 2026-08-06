@@ -401,6 +401,21 @@ export function stopTurn(key: string): void {
   if (turn && turn.id) window.api.cancelChat(turn.id);
 }
 
+// Recovery stripped tool-call JSON from the reply mid-stream: drop it from
+// the visible bubble (and the accumulator persistence reads from) before the
+// next tool round's chunks resume appending.
+function replaceTurnText(turn, text: string): void {
+  if (turn.renderer) turn.renderer.cancel();
+  turn.acc = text || "";
+  if (!turn.bubble) {
+    turn.renderer = null;
+    return;
+  }
+  setBubbleMarkdown(turn.bubble, turn.acc);
+  turn.renderer = createStreamRenderer(turn.bubble);
+  if (turn.acc) turn.renderer.push(turn.acc);
+}
+
 // Start a turn. Resolves when it finishes, but nothing depends on that: the
 // turn cleans up after itself so the caller can walk away.
 export async function runTurn(ctx): Promise<void> {
@@ -444,7 +459,8 @@ export async function runTurn(ctx): Promise<void> {
       (id) => {
         turn.id = id;
         byRequest.set(id, turn);
-      }
+      },
+      (text) => replaceTurnText(turn, text)
     );
 
     turn.status = "done";
