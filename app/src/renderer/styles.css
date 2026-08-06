@@ -1477,7 +1477,7 @@ button.full {
   color: var(--accent-contrast);
 }
 
-/* Switch */
+/* Switch — high-contrast track + knob so toggles stay readable on dark panels */
 .switch {
   position: relative;
   display: inline-block;
@@ -1485,19 +1485,22 @@ button.full {
   height: 24px;
   flex: none;
   vertical-align: middle;
+  cursor: pointer;
 }
 .switch input {
   opacity: 0;
   width: 0;
   height: 0;
+  position: absolute;
 }
 .switch .track {
   position: absolute;
   inset: 0;
-  background: var(--panel-2);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text) 16%, var(--panel-2));
+  border: 1px solid color-mix(in srgb, var(--text) 32%, var(--border));
   border-radius: 999px;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 .switch .track::before {
   content: "";
@@ -1506,16 +1509,26 @@ button.full {
   left: 2px;
   width: 18px;
   height: 18px;
-  background: var(--text);
+  background: #f4f3ec;
   border-radius: 50%;
-  transition: transform 0.15s;
+  transition: transform 0.15s, background 0.15s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 .switch input:checked + .track {
   background: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--text));
 }
 .switch input:checked + .track::before {
   transform: translateX(18px);
-  background: var(--accent-contrast);
+  background: #ffffff;
+}
+.switch input:focus-visible + .track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+:root[data-theme="light"] .switch .track::before {
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(26, 28, 24, 0.28), 0 0 0 1px rgba(26, 28, 24, 0.1);
 }
 
 /* ============================================================
