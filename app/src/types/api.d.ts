@@ -29,6 +29,24 @@ interface AskEvent {
   recommended?: string;
 }
 
+/** What context the model was given for a turn — feeds the rail Context panel. */
+interface ChatContextEvent {
+  id: string;
+  sources: string[];
+  attachments: string[];
+  memory: boolean;
+  graph: boolean;
+  general: number;
+  customized: boolean;
+  document: string;
+}
+
+interface GraphSummary {
+  entities: number;
+  relations: number;
+  top: string[];
+}
+
 interface UpdateStatus {
   state: string;
   version?: string;
@@ -87,6 +105,7 @@ interface AnyLmApi {
 
   // Chat-time events
   onActivity(cb: (e: ActivityIpcEvent) => void): Unsubscribe;
+  onChatContext(cb: (e: ChatContextEvent) => void): Unsubscribe;
   onToolConfirm(cb: (r: ToolConfirmRequest) => void): Unsubscribe;
   replyToolConfirm(token: string, approved: boolean): void;
   onFileGenerated(cb: (f: GeneratedFile & { id: string }) => void): Unsubscribe;
@@ -143,6 +162,7 @@ interface AnyLmApi {
   pfilesDefaultBase(): Promise<string>;
   pfilesPickFolder(): Promise<string | null>;
   pfilesList(projectId: string): Promise<{ dir: string | null; files: ProjectFileEntry[] }>;
+  graphSummary(projectId: string): Promise<GraphSummary>;
   pfilesRead(projectId: string, name: string): Promise<ProjectFileRead | null>;
   pfilesPreview(projectId: string, name: string): Promise<FilePreview>;
   pfilesSaveMd(projectId: string, title: string, markdown: string): Promise<GeneratedFile>;

@@ -19,11 +19,10 @@ import * as skillsRegistry from "./skills/registry";
 import * as skillsExec from "./skills/exec";
 import * as workspace from "./workspace";
 import * as proxy from "./proxy/server";
-import { shell } from "electron";
-import { waitForConnector } from "./protocol";
 import * as projectFiles from "./project-files";
 import * as openWith from "./open-with";
 import * as userContext from "./user-context";
+import * as graph from "./graph";
 import { labelFor, detailFor } from "./activity-labels";
 import { activitySend, createThoughtTimer } from "./activity";
 
@@ -186,13 +185,10 @@ function registerIpc() {
   ipcMain.handle("skills:toggle", (_e, { id, enabled }) => skillsRegistry.toggle(id, enabled));
   // Connector status for the Skills view (connected / configured flags).
   ipcMain.handle("skills:connectors", () => auth.request("GET", "/connectors"));
-  // Connect flow: backend builds the consent URL, we open the browser and
-  // wait for the anylm://connectors/callback deep link.
+  // Connect flow: connectors.connect() opens the browser and waits on a
+  // loopback callback (PKCE). No deep-link wait needed.
   ipcMain.handle("skills:connect", async (_e, provider) => {
-    const { url } = await auth.request("POST", `/connectors/${provider}/start`);
-    const pending = waitForConnector();
-    await shell.openExternal(url);
-    await pending;
+    await auth.request("POST", `/connectors/${provider}/start`);
     return auth.request("GET", "/connectors");
   });
   ipcMain.handle("skills:disconnect", async (_e, provider) => {
@@ -286,6 +282,7 @@ function registerIpc() {
     return canceled || !filePaths.length ? null : filePaths[0];
   });
   ipcMain.handle("pfiles:list", (_e, projectId) => projectFiles.listFiles(projectId));
+  ipcMain.handle("graph:summary", (_e, projectId) => graph.summary(projectId || ""));
   ipcMain.handle("pfiles:read", (_e, { projectId, name }) => projectFiles.readFile(projectId, name));
   ipcMain.handle("pfiles:preview", (_e, { projectId, name }) =>
     projectFiles.previewFile(projectId, name)

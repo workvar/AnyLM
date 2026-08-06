@@ -48,6 +48,11 @@ const api: AnyLmApi = {
     ipcRenderer.on("chat:activity", fn);
     return () => ipcRenderer.removeListener("chat:activity", fn);
   },
+  onChatContext: (cb) => {
+    const fn = (_e, m) => cb(m);
+    ipcRenderer.on("chat:context", fn);
+    return () => ipcRenderer.removeListener("chat:context", fn);
+  },
   // Risky-tool confirmations: main asks, renderer answers.
   onToolConfirm: (cb) => {
     const fn = (_e, m) => cb(m);
@@ -139,6 +144,7 @@ const api: AnyLmApi = {
   pfilesDefaultBase: () => ipcRenderer.invoke("pfiles:default-base"),
   pfilesPickFolder: () => ipcRenderer.invoke("pfiles:pick-folder"),
   pfilesList: (projectId) => ipcRenderer.invoke("pfiles:list", projectId),
+  graphSummary: (projectId) => ipcRenderer.invoke("graph:summary", projectId),
   pfilesRead: (projectId, name) => ipcRenderer.invoke("pfiles:read", { projectId, name }),
   pfilesSaveMd: (projectId, title, markdown) =>
     ipcRenderer.invoke("pfiles:save-md", { projectId, title, markdown }),
