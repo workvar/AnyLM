@@ -1,0 +1,254 @@
+rules_version = '2';
+
+// AnyLM runs without a server. The desktop app talks to Firestore directly
+// with the signed-in user's ID token, so these rules ARE the authorization
+// layer. There is nothing behind them.
+//
+// WHAT THEY ENFORCE
+//   - you cannot read an org you do not belong to
+//   - you cannot raise your own token limit, budget, or role
+//   - you cannot edit org policy unless you are a manager or above
+//   - usage rows are append-only, self-attributed, correctly summed, and
+//     stamped with the server clock, so history cannot be rewritten
+//   - members cannot read each other's prompts; only admins read logs
+//
+// WHAT THEY CANNOT ENFORCE, BY CONSTRUCTION
+//   - that a client reports its usage at all. A patched build could skip the
+//     write. Limits are cooperative, not adversarial-proof. Accepted trade:
+//     anyone able to patch the app can also run Ollama directly and bypass
+//     AnyLM entirely. Put the write path behind a server if that changes.
+//   - domain auto-join and SSO enforcement. Both need to see orgs the caller
+//     is not yet a member of, which would mean making every org's domain list
+//     world-readable. Use invitations instead; see firebase/README.md.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function email() {
+      return request.auth.token.email.lower();
+    }
+
+    // Membership documents are keyed `<orgId>__<userId>`, so a role check is
+    // a point read rather than a query. That matters: rules bill a read for
+    // every get() and cap them per request.
+    function memberPath(orgId) {
+      return /databases/$(database)/documents/members/$(orgId + '__' + uid());
+    }
+
+    function isMember(orgId) {
+      return signedIn() && exists(memberPath(orgId));
+    }
+
+    function rank(role) {
+      return role == 'owner' ? 3 : role == 'admin' ? 2 : role == 'manager' ? 1 : 0;
+    }
+
+    function atLeast(orgId, minRole) {
+      return isMember(orgId) && rank(get(memberPath(orgId)).data.role) >= rank(minRole);
+    }
+
+    // True when a write leaves all of `keys` exactly as they were.
+    function keeps(keys) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(keys);
+    }
+
+    // A pending invitation genuinely addressed to this caller, for this org,
+    // at this role. Authorises self-enrolment on accept. Rules cannot run
+    // queries, so the member row carries the invite id to make this a get().
+    function inviteMatches(inviteId, orgId, role) {
+      return inviteId is string
+        && exists(/databases/$(database)/documents/invites/$(inviteId))
+        && get(/databases/$(database)/documents/invites/$(inviteId)).data.email == email()
+        && get(/databases/$(database)/documents/invites/$(inviteId)).data.orgId == orgId
+        && get(/databases/$(database)/documents/invites/$(inviteId)).data.role == role;
+    }
+
+    // --- users -----------------------------------------------------------
+    // Each user owns their mirror document. Others may read it because
+    // dashboards show member names and emails; nothing sensitive lives here.
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+                            && userId == uid()
+                            && request.resource.data.email == email();
+      allow delete: if false;
+    }
+
+    // --- organizations ----------------------------------------------------
+    match /orgs/{orgId} {
+      allow read: if isMember(orgId);
+      // Anyone may create an org, but only stamped as their own, which is what
+      // the owner-membership rule below checks against.
+      allow create: if signedIn() && request.resource.data.createdBy == uid();
+      allow update: if atLeast(orgId, 'admin') && keeps(['createdBy']);
+      allow delete: if atLeast(orgId, 'owner');
+    }
+
+    // --- membership, limits, roles ----------------------------------------
+    // The load-bearing rule. Members may read the roster; only admins may
+    // write it. This is what stops a user granting themselves a bigger
+    // allowance or a higher role.
+    match /members/{memberId} {
+      allow read: if signedIn()
+                  && (resource.data.userId == uid() || isMember(resource.data.orgId));
+
+      // The id is always `<orgId>__<userId>`, so nobody can enrol someone else
+      // under their own name.
+      allow create: if signedIn()
+                    && memberId == request.resource.data.orgId + '__' + request.resource.data.userId
+                    && (
+                      // 1. An admin adding a member.
+                      atLeast(request.resource.data.orgId, 'admin')
+
+                      // 2. Claiming ownership of an org you just created.
+                      || (request.resource.data.userId == uid()
+                          && request.resource.data.role == 'owner'
+                          && get(/databases/$(database)/documents/orgs/$(request.resource.data.orgId)).data.createdBy == uid())
+
+                      // 3. Accepting an invitation addressed to you.
+                      || (request.resource.data.userId == uid()
+                          && request.resource.data.role != 'owner'
+                          && inviteMatches(request.resource.data.inviteId,
+                                           request.resource.data.orgId,
+                                           request.resource.data.role))
+                    );
+
+      allow update: if atLeast(resource.data.orgId, 'admin')
+                    && keeps(['orgId', 'userId'])
+                    // Only an owner may modify an owner row.
+                    && (resource.data.role != 'owner' || atLeast(resource.data.orgId, 'owner'))
+                    // Ownership transfer is not supported here.
+                    && request.resource.data.role != 'owner';
+
+      allow delete: if atLeast(resource.data.orgId, 'admin')
+                    && resource.data.role != 'owner';
+    }
+
+    // --- teams -------------------------------------------------------------
+    match /teams/{teamId} {
+      allow read: if isMember(resource.data.orgId);
+      allow create: if atLeast(request.resource.data.orgId, 'admin');
+      allow update: if atLeast(resource.data.orgId, 'admin') && keeps(['orgId']);
+      allow delete: if atLeast(resource.data.orgId, 'admin');
+    }
+
+    // --- policies ----------------------------------------------------------
+    match /policies/{policyId} {
+      // Personal policies belong to one user. Org policies are readable by
+      // every member, because the client evaluates them locally on each prompt.
+      allow read: if signedIn()
+                  && (resource.data.userId == uid()
+                      || (resource.data.orgId != null && isMember(resource.data.orgId)));
+
+      allow create: if signedIn() && (
+        (request.resource.data.orgId == null && request.resource.data.userId == uid())
+        || (request.resource.data.orgId != null && atLeast(request.resource.data.orgId, 'manager'))
+      );
+
+      allow update, delete: if signedIn() && (
+        (resource.data.orgId == null && resource.data.userId == uid())
+        || (resource.data.orgId != null && atLeast(resource.data.orgId, 'manager'))
+      );
+    }
+
+    // --- invitations -------------------------------------------------------
+    match /invites/{inviteId} {
+      // An admin sees their org's invites; an invitee sees their own.
+      allow read: if signedIn()
+                  && (resource.data.email == email() || atLeast(resource.data.orgId, 'admin'));
+      allow create: if atLeast(request.resource.data.orgId, 'admin')
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.role != 'owner';
+      allow update: if signedIn() && (
+        atLeast(resource.data.orgId, 'admin')
+        // The invitee may only move their own invite out of pending.
+        || (resource.data.email == email()
+            && resource.data.status == 'pending'
+            && request.resource.data.status in ['accepted', 'declined']
+            && keeps(['orgId', 'email', 'role', 'invitedBy']))
+      );
+      allow delete: if atLeast(resource.data.orgId, 'admin');
+    }
+
+    // --- usage -------------------------------------------------------------
+    // Append-only. A row must belong to the caller, must add up, and must
+    // carry the server's clock. Nobody can edit or delete history, so the
+    // record that exists is trustworthy even though its completeness is not
+    // guaranteed.
+    match /usage/{recordId} {
+      allow read: if signedIn() && (
+        resource.data.userId == uid()
+        || (resource.data.orgId != null && atLeast(resource.data.orgId, 'manager'))
+      );
+      allow create: if signedIn()
+                    && request.resource.data.userId == uid()
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.promptTokens is int
+                    && request.resource.data.completionTokens is int
+                    && request.resource.data.promptTokens >= 0
+                    && request.resource.data.completionTokens >= 0
+                    && request.resource.data.totalTokens ==
+                       request.resource.data.promptTokens + request.resource.data.completionTokens
+                    && (request.resource.data.orgId == null
+                        || isMember(request.resource.data.orgId));
+      allow update, delete: if false;
+    }
+
+    // --- compliance logs ----------------------------------------------------
+    // Written by the member, read only by org admins. Members cannot read each
+    // other's prompts, and nobody can rewrite one after the fact.
+    match /interactionLogs/{logId} {
+      allow read: if atLeast(resource.data.orgId, 'admin');
+      allow create: if signedIn()
+                    && request.resource.data.userId == uid()
+                    && isMember(request.resource.data.orgId)
+                    && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if atLeast(resource.data.orgId, 'admin');
+    }
+
+    // --- audit trail ---------------------------------------------------------
+    match /audit/{entryId} {
+      allow read: if atLeast(resource.data.orgId, 'manager');
+      allow create: if signedIn()
+                    && request.resource.data.actorId == uid()
+                    && isMember(request.resource.data.orgId)
+                    && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // --- API keys -------------------------------------------------------------
+    // The document id is the sha256 of the secret, so possessing the key is
+    // what makes the lookup possible. Only the owner can list or revoke.
+    match /apiKeys/{keyHash} {
+      allow read: if signedIn() && resource.data.userId == uid();
+      allow create: if signedIn()
+                    && request.resource.data.userId == uid()
+                    && request.resource.data.revoked == false;
+      // Revocation and last-used only; ownership and prefix are immutable.
+      allow update: if signedIn() && resource.data.userId == uid()
+                    && keeps(['userId', 'prefix', 'createdAt']);
+      allow delete: if signedIn() && resource.data.userId == uid();
+    }
+
+    // --- connector tokens ------------------------------------------------------
+    // Third-party OAuth tokens, keyed `<userId>__<provider>`. Nobody but the
+    // owner may read these, ever.
+    match /connectors/{connectorId} {
+      allow read, write: if signedIn() && connectorId.split('__')[0] == uid();
+    }
+
+    // Anything not named above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

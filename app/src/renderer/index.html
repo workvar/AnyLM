@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AnyLM</title>
+    <!-- resolves to build/icon.png at the app root -->
+    <link rel="icon" type="image/png" href="../../build/icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script>
+      // Tag the platform before paint so macOS glass styling applies with no flash.
+      if (window.api && window.api.platform === "darwin") {
+        document.documentElement.classList.add("platform-darwin");
+      }
+    </script>
+  </head>
+  <body>
+    <div id="auth-screen">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <img class="brand-mark lg" src="../../build/icon.png" alt="" />
+          <span>AnyLM</span>
+        </div>
+        <p id="auth-sub">Sign in to your projects</p>
+
+        <div class="oauth-row">
+          <button class="oauth" data-provider="google">Continue with Google</button>
+          <button class="oauth" data-provider="github">Continue with GitHub</button>
+        </div>
+        <div class="divider"><span>or</span></div>
+
+        <form id="auth-form">
+          <input id="auth-name" class="auth-input hidden" placeholder="Name" autocomplete="name" />
+          <input id="auth-email" class="auth-input" type="email" placeholder="Email" autocomplete="email" />
+          <input
+            id="auth-password"
+            class="auth-input"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+          />
+          <div id="auth-error" class="auth-error"></div>
+          <button id="auth-submit" type="submit" class="primary full">Sign in</button>
+        </form>
+        <div class="auth-toggle">
+          <span id="auth-toggle-text">No account?</span>
+          <a id="auth-toggle-link" href="#">Create one</a>
+        </div>
+      </div>
+    </div>
+
+    <div id="app" class="hidden">
+      <aside id="sidebar">
+        <div class="brand">
+          <span class="logo">
+            <img class="brand-mark" src="../../build/icon.png" alt="" />
+            AnyLM
+          </span>
+          <span class="status-dots">
+            <span id="status-dot" class="dot" title="Ollama status"></span>
+            <span id="chroma-dot" class="dot" title="Memory backend (Chroma) status"></span>
+          </span>
+        </div>
+        <button id="new-chat-btn" class="primary">＋ New chat</button>
+        <div class="side-search">
+          <input id="sidebar-search" type="search" placeholder="Search chats…" autocomplete="off" />
+        </div>
+        <button id="projects-nav" class="side-nav">▦ Projects</button>
+
+        <div class="side-scroll">
+          <div class="side-section-label"><span id="side-chats-label">Chats</span></div>
+          <ul id="recents-list" class="nav-list"></ul>
+        </div>
+        <div class="sidebar-foot">
+          <div id="ollama-info">checking Ollama…</div>
+          <div id="chroma-info">checking memory…</div>
+        </div>
+        <div id="user-row">
+          <div class="user-avatar" id="user-avatar"></div>
+          <span id="user-name" class="user-name"></span>
+          <div id="user-popup" class="user-popup hidden">
+            <button id="open-settings" class="ghost small">Settings</button>
+            <button id="logout-btn" class="ghost small danger">Sign out</button>
+          </div>
+        </div>
+      </aside>
+
+      <main id="main">
+        <!-- Projects grid -->
+        <section id="projects-view">
+          <header class="view-toolbar">
+            <button id="sidebar-toggle-projects" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <h1 class="view-title">Projects</h1>
+            <div class="view-actions">
+              <label class="archived-toggle"><input type="checkbox" id="show-archived" /> Show archived</label>
+              <div class="seg" id="projects-sort">
+                <button data-sort="updated" class="active">Recent</button>
+                <button data-sort="name">Name</button>
+              </div>
+              <button id="new-project-btn" class="primary">New project</button>
+            </div>
+          </header>
+          <div class="view-search">
+            <input id="projects-search" type="text" placeholder="Search projects…" autocomplete="off" />
+          </div>
+          <div id="projects-grid" class="card-grid"></div>
+        </section>
+
+        <!-- A single project's chats -->
+        <section id="project-detail" class="hidden">
+          <header class="view-toolbar">
+            <button id="sidebar-toggle-detail" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <button id="detail-back" class="ghost small">‹ Projects</button>
+            <h1 class="view-title" id="detail-title">Project</h1>
+            <div class="view-actions">
+              <div class="seg" id="detail-tabs">
+                <button data-tab="chats" class="active">Chats</button>
+                <button data-tab="files">Files</button>
+              </div>
+              <button id="detail-manage" class="ghost small">Manage</button>
+              <button id="detail-new-folder" class="ghost small">New folder</button>
+              <button id="detail-new-chat" class="primary">New chat</button>
+            </div>
+          </header>
+          <div id="project-chats" class="folders-wrap"></div>
+          <div id="project-files" class="folders-wrap hidden"></div>
+        </section>
+
+        <section id="convo-view" class="hidden">
+          <div id="convo-body">
+          <div id="chat-col">
+            <header id="convo-header">
+              <button id="sidebar-toggle" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+              <button id="convo-back" class="icon-btn" title="Back" aria-label="Back">‹</button>
+              <input id="convo-name" class="name-input" />
+            </header>
+            <div id="messages"></div>
+            <div id="ask-dock" class="ask-dock hidden"></div>
+            <div id="working-strip" class="working-strip hidden" aria-live="polite">
+              <div class="working-strip-main">
+                <span class="working-strip-title">1 Working</span>
+                <span id="working-strip-label" class="working-strip-label"></span>
+              </div>
+              <div class="working-strip-actions">
+                <button type="button" id="working-allow" class="ghost small hidden">Allow</button>
+                <button type="button" id="working-deny" class="ghost small hidden">Deny</button>
+                <button type="button" id="working-stop" class="ghost small">Stop</button>
+              </div>
+            </div>
+            <div id="ctx-meter" class="ctx-meter hidden">
+              <div class="ctx-track"><div id="ctx-bar" class="ctx-bar"></div></div>
+              <span id="ctx-text" class="ctx-text"></span>
+              <button id="ctx-compact" class="ghost small hidden" type="button" title="Summarize and continue in a new chat">Compact</button>
+            </div>
+            <div id="attach-chips" class="attach-chips"></div>
+            <form id="chat-form">
+              <textarea id="chat-input" placeholder="Message…" rows="2"></textarea>
+              <div class="composer-toolbar">
+                <div class="composer-left">
+                  <div class="attach-wrap">
+                    <button type="button" id="attach-btn" class="icon-btn" title="Attach" aria-haspopup="true" aria-expanded="false">+</button>
+                    <div id="attach-menu" class="attach-menu hidden" role="menu">
+                      <button type="button" data-attach="image">Image…</button>
+                      <button type="button" data-attach="document">Document…</button>
+                      <button type="button" data-attach="folder">Folder…</button>
+                      <button type="button" data-attach="camera">Camera…</button>
+                    </div>
+                  </div>
+                  <button type="button" id="tools-toggle" class="icon-btn tools-toggle" title="Let the model use tools">⚒</button>
+                  <button type="button" id="workspace-btn" class="icon-btn tools-toggle" title="Choose a working folder for file tools">📁</button>
+                  <span id="workspace-label" class="chip hidden"></span>
+                  <div id="model-dropdown" class="dropdown composer-model">
+                    <button
+                      id="model-trigger"
+                      class="dropdown-trigger"
+                      aria-haspopup="listbox"
+                      aria-expanded="false"
+                    >
+                      <span id="model-current" class="dropdown-value">No models</span>
+                      <svg class="dropdown-chevrons" width="10" height="16" viewBox="0 0 10 16" aria-hidden="true">
+                        <path d="M2.5 6.5 5 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M2.5 9.5 5 12l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                    <div id="model-menu" class="dropdown-menu hidden" role="listbox">
+                      <div id="model-search-wrap" class="dropdown-search hidden">
+                        <input id="model-search" type="text" placeholder="Search models" autocomplete="off" spellcheck="false" />
+                      </div>
+                      <ul id="model-options" class="dropdown-options"></ul>
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" id="send-btn" class="primary">Send</button>
+              </div>
+            </form>
+            <input type="file" id="attach-image-input" accept="image/*" multiple hidden />
+            <input type="file" id="attach-doc-input" accept=".txt,.md,.json,.csv,.log,.tsv,.yml,.yaml" multiple hidden />
+            <input type="file" id="attach-folder-input" webkitdirectory multiple hidden />
+          </div>
+
+          <aside id="rail">
+            <div class="rail-top">
+              <button id="rail-toggle" class="icon-btn" title="Toggle context panel" aria-label="Toggle context panel">◧</button>
+            </div>
+            <section class="rail-group" data-group="progress">
+              <button class="rail-head" type="button">Progress<span class="rail-caret">⌄</span></button>
+              <div class="rail-body" id="rail-progress"></div>
+            </section>
+            <section class="rail-group" data-group="skills">
+              <button class="rail-head" type="button">Skills<span class="rail-caret">⌄</span></button>
+              <div class="rail-body" id="rail-skills"></div>
+            </section>
+            <section class="rail-group" data-group="context">
+              <button class="rail-head" type="button">Context<span class="rail-caret">⌄</span></button>
+              <div class="rail-body" id="rail-context"></div>
+            </section>
+          </aside>
+          </div>
+        </section>
+
+        <!-- Settings hub: General + Models/Org/Tools/Skills/Customize -->
+        <section id="settings-view" class="hidden">
+          <aside id="settings-nav">
+            <button type="button" data-settings="general" class="active">General</button>
+            <button type="button" data-settings="models">Models</button>
+            <button type="button" data-settings="org">Organization</button>
+            <button type="button" data-settings="tools">Tools</button>
+            <button type="button" data-settings="skills">Skills</button>
+            <button type="button" data-settings="customize">Customize</button>
+          </aside>
+          <div id="settings-panels">
+            <div id="settings-panel-general" class="settings-panel">
+              <header class="view-toolbar">
+                <button id="sidebar-toggle-settings" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+                <h1 class="view-title">General</h1>
+              </header>
+              <div class="settings-panel-body">
+                <p class="settings-panel-sub">Appearance and updates.</p>
+                <div class="setting-row">
+                <div class="label">Theme</div>
+                <div class="seg" id="theme-seg">
+                <button data-theme-choice="system">System</button>
+                <button data-theme-choice="light">Light</button>
+                <button data-theme-choice="dark">Dark</button>
+                </div>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Check for updates on launch
+                <small>Look for a new version every time the app starts.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="update-toggle" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Download updates automatically
+                <small>Skip the prompt and fetch new versions in the background.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="auto-download-toggle" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Install on quit
+                <small>Apply a downloaded update the next time you quit AnyLM.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="install-on-quit-toggle" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Updates
+                <small>Delivered from GitHub Releases. No app store required.</small>
+                </div>
+                <button id="check-now" class="ghost small">Check now</button>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Usage limit alerts
+                <small>System notification at 75%, 90%, and 100% of your allowance.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="notify-usage" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Renewal notifications
+                <small>Notify when your token allowance resets.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="notify-renewals" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                When a chat needs you
+                <small>Notify when a chat running in the background is waiting on your answer.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="notify-interventions" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Scheduled usage reports
+                <small>Save a CSV report to Documents/AnyLM Reports and notify. Managers and admins only.</small>
+                </div>
+                <select id="report-frequency">
+                <option value="off">Off</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                </select>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Embedding model
+                <small id="embed-status">Checking…</small>
+                </div>
+                <div class="embed-actions">
+                <button id="embed-check" class="ghost small">Check now</button>
+                <button id="embed-download" class="primary small hidden">Download</button>
+                </div>
+                </div>
+                <div class="setting-row embed-progress-row hidden" id="embed-progress-row">
+                <div class="label" style="flex: 1">
+                <span id="embed-progress-label">Downloading…</span>
+                <div class="progress" id="embed-progress"><div class="bar" id="embed-bar"></div></div>
+                </div>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                General knowledge
+                <small id="knowledge-count">0 chunks stored</small>
+                </div>
+                <button id="knowledge-clear" class="ghost small">Clear</button>
+                </div>
+
+                <div class="settings-version" id="settings-version"></div>
+
+
+              </div>
+            </div>
+          <!-- Organization: governance, members, usage, billing -->
+          <section id="org-view" class="hidden">
+            <header class="view-toolbar">
+              <button id="sidebar-toggle-org" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+              <h1 class="view-title" id="org-title">Organization</h1>
+              <div class="view-actions" id="org-actions"></div>
+            </header>
+            <nav class="org-tabs seg" id="org-tabs"></nav>
+            <div id="org-body" class="org-body"></div>
+          </section>
+
+          <!-- Tools: model function calling -->
+          <section id="tools-view" class="hidden">
+            <header class="view-toolbar">
+              <button id="sidebar-toggle-tools" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+              <h1 class="view-title">Tools</h1>
+              <div class="view-actions">
+                <button id="new-tool-btn" class="primary">New tool</button>
+              </div>
+            </header>
+            <div id="tools-body" class="org-body"></div>
+          </section>
+
+          <!-- Skills: instruction + tool bundles (Google Calendar, Outlook, custom) -->
+          <section id="skills-view" class="hidden">
+            <header class="view-toolbar">
+              <button id="sidebar-toggle-skills" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+              <h1 class="view-title">Skills</h1>
+              <div class="view-actions">
+                <button id="new-skill-btn" class="primary">New skill</button>
+              </div>
+            </header>
+            <div id="skills-body" class="org-body"></div>
+          </section>
+
+          <!-- Models browser -->
+          <section id="models-view" class="hidden">
+            <header class="view-toolbar">
+              <button id="sidebar-toggle-models" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+              <h1 class="view-title">Models</h1>
+              <div class="view-actions">
+                <div class="view-search" style="flex: 1; margin-right: 1rem;">
+                  <input id="models-search" type="text" placeholder="Search models…" autocomplete="off" />
+                </div>
+                <div class="seg" id="models-filter">
+                  <button data-filter="all" class="active">All</button>
+                  <button data-filter="installed">Installed</button>
+                </div>
+              </div>
+            </header>
+            <div id="models-container" class="models-grid"></div>
+          </section>
+            <div id="settings-panel-customize" class="settings-panel hidden">
+              <header class="view-toolbar">
+                <button id="sidebar-toggle-customize" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+                <h1 class="view-title">Customize</h1>
+              </header>
+              <div class="settings-panel-body">
+                <p class="settings-panel-sub">
+                Context about you, added to every chat in every project. Project
+                instructions still apply on top of this.
+                </p>
+                <div class="setting-row">
+                <div class="label">
+                Use my context
+                <small>Turn off to leave it out of prompts without deleting it.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="uc-enabled" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <label class="field-label">What should the model call you?</label>
+                <input id="uc-name" class="auth-input" placeholder="Yash" autocomplete="off" />
+
+                <label class="field-label">About you</label>
+                <textarea id="uc-about" placeholder="Role, background, what you're responsible for…"></textarea>
+
+                <label class="field-label">What you work on</label>
+                <textarea id="uc-work" placeholder="Products, stacks, teams, recurring projects…"></textarea>
+
+                <label class="field-label">How replies should be written</label>
+                <textarea id="uc-style" placeholder="Concise. No preamble. Code in small modules…"></textarea>
+
+                <label class="field-label">Anything else</label>
+                <textarea id="uc-extra" placeholder="Constraints, preferences, things to avoid…"></textarea>
+
+                <div class="settings-panel-foot"><span id="uc-saved" class="modal-note"></span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Project settings -->
+    <div id="project-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Project settings</h2>
+        <p class="modal-sub">Name, instructions, and reference context for this project.</p>
+
+        <label class="field-label">Project name</label>
+        <input id="project-name-input" class="auth-input" placeholder="Project name" />
+
+        <label class="field-label">Instructions</label>
+        <textarea
+          id="instructions"
+          placeholder="System prompt / background for every chat in this project..."
+        ></textarea>
+
+        <div class="setting-row">
+          <div class="label">
+            Lock model to this project
+            <small>Use only this model here; disables the picker.</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="model-lock" />
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div class="label">
+            Share knowledge with organization
+            <small>Reference docs added here also feed your org's shared knowledge base.</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="org-share" />
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div class="label">
+            Auto-log exchanges to folder
+            <small>Append every chat exchange to decisions-log.md in the storage folder. Off by default.</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="auto-log" />
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div class="setting-col">
+          <div class="label">
+            Storage folder
+            <small>Where this project's generated files (PDF, Word, slides, spreadsheets, notes) are saved.</small>
+          </div>
+          <div class="pol-row">
+            <input id="project-location" class="auth-input" readonly placeholder="No folder set" />
+            <button id="project-location-change" class="ghost small">Change…</button>
+            <button id="project-location-reveal" class="ghost small">Show</button>
+          </div>
+        </div>
+
+        <div class="setting-col">
+          <div class="label">
+            Knowledge flow
+            <small>How this project shares with your general knowledge base.</small>
+          </div>
+          <div class="kflow" id="kflow">
+            <label><input type="radio" name="kflow" value="isolated" /> Isolated</label>
+            <label><input type="radio" name="kflow" value="import" /> Import only (in)</label>
+            <label><input type="radio" name="kflow" value="export" /> Export only (out)</label>
+            <label><input type="radio" name="kflow" value="open" /> Open (both ways)</label>
+          </div>
+        </div>
+
+        <div class="ctx-head">
+          <label class="field-label">Context references</label>
+          <button id="add-context" class="ghost small">+ Add</button>
+          <input type="file" id="file-input" accept=".txt,.md,.json,.csv,.log" hidden />
+        </div>
+        <ul id="context-list"></ul>
+
+        <div class="modal-foot">
+          <button id="project-modal-close" class="primary">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- New project (name + storage location) -->
+    <div id="new-project-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>New project</h2>
+        <p class="modal-sub">Everything this project generates is saved to its folder.</p>
+        <label class="field-label">Project name</label>
+        <input id="np-name" class="auth-input" placeholder="Project name" autocomplete="off" />
+        <label class="field-label">Storage location</label>
+        <div class="pol-row">
+          <input id="np-location" class="auth-input" readonly />
+          <button id="np-browse" class="ghost small">Change…</button>
+        </div>
+        <div class="modal-foot">
+          <button id="np-cancel" class="ghost">Cancel</button>
+          <button id="np-create" class="primary">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- In-app file viewer (MD, PDF, text) -->
+    <div id="file-viewer-modal" class="modal-overlay hidden">
+      <div class="modal modal-wide">
+        <div class="viewer-head">
+          <h2 id="viewer-title">File</h2>
+          <button id="viewer-close" class="ghost small">Close</button>
+        </div>
+        <div id="viewer-body" class="viewer-body"></div>
+      </div>
+    </div>
+
+    <!-- Text prompt (folder name, etc.) -->
+    <div id="prompt-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 id="prompt-title">Name</h2>
+        <input id="prompt-input" class="auth-input" autocomplete="off" />
+        <div class="modal-foot">
+          <button id="prompt-cancel" class="ghost">Cancel</button>
+          <button id="prompt-ok" class="primary">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- First-launch update opt-in -->
+    <div id="first-run" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Stay up to date?</h2>
+        <p class="modal-sub">
+          AnyLM can check for new versions each time it launches. You can change
+          this anytime in Settings.
+        </p>
+        <div class="modal-foot">
+          <button id="fr-no" class="ghost">Not now</button>
+          <button id="fr-yes" class="primary">Check on every launch</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Embed-model install prompt (shown on launch when missing) -->
+    <div id="embed-prompt" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Install the embedding model?</h2>
+        <p class="modal-sub">
+          AnyLM uses the <strong id="embed-prompt-model">nomic-embed-text</strong> model to
+          search your documents and knowledge base. It isn't installed yet. This is optional —
+          you can install it now or anytime from Settings.
+        </p>
+        <div class="modal-foot">
+          <button id="embed-prompt-no" class="ghost">Not now</button>
+          <button id="embed-prompt-yes" class="primary">Install</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Embed-model download confirmation (size + requirements) -->
+    <div id="embed-confirm" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Download embedding model</h2>
+        <p class="modal-sub" id="embed-confirm-sub">Review the download details below.</p>
+        <div class="setting-row">
+          <div class="label">Model</div>
+          <small id="ec-model">nomic-embed-text</small>
+        </div>
+        <div class="setting-row">
+          <div class="label">Download size</div>
+          <small id="ec-size">—</small>
+        </div>
+        <div class="setting-row">
+          <div class="label">Requirements</div>
+          <small id="ec-req">—</small>
+        </div>
+        <div class="auth-error hidden" id="ec-warn"></div>
+        <div class="modal-foot">
+          <button id="embed-confirm-cancel" class="ghost">Cancel</button>
+          <button id="embed-confirm-start" class="primary">Start download</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera capture -->
+    <div id="camera-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Camera</h2>
+        <p class="modal-sub">Capture a photo to attach.</p>
+        <video id="camera-video" autoplay playsinline muted></video>
+        <div id="camera-error" class="auth-error"></div>
+        <div class="modal-foot">
+          <button id="camera-cancel" class="ghost">Cancel</button>
+          <button id="camera-capture" class="primary">Capture</button>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Custom tool editor -->
+    <div id="tool-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 id="tool-modal-title">New tool</h2>
+        <p class="modal-sub">Give the model a new capability. Use {param} placeholders in the command or URL.</p>
+
+        <label class="field-label">Name (snake_case)</label>
+        <input id="tool-name" class="auth-input" placeholder="open_spotify_playlist" />
+
+        <label class="field-label">Description (tells the model when to use it)</label>
+        <input id="tool-desc" class="auth-input" placeholder="Play a Spotify playlist by name" />
+
+        <label class="field-label">Kind</label>
+        <select id="tool-kind">
+          <option value="shell">Shell command</option>
+          <option value="http">HTTP request</option>
+        </select>
+
+        <div id="tool-cfg-shell">
+          <label class="field-label">Command (use {param} placeholders)</label>
+          <input id="tool-command" class="auth-input" placeholder='open -a Spotify "spotify:playlist:{playlist_id}"' />
+        </div>
+
+        <div id="tool-cfg-http" class="hidden">
+          <label class="field-label">URL (use {param} placeholders)</label>
+          <input id="tool-url" class="auth-input" placeholder="http://localhost:8080/search?q={query}" />
+          <label class="field-label">Method</label>
+          <select id="tool-method">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>DELETE</option>
+          </select>
+        </div>
+
+        <label class="field-label">Parameters (one per line: name | description | required?)</label>
+        <textarea id="tool-params" placeholder="playlist_id | The Spotify playlist ID | required"></textarea>
+
+        <div id="tool-error" class="auth-error"></div>
+        <div class="modal-foot">
+          <button id="tool-cancel" class="ghost">Cancel</button>
+          <button id="tool-save" class="primary">Save tool</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom skill editor -->
+    <div id="skill-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 id="skill-modal-title">New skill</h2>
+        <p class="modal-sub">Bundle instructions and tools into one capability the model can be given.</p>
+
+        <label class="field-label">Name</label>
+        <input id="skill-name" class="auth-input" placeholder="Meeting notes" />
+
+        <label class="field-label">Description (shown in this list)</label>
+        <input id="skill-desc" class="auth-input" placeholder="Summarize and file meeting notes" />
+
+        <label class="field-label">Instructions (added to the system prompt when enabled)</label>
+        <textarea
+          id="skill-instructions"
+          placeholder="When the user pastes meeting notes, summarize decisions and action items, then save them with the save_note tool..."
+        ></textarea>
+
+        <label class="field-label">Tools this skill can use</label>
+        <div id="skill-tools" class="skill-tools"></div>
+
+        <div id="skill-error" class="auth-error"></div>
+        <div class="modal-foot">
+          <button id="skill-cancel" class="ghost">Cancel</button>
+          <button id="skill-save" class="primary">Save skill</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Risky tool confirmation -->
+    <div id="tool-confirm-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Allow tool run?</h2>
+        <p class="modal-sub">The model wants to run a tool that can act on your computer.</p>
+        <div class="tool-confirm-box">
+          <div class="tool-confirm-name" id="tc-name"></div>
+          <pre class="tool-confirm-args" id="tc-args"></pre>
+        </div>
+        <div class="modal-foot">
+          <button id="tc-deny" class="ghost">Deny</button>
+          <button id="tc-allow" class="primary">Allow</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Governance policy editor -->
+    <div id="policy-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 id="policy-modal-title">New policy</h2>
+        <p class="modal-sub" id="policy-modal-sub">Define how prompts are governed.</p>
+
+        <label class="field-label">Name</label>
+        <input id="policy-name" class="auth-input" placeholder="e.g. Block secrets" />
+
+        <label class="field-label">Type</label>
+        <select id="policy-type">
+          <option value="content_filter">Content filter (keywords / regex)</option>
+          <option value="pii">PII detection</option>
+          <option value="model_allowlist">Model allowlist</option>
+          <option value="rate_limit">Rate / time limit</option>
+          <option value="token_limit">Token limit (per request / per day)</option>
+        </select>
+
+        <label class="field-label">Action</label>
+        <select id="policy-action">
+          <option value="block">Block the request</option>
+          <option value="warn">Allow with warning</option>
+          <option value="redact">Redact matched content</option>
+        </select>
+
+        <div id="policy-cfg-content" class="policy-cfg">
+          <label class="field-label">Patterns (one per line)</label>
+          <textarea id="policy-patterns" placeholder="confidential&#10;project-x"></textarea>
+          <label class="pol-check"><input type="checkbox" id="policy-regex" /> Treat patterns as regular expressions</label>
+        </div>
+
+        <div id="policy-cfg-pii" class="policy-cfg hidden">
+          <label class="field-label">Detect</label>
+          <div class="pol-checks" id="policy-pii-types">
+            <label class="pol-check"><input type="checkbox" value="email" checked /> Email addresses</label>
+            <label class="pol-check"><input type="checkbox" value="phone" checked /> Phone numbers</label>
+            <label class="pol-check"><input type="checkbox" value="ssn" checked /> SSNs</label>
+            <label class="pol-check"><input type="checkbox" value="credit_card" checked /> Credit cards</label>
+            <label class="pol-check"><input type="checkbox" value="ip_address" /> IP addresses</label>
+          </div>
+        </div>
+
+        <div id="policy-cfg-models" class="policy-cfg hidden">
+          <label class="field-label">Allowed models (comma-separated)</label>
+          <input id="policy-models" class="auth-input" placeholder="llama3.2, mistral" />
+        </div>
+
+        <div id="policy-cfg-rate" class="policy-cfg hidden">
+          <label class="field-label">Max requests per hour (blank = unlimited)</label>
+          <input id="policy-maxhour" class="auth-input" type="number" min="1" placeholder="60" />
+          <label class="field-label">Allowed hours (blank = always)</label>
+          <div class="pol-row">
+            <input id="policy-start" class="auth-input" type="number" min="0" max="23" placeholder="9" />
+            <span class="pol-sep">to</span>
+            <input id="policy-end" class="auth-input" type="number" min="0" max="23" placeholder="18" />
+          </div>
+        </div>
+
+        <div id="policy-cfg-tokens" class="policy-cfg hidden">
+          <label class="field-label">Max prompt tokens per request (blank = unlimited)</label>
+          <input id="policy-maxreq" class="auth-input" type="number" min="1" placeholder="4000" />
+          <label class="field-label">Max total tokens per day (blank = unlimited)</label>
+          <input id="policy-maxday" class="auth-input" type="number" min="1" placeholder="100000" />
+        </div>
+
+        <div id="policy-target-row" class="policy-cfg hidden">
+          <label class="field-label">Applies to</label>
+          <select id="policy-target"></select>
+        </div>
+
+        <div id="policy-error" class="auth-error"></div>
+        <div class="modal-foot">
+          <button id="policy-cancel" class="ghost">Cancel</button>
+          <button id="policy-save" class="primary">Save policy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Update banner -->
+    <!-- Update toast: expands to a card, collapses to a progress pill -->
+    <div id="update-toast" class="hidden" data-collapsed="false">
+      <button id="up-pill" type="button" title="Show update details">
+        <span id="up-toast-ring" class="up-ring hidden">
+          <svg viewBox="0 0 22 22" aria-hidden="true">
+            <circle class="up-ring-track" cx="11" cy="11" r="9" />
+            <circle id="up-ring-fill" class="up-ring-fill" cx="11" cy="11" r="9" />
+          </svg>
+        </span>
+        <span id="up-pill-text"></span>
+      </button>
+
+      <div class="up-card">
+        <div class="up-head">
+          <div class="up-title" id="up-title"></div>
+          <button id="up-collapse" type="button" class="up-min" title="Minimize">−</button>
+        </div>
+        <div class="up-msg" id="up-msg"></div>
+        <div class="up-notes hidden" id="up-notes"></div>
+        <div class="progress hidden" id="up-progress"><div class="bar" id="up-bar"></div></div>
+        <div class="up-stats hidden" id="up-stats"></div>
+        <div class="up-actions" id="up-actions"></div>
+      </div>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void: #05060a;
+  --color-void-soft: #0b0d14;
+  --color-ink: #12141d;
+  --color-slime: #7df9a6;
+  --color-slime-deep: #2fbf6d;
+  --color-grape: #a879ff;
+  --color-bile: #ffd166;
+  --color-mist: #9aa3b8;
+
+  --font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--color-void);
+}
+
+body {
+  color: #eef1f7;
+  background: var(--color-void);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
