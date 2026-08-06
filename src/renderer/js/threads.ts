@@ -7,6 +7,7 @@ import { getSelectedModel } from "./dropdown.js";
 import { estimateContext } from "./contextmeter.js";
 import { loadRecents } from "./recents.js";
 import { maybeTitle } from "./titler.js";
+import { paintRecentsTitle } from "./views.js";
 
 // Fetch (or initialise) the active project's threads without opening one.
 export async function fetchThreads() {
@@ -85,6 +86,6 @@ export async function persistProjectThread() {
     await window.api.updateThread(state.current.id, state.thread.id, { title });
     state.threads = await window.api.listThreads(state.current.id);
     if (state.view === "convo") el("convo-name").value = title;
-    await loadRecents();
+    paintRecentsTitle(`thread:${state.thread.id}`, title);
   }
 }

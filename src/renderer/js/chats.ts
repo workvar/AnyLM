@@ -7,6 +7,7 @@ import { openConvo, renderHistory, showEmpty, updateModelLock } from "./convo.js
 import { estimateContext } from "./contextmeter.js";
 import { loadRecents } from "./recents.js";
 import { maybeTitle } from "./titler.js";
+import { paintRecentsTitle } from "./views.js";
 
 export async function selectChat(id) {
   state.current = await window.api.getChat(id);
@@ -84,6 +85,6 @@ export async function persistCurrentChat() {
     state.current = { ...state.current, title };
     await window.api.updateChat(state.current.id, { title });
     if (state.view === "convo") el("convo-name").value = title;
-    await loadRecents();
+    paintRecentsTitle(`chat:${state.current.id}`, title);
   }
 }
