@@ -22,6 +22,7 @@ import * as proxy from "./proxy/server";
 import { shell } from "electron";
 import { waitForConnector } from "./protocol";
 import * as projectFiles from "./project-files";
+import * as openWith from "./open-with";
 import * as userContext from "./user-context";
 
 // Pending risky-tool confirmations, keyed by a one-time token.
@@ -263,6 +264,11 @@ function registerIpc() {
   ipcMain.handle("pfiles:reveal", (_e, projectId) => projectFiles.reveal(projectId));
   ipcMain.handle("pfiles:show", (_e, { dir, name }) => projectFiles.showGenerated(dir, name));
   ipcMain.handle("pfiles:open", (_e, { dir, name }) => projectFiles.openGenerated(dir, name));
+  ipcMain.handle("pfiles:apps-for", (_e, { dir, name }) => openWith.appsFor(dir, name));
+  ipcMain.handle("pfiles:open-with", (_e, { dir, name, appId }) =>
+    openWith.openWith(dir, name, appId)
+  );
+  ipcMain.handle("pfiles:exists", (_e, { dir, name }) => projectFiles.existsGenerated(dir, name));
   ipcMain.handle("pfiles:set-location", (_e, { projectId, dir }) =>
     projectFiles.ensureFolder(store.get(projectId), dir)
   );

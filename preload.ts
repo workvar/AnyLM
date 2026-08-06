@@ -140,6 +140,10 @@ const api: AnyLmApi = {
   pfilesReveal: (projectId) => ipcRenderer.invoke("pfiles:reveal", projectId),
   pfilesShow: (dir, name) => ipcRenderer.invoke("pfiles:show", { dir, name }),
   pfilesOpen: (dir, name) => ipcRenderer.invoke("pfiles:open", { dir, name }),
+  pfilesAppsFor: (dir, name) => ipcRenderer.invoke("pfiles:apps-for", { dir, name }),
+  pfilesOpenWith: (dir, name, appId) =>
+    ipcRenderer.invoke("pfiles:open-with", { dir, name, appId }),
+  pfilesExists: (dir, name) => ipcRenderer.invoke("pfiles:exists", { dir, name }),
   pfilesSetLocation: (projectId, dir) =>
     ipcRenderer.invoke("pfiles:set-location", { projectId, dir }),
 

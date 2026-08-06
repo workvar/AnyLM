@@ -213,9 +213,8 @@ function reveal(projectId) {
 }
 
 
-function resolveGenerated(dir: string, name: string): string | null {
-  const target = path.resolve(String(dir || ""), path.basename(String(name || "")));
-  const allowed = [
+function allowedGeneratedRoots(): string[] {
+  return [
     path.resolve(defaultBase()),
     path.resolve(app.getPath("documents"), "AnyLM", "Documents"),
     ...store
@@ -224,9 +223,25 @@ function resolveGenerated(dir: string, name: string): string | null {
       .filter(Boolean)
       .map((d) => path.resolve(d as string)),
   ].filter(Boolean) as string[];
-  const inside = allowed.some((root) => target === root || target.startsWith(root + path.sep));
-  if (!inside || !fs.existsSync(target)) return null;
+}
+
+function generatedPath(dir: string, name: string): string | null {
+  const target = path.resolve(String(dir || ""), path.basename(String(name || "")));
+  const inside = allowedGeneratedRoots().some(
+    (root) => target === root || target.startsWith(root + path.sep)
+  );
+  return inside ? target : null;
+}
+
+function resolveGenerated(dir: string, name: string): string | null {
+  const target = generatedPath(dir, name);
+  if (!target || !fs.existsSync(target)) return null;
   return target;
+}
+
+function existsGenerated(dir: string, name: string): boolean {
+  const p = generatedPath(dir, name);
+  return !!(p && fs.existsSync(p));
 }
 
 // Reveal a generated file in the OS file manager. Only paths AnyLM itself
@@ -245,5 +260,5 @@ async function openGenerated(dir: string, name: string): Promise<boolean> {
   return !err;
 }
 
-export { defaultBase, childPath, ensureFolder, listFiles, readFile, previewFile, saveMarkdown, savePdf, savePathFor, indexText, appendLog, reveal, showGenerated, openGenerated };
+export { defaultBase, childPath, ensureFolder, listFiles, readFile, previewFile, saveMarkdown, savePdf, savePathFor, indexText, appendLog, reveal, showGenerated, openGenerated, resolveGenerated, existsGenerated };
 

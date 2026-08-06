@@ -145,6 +145,12 @@ interface AnyLmApi {
   pfilesReveal(projectId: string): Promise<boolean>;
   pfilesShow(dir: string, name: string): Promise<boolean>;
   pfilesOpen(dir: string, name: string): Promise<boolean>;
+  pfilesAppsFor(
+    dir: string,
+    name: string
+  ): Promise<{ defaultApp: OpenApp | null; apps: OpenApp[] }>;
+  pfilesOpenWith(dir: string, name: string, appId: string): Promise<boolean>;
+  pfilesExists(dir: string, name: string): Promise<boolean>;
   pfilesSetLocation(projectId: string, dir: string): Promise<string | null>;
 
   // Recents

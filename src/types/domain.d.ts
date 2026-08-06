@@ -373,6 +373,12 @@ interface ProjectFileRead {
   content?: string;
 }
 
+/** pfiles:apps-for / pfiles:open-with — OS-registered app for opening a file. */
+interface OpenApp {
+  id: string;
+  name: string;
+}
+
 type FilePreview =
   | { kind: "html"; html: string }
   | { kind: "slides"; slides: string[] }
