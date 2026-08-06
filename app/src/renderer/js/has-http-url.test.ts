@@ -16,4 +16,7 @@ describe("hasHttpUrl", () => {
     expect(hasHttpUrl("")).toBe(false);
     expect(hasHttpUrl(null as unknown as string)).toBe(false);
   });
+  test("no plausible host", () => {
+    expect(hasHttpUrl("https://?x")).toBe(false);
+  });
 });
