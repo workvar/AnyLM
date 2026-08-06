@@ -1,0 +1,170 @@
+name: Release
+
+# Push a version tag and this builds the desktop app for macOS, Windows and
+# Linux, then publishes every installer to GitHub Releases. The website reads
+# that release through the GitHub API, so the download page updates itself.
+#
+#   bun version patch          # or edit app/package.json by hand
+#   git tag v0.3.1 && git push origin v0.3.1
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build, e.g. v0.3.1"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify tag matches package version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: check
+        shell: bash
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          pkg=$(node -p "require('./app/package.json').version")
+          echo "tag=$tag  package.json=$pkg"
+          if [ "$tag" != "v$pkg" ]; then
+            echo "::error::Tag $tag does not match app/package.json version $pkg."
+            exit 1
+          fi
+          echo "version=$pkg" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.artifact }}
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            artifact: mac-arm64
+            args: --mac --arm64
+          - os: macos-13
+            artifact: mac-x64
+            args: --mac --x64
+          - os: windows-latest
+            artifact: windows
+            args: --win --x64 --ia32
+          - os: ubuntu-latest
+            artifact: linux
+            args: --linux --x64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # electron-builder shells out to node for its own tooling.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: app
+        run: bun install --frozen-lockfile
+
+      - name: Build and package
+        working-directory: app
+        shell: bash
+        env:
+          # Baked into the bundle by scripts/build-env.js. Public identifiers,
+          # not credentials — see app/scripts/env-schema.js.
+          ANYLM_FIREBASE_PROJECT: ${{ vars.ANYLM_FIREBASE_PROJECT }}
+          ANYLM_FIREBASE_API_KEY: ${{ vars.ANYLM_FIREBASE_API_KEY }}
+          ANYLM_FIREBASE_AUTH_DOMAIN: ${{ vars.ANYLM_FIREBASE_AUTH_DOMAIN }}
+          ANYLM_SITE_URL: ${{ vars.ANYLM_SITE_URL }}
+          ANYLM_MS_CLIENT_ID: ${{ vars.ANYLM_MS_CLIENT_ID }}
+          ANYLM_PROXY_PORT: ${{ vars.ANYLM_PROXY_PORT }}
+
+          # Code signing. Leave the secrets unset to produce unsigned builds.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Without a certificate, stop electron-builder from hunting the
+          # keychain and failing the job.
+          if [ -z "$CSC_LINK" ] && [ -z "$WIN_CSC_LINK" ]; then
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          bun run build
+          bunx electron-builder ${{ matrix.args }} --publish never
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            app/release/*.dmg
+            app/release/*.zip
+            app/release/*.exe
+            app/release/*.AppImage
+            app/release/*.deb
+            app/release/*.blockmap
+            app/release/latest*.yml
+
+  publish:
+    name: Publish GitHub release
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # Each matrix job emits its own latest*.yml listing only its own
+      # installers. Merge them so electron-updater sees every arch.
+      - name: Merge auto-update manifests
+        run: |
+          npm install --no-save js-yaml
+          mkdir -p dist
+          node app/scripts/merge-update-feeds.js artifacts dist
+          find artifacts -type f \
+            \( -name '*.dmg' -o -name '*.zip' -o -name '*.exe' \
+               -o -name '*.AppImage' -o -name '*.deb' -o -name '*.blockmap' \) \
+            -exec cp {} dist/ \;
+          ls -la dist
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: AnyLM v${{ needs.verify.outputs.version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          files: dist/*
