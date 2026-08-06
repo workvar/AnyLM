@@ -16,6 +16,7 @@ import * as scheduler from "./scheduler";
 import * as toolsRegistry from "./tools/registry";
 import * as toolsExec from "./tools/exec";
 import { recoverToolCalls } from "./tools/recover-tool-calls";
+import { followUpPromptBlock } from "./tools/follow-up-prompt";
 import * as skillsRegistry from "./skills/registry";
 import * as skillsExec from "./skills/exec";
 import * as workspace from "./workspace";
@@ -420,7 +421,10 @@ function registerIpc() {
   });
 
   // Streaming chat
-  ipcMain.on("chat:start", async (event, { id, projectId, threadId, model, messages, attachments, useTools }) => {
+  ipcMain.on("chat:start", async (
+    event,
+    { id, projectId, threadId, model, messages, attachments, useTools, skillOverrides }
+  ) => {
     const send = (channel, payload) => {
       if (!event.sender.isDestroyed()) event.sender.send(channel, payload);
     };
@@ -441,6 +445,7 @@ function registerIpc() {
       if (!useModel) throw new Error("No model selected");
 
       const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      const extras = Array.isArray(skillOverrides) ? skillOverrides.filter(Boolean) : [];
 
       // --- Governance: pre-flight limits/budget/rate/model, then content. ---
       const warnings = [];
@@ -501,7 +506,9 @@ function registerIpc() {
 
       // Enabled skills add their usage instructions when tools are on.
       if (useTools) {
-        const skillBlock = skillsRegistry.instructionsBlock();
+        const follow = followUpPromptBlock();
+        if (follow) blocks.push(follow);
+        const skillBlock = skillsRegistry.instructionsBlock(extras);
         if (skillBlock) blocks.push(skillBlock);
         // Working folder: tells the model where file tools operate.
         const wsBlock = workspace.promptBlock();
@@ -541,9 +548,11 @@ function registerIpc() {
       if (useTools) {
         const base = toolsRegistry.ollamaTools();
         const seen = new Set(base.map((d) => d.function.name));
-        const fromSkills = skillsRegistry.ollamaTools().filter((d) => !seen.has(d.function.name));
+        const fromSkills = skillsRegistry
+          .ollamaTools(extras)
+          .filter((d) => !seen.has(d.function.name));
         toolDefs = [...base, ...fromSkills];
-        skillToolAllow = skillsRegistry.customToolNames();
+        skillToolAllow = skillsRegistry.customToolNames(extras);
       }
       activityStarted = true;
 

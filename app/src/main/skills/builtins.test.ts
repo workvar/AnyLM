@@ -13,6 +13,9 @@ describe("BUILTIN_SKILLS", () => {
     expect(s!.instructions).toMatch(/web_search/);
     expect(s!.instructions.toLowerCase()).toMatch(/do it|go ahead/);
     expect(s!.instructions.toLowerCase()).toMatch(/json|example/);
+    expect(s!.instructions.toLowerCase()).toMatch(/this|that/);
+    expect(s!.instructions.toLowerCase()).toMatch(/complete/);
+    expect(s!.instructions.toLowerCase()).toMatch(/shell/);
   });
 
   test("calendar and outlook unchanged connectors", () => {

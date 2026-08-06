@@ -185,6 +185,8 @@ interface ProjectThread {
   createdAt: string;
   updatedAt: string;
   archived?: boolean;
+  skillOverrides?: string[];
+  useTools?: boolean;
 }
 
 interface Project {
@@ -236,6 +238,8 @@ interface StandaloneChat {
   createdAt: string;
   updatedAt: string;
   archived?: boolean;
+  skillOverrides?: string[];
+  useTools?: boolean;
 }
 
 interface ChatSummary {
