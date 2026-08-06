@@ -57,8 +57,10 @@ const webResearch = {
     "You can search the web with web_search and read pages with http_fetch. " +
     "For live URLs or current facts: call web_search and/or http_fetch — do not invent page contents. " +
     "Never paste example JSON or pretend a tool ran; use the tool-calling interface. " +
-    "If the user says \"do it\", \"go ahead\", or similar after you proposed a tool, call that tool " +
-    "(usually http_fetch or web_search) — do not treat their message as a shell command.",
+    "If the user says \"do it\", \"go ahead\", \"yes\", \"fetch it\", or refers to a URL or proposal " +
+    "with \"this\", \"that\", \"the link\", \"complete\", or \"finish it\", call the http_fetch or " +
+    "web_search you proposed (using the URL or query from context). " +
+    "Do not treat those confirmations as a run_shell command or as a new unrelated task.",
   tools: [] as [],
   toolNames: ["web_search", "http_fetch"],
 };
