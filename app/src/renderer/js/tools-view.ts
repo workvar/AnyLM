@@ -33,26 +33,15 @@ export async function openToolsView() {
 }
 
 function toolRow(t) {
-  const row = node("div", "org-row policy-row");
-  const main = node("div", "org-cell org-who");
+  const row = node("div", "tool-row");
+  const main = node("div", "tool-row-main");
   const name = node("div", "org-who-name", t.name);
   if (t.risky) name.appendChild(node("span", "tool-risky", " risky"));
   main.appendChild(name);
   main.appendChild(node("div", "org-who-mail", t.description || ""));
   row.appendChild(main);
 
-  const toggleWrap = node("label", "switch");
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  input.checked = t.enabled !== false;
-  input.onchange = () => window.api.toolsToggle(t.id, input.checked);
-  toggleWrap.appendChild(input);
-  toggleWrap.appendChild(node("span", "track"));
-  const cell = node("div", "org-cell");
-  cell.appendChild(toggleWrap);
-  row.appendChild(cell);
-
-  const actions = node("div", "org-cell org-row-actions");
+  const actions = node("div", "tool-row-actions");
   if (!t.builtin) {
     const edit = node("button", "ghost small", "Edit");
     edit.onclick = () => openToolModal(t);
@@ -64,6 +53,15 @@ function toolRow(t) {
     actions.append(edit, del);
   }
   row.appendChild(actions);
+
+  const toggleWrap = node("label", "switch");
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = t.enabled !== false;
+  input.onchange = () => window.api.toolsToggle(t.id, input.checked);
+  toggleWrap.appendChild(input);
+  toggleWrap.appendChild(node("span", "track"));
+  row.appendChild(toggleWrap);
   return row;
 }
 

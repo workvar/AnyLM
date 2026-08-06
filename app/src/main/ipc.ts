@@ -24,6 +24,7 @@ import * as projectFiles from "./project-files";
 import * as openWith from "./open-with";
 import * as userContext from "./user-context";
 import * as graph from "./graph";
+import * as modelCatalog from "./model-catalog";
 import { labelFor, detailFor } from "./activity-labels";
 import { activitySend, createThoughtTimer } from "./activity";
 
@@ -235,6 +236,14 @@ function registerIpc() {
   });
   ipcMain.handle("models:info", (_e, model) => modelContext(model));
   ipcMain.handle("models:delete", (_e, model) => ollama.deleteModel(model));
+  ipcMain.handle("models:system", () => modelCatalog.systemInfo());
+  ipcMain.handle("models:catalog", async () => {
+    modelCatalog.preloadRemote();
+    return modelCatalog.popularCatalog();
+  });
+  ipcMain.handle("models:search", async (_e, query: string, installedOnly?: boolean) => {
+    return modelCatalog.searchCatalog(query || "", { installedOnly: !!installedOnly });
+  });
 
   // Streaming model pull: progress is pushed on "models:pull-progress".
   ipcMain.on("models:pull", (event, model) => {

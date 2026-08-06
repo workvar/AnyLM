@@ -149,6 +149,9 @@ interface AnyLmApi {
   chromaStatus(): Promise<{ ok: boolean; host: string }>;
   listModels(): Promise<string[]>;
   modelInfo(model: string): Promise<number>;
+  modelsSystem(): Promise<{ totalRamGB: number }>;
+  modelsCatalog(): Promise<ModelCatalogEntry[]>;
+  modelsSearch(query: string, installedOnly?: boolean): Promise<ModelCatalogEntry[]>;
   summarizeChat(model: string, messages: ChatMessage[]): Promise<string>;
 
   // Projects

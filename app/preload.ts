@@ -131,6 +131,10 @@ const api: AnyLmApi = {
   chromaStatus: () => ipcRenderer.invoke("chroma:status"),
   listModels: () => ipcRenderer.invoke("models:list"),
   modelInfo: (model) => ipcRenderer.invoke("models:info", model),
+  modelsSystem: () => ipcRenderer.invoke("models:system"),
+  modelsCatalog: () => ipcRenderer.invoke("models:catalog"),
+  modelsSearch: (query, installedOnly) =>
+    ipcRenderer.invoke("models:search", query, installedOnly),
   summarizeChat: (model, messages) => ipcRenderer.invoke("chat:summarize", { model, messages }),
 
   // Projects

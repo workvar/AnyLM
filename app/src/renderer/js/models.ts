@@ -1,39 +1,25 @@
-// Models browser: browse, search, download, and manage Ollama models
+// Models browser: browse, live-search, download, and manage Ollama models.
 import { el, node, qsa } from "./dom.js";
 import { state } from "./state.js";
 import { setModelDropdown, getSelectedModel } from "./dropdown.js";
 
-// All available models (from popular registries)
-const POPULAR_MODELS = [
-  // LLMs
-  { name: "llama2", display: "Llama 2", description: "Meta's open-source LLM", size: "3.8GB" },
-  { name: "llama2:7b", display: "Llama 2 (7B)", description: "Lightweight version", size: "3.8GB" },
-  { name: "llama2:13b", display: "Llama 2 (13B)", description: "Larger version", size: "7.4GB" },
-  { name: "mistral", display: "Mistral", description: "Fast & efficient model", size: "4.1GB" },
-  { name: "neural-chat", display: "Neural Chat", description: "Intel optimized chat model", size: "4.8GB" },
-  { name: "dolphin-mixtral", display: "Dolphin Mixtral", description: "Fine-tuned Mixtral", size: "26GB" },
-  { name: "orca-mini", display: "Orca Mini", description: "Small instruction-tuned model", size: "1.7GB" },
-  { name: "zephyr", display: "Zephyr", description: "Chat-optimized model", size: "3.8GB" },
-  
-  // Code models
-  { name: "codegemma", display: "CodeGemma", description: "Code generation model", size: "2.6GB" },
-  { name: "codellama", display: "Code Llama", description: "Code generation focused", size: "3.8GB" },
-  
-  // Other models
-  { name: "command-light", display: "Command Light", description: "Cohere's lightweight model", size: "1.5GB" },
-  { name: "phi", display: "Phi", description: "Microsoft's efficient model", size: "1.4GB" },
-];
-
-let allModels: string[] = [];
-let installedModels = new Set<string>();
-let downloadingModels = new Set();
+let rows: ModelCatalogEntry[] = [];
+let downloadingModels = new Set<string>();
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+let searchSeq = 0;
+let systemRamGB: number | null = null;
 
 export async function loadModels() {
   try {
     const installed = await window.api.listModels();
-    installedModels = new Set(installed);
     state.models = installed;
-    render();
+    if (systemRamGB == null) {
+      const sys = await window.api.modelsSystem();
+      systemRamGB = sys.totalRamGB;
+      const hint = el("models-system-hint");
+      if (hint) hint.textContent = `This device: ${sys.totalRamGB} GB RAM`;
+    }
+    await refreshCatalog();
   } catch (e) {
     console.error("Failed to load models:", e);
   }
@@ -43,89 +29,108 @@ export function openModelsView() {
   loadModels();
 }
 
-export function render() {
-  const query = (el("models-search")?.value || "").toLowerCase();
-  const filter = state.modelsFilter || "all";
-
-  const installedCards = [...installedModels].map((name) => ({
-    name,
-    display: name,
-    description: "Installed on this device",
-    size: "—",
-    installedOnly: true,
-  }));
-
-  type ModelRow = { name: string; display: string };
-  let rows: ModelRow[] = [];
-
-  if (filter === "installed") {
-    rows = installedCards.filter((m) => !query || m.name.toLowerCase().includes(query));
-  } else if (filter === "all") {
-    const popular = POPULAR_MODELS.filter(
-      (m) => !query || m.display.toLowerCase().includes(query) || m.name.toLowerCase().includes(query)
-    );
-    const extra = installedCards.filter((m) => !POPULAR_MODELS.some((p) => p.name === m.name));
-    rows = [...extra, ...popular].filter(
-      (m) => !query || m.display.toLowerCase().includes(query) || m.name.toLowerCase().includes(query)
-    );
-  } else {
+async function refreshCatalog() {
+  const query = (el("models-search")?.value || state.modelsQuery || "").trim();
+  const installedOnly = state.modelsFilter === "installed";
+  const seq = ++searchSeq;
+  try {
+    const next = query
+      ? await window.api.modelsSearch(query, installedOnly)
+      : installedOnly
+        ? (await window.api.modelsCatalog()).filter((m) => m.installed)
+        : await window.api.modelsCatalog();
+    if (seq !== searchSeq) return;
+    rows = next;
+    render();
+  } catch (e) {
+    console.error("Model catalog failed:", e);
+    if (seq !== searchSeq) return;
     rows = [];
+    render();
   }
+}
 
+export function render() {
   const container = el("models-container");
+  if (!container) return;
+  const layout = state.modelsLayout === "grid" ? "grid" : "list";
+  container.className = layout === "grid" ? "models-grid" : "models-list";
   container.innerHTML = "";
 
   if (!rows.length) {
-    container.appendChild(node("div", "grid-empty",
-      filter === "installed" ? "No installed models" : "No models found"));
+    const q = (el("models-search")?.value || "").trim();
+    container.appendChild(
+      node(
+        "div",
+        "grid-empty",
+        state.modelsFilter === "installed"
+          ? "No installed models"
+          : q
+            ? "No models match that search"
+            : "No models found"
+      )
+    );
     return;
   }
 
   for (const model of rows) {
-    const card = renderModelCard(model);
-    container.appendChild(card);
+    container.appendChild(renderModelCard(model, layout));
   }
 }
 
-function renderModelCard(model) {
-  const card = node("div", "model-card");
-  const isInstalled = installedModels.has(model.name);
+function compatLabel(rating: ModelCompatRating): string {
+  if (rating === "best") return "Best";
+  if (rating === "good") return "Good";
+  return "Bad";
+}
+
+function renderModelCard(model: ModelCatalogEntry, layout: "list" | "grid") {
+  const card = node("div", layout === "grid" ? "model-card" : "model-row");
+  const isInstalled = model.installed;
   const isDownloading = downloadingModels.has(model.name);
 
-  // Header with name
+  const main = node("div", "model-main");
   const header = node("div", "model-header");
-  header.appendChild(node("div", "model-name", model.display));
-  if (isInstalled) {
-    header.appendChild(node("span", "model-badge installed", "✓ Installed"));
+  header.appendChild(node("div", "model-name", model.display || model.name));
+  if (isInstalled) header.appendChild(node("span", "model-badge installed", "Installed"));
+  if (model.name !== model.display) {
+    header.appendChild(node("span", "model-tag", model.name));
   }
-  card.appendChild(header);
+  main.appendChild(header);
 
-  // Description
-  card.appendChild(node("div", "model-desc", model.description));
+  if (model.description) {
+    main.appendChild(node("div", "model-desc", model.description));
+  }
 
-  // Size and meta
   const meta = node("div", "model-meta");
-  meta.appendChild(node("span", "", `~${model.size}`));
-  card.appendChild(meta);
+  meta.appendChild(pill("Size", model.sizeLabel));
+  meta.appendChild(pill("Needs", model.requirements));
+  const compat = node(
+    "span",
+    `model-compat compat-${model.compatibility}`,
+    `My system: ${compatLabel(model.compatibility)}`
+  );
+  meta.appendChild(compat);
+  meta.appendChild(node("span", "model-best", `Best for: ${model.bestFor}`));
+  main.appendChild(meta);
 
-  // Progress bar (if downloading)
   if (isDownloading) {
     const progress = node("div", "model-progress");
     const bar = node("div", "progress-bar");
     const barFill = node("div", "progress-fill");
-    barFill.id = `progress-${model.name}`;
+    barFill.id = `progress-${cssId(model.name)}`;
     barFill.style.width = "0%";
     bar.appendChild(barFill);
     progress.appendChild(bar);
-    const statusText = node("div", "model-status", "Downloading...");
-    statusText.id = `status-${model.name}`;
+    const statusText = node("div", "model-status", "Downloading…");
+    statusText.id = `status-${cssId(model.name)}`;
     progress.appendChild(statusText);
-    card.appendChild(progress);
+    main.appendChild(progress);
   }
 
-  // Actions
+  card.appendChild(main);
+
   const actions = node("div", "model-actions");
-  
   if (isDownloading) {
     const cancelBtn = node("button", "ghost small", "Cancel");
     cancelBtn.onclick = () => cancelDownload(model.name);
@@ -139,60 +144,71 @@ function renderModelCard(model) {
     downloadBtn.onclick = () => downloadModel(model.name);
     actions.appendChild(downloadBtn);
   }
-
   card.appendChild(actions);
   return card;
 }
 
-async function downloadModel(modelName) {
+function pill(label: string, value: string) {
+  const span = node("span", "model-pill", "");
+  span.appendChild(node("em", "", label));
+  span.appendChild(document.createTextNode(` ${value}`));
+  return span;
+}
+
+function cssId(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+async function downloadModel(modelName: string) {
   downloadingModels.add(modelName);
   render();
 
   try {
     await window.api.pullModel(modelName, (progress) => {
-      const fill = document.getElementById(`progress-${modelName}`);
-      const status = document.getElementById(`status-${modelName}`);
+      const fill = document.getElementById(`progress-${cssId(modelName)}`);
+      const status = document.getElementById(`status-${cssId(modelName)}`);
       if (fill && progress.percent !== null) {
         fill.style.width = `${progress.percent}%`;
       }
       if (status) {
-        status.textContent = `${progress.status || 'Downloading'}${progress.percent !== null ? ` (${progress.percent}%)` : ''}`;
+        status.textContent = `${progress.status || "Downloading"}${
+          progress.percent !== null ? ` (${progress.percent}%)` : ""
+        }`;
       }
     });
 
-    // Refresh model list
-    installedModels.add(modelName);
     downloadingModels.delete(modelName);
-    await loadModels();
+    state.models = await window.api.listModels();
+    setModelDropdown(state.models, getSelectedModel() || state.models[0]);
+    await refreshCatalog();
   } catch (e) {
     console.error(`Failed to download ${modelName}:`, e);
     downloadingModels.delete(modelName);
     render();
-    alert(`Failed to download ${modelName}: ${e.message}`);
+    alert(`Failed to download ${modelName}: ${(e as Error).message}`);
   }
 }
 
-function cancelDownload(modelName) {
+function cancelDownload(modelName: string) {
   downloadingModels.delete(modelName);
   window.api.cancelPullModel(modelName);
   render();
 }
 
-async function deleteModel(modelName) {
+async function deleteModel(modelName: string) {
   const confirmed = confirm(`Remove ${modelName}? This cannot be undone.`);
   if (!confirmed) return;
 
   try {
     await window.api.deleteModel(modelName);
     state.models = await window.api.listModels();
-    installedModels = new Set(state.models);
     const current = getSelectedModel();
     const nextSelected = state.models.includes(current) ? current : state.models[0];
     setModelDropdown(state.models, nextSelected);
-    render();
+    await refreshCatalog();
   } catch (e) {
     console.error(`Failed to remove ${modelName}:`, e);
-    alert(`Failed to remove ${modelName}: ${e.message}`);
+    alert(`Failed to remove ${modelName}: ${(e as Error).message}`);
   }
 }
 
@@ -201,7 +217,10 @@ export function bindEvents() {
   if (searchInput) {
     searchInput.oninput = () => {
       state.modelsQuery = searchInput.value;
-      render();
+      if (searchTimer) clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        void refreshCatalog();
+      }, 280);
     };
   }
 
@@ -210,6 +229,17 @@ export function bindEvents() {
     btn.onclick = () => {
       state.modelsFilter = btn.dataset.filter;
       for (const b of filterButtons) {
+        b.classList.toggle("active", b === btn);
+      }
+      void refreshCatalog();
+    };
+  }
+
+  const layoutButtons = qsa("#models-layout button");
+  for (const btn of layoutButtons) {
+    btn.onclick = () => {
+      state.modelsLayout = btn.dataset.layout === "grid" ? "grid" : "list";
+      for (const b of layoutButtons) {
         b.classList.toggle("active", b === btn);
       }
       render();

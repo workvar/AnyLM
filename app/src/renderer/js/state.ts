@@ -18,4 +18,5 @@ export const state = {
   sidebarQuery: "", // left rail search text (projects + chats)
   modelsQuery: "",  // models view search text
   modelsFilter: "all", // "all" | "installed"
+  modelsLayout: "list", // "list" | "grid"
 };

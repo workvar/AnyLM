@@ -15,10 +15,19 @@ async function status(): Promise<{ ok: boolean; host: string; error?: string }> 
 }
 
 async function listModels(): Promise<string[]> {
+  const entries = await listModelEntries();
+  return entries.map((m) => m.name);
+}
+
+/** Installed models with on-disk size from Ollama `/api/tags`. */
+async function listModelEntries(): Promise<{ name: string; size: number }[]> {
   const res = await fetch(`${HOST}/api/tags`);
   if (!res.ok) throw new Error(`Ollama responded ${res.status}`);
   const data = ((await res.json()) as any);
-  return (data.models || []).map((m: { name: string }) => m.name);
+  return (data.models || []).map((m: { name: string; size?: number }) => ({
+    name: m.name,
+    size: m.size || 0,
+  }));
 }
 
 // Model details. Returns { contextLength } parsed from /api/show model_info.
@@ -170,5 +179,16 @@ async function deleteModel(model: string): Promise<boolean> {
   return true;
 }
 
-export { status, listModels, info, generate, embed, chatStream, pull, deleteModel, HOST };
+export {
+  status,
+  listModels,
+  listModelEntries,
+  info,
+  generate,
+  embed,
+  chatStream,
+  pull,
+  deleteModel,
+  HOST,
+};
 

@@ -1748,6 +1748,14 @@ button.full {
 .platform-darwin #app.sidebar-collapsed .view-toolbar {
   padding-left: 84px;
 }
+/* Settings nav becomes left chrome when sidebar is gone — clear traffic lights. */
+.platform-darwin #app.sidebar-collapsed #settings-nav {
+  padding-top: 42px;
+}
+/* Settings panels already sit right of #settings-nav; don't double-inset. */
+.platform-darwin #app.sidebar-collapsed #settings-view .view-toolbar {
+  padding-left: 0;
+}
 .platform-darwin button,
 .platform-darwin input,
 .platform-darwin select,
@@ -2110,12 +2118,59 @@ button.full {
   background: color-mix(in srgb, var(--danger) 14%, transparent);
 }
 
-/* Models grid */
+/* Models browser */
+.models-browser {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 1rem 1rem;
+  min-height: 0;
+  flex: 1;
+}
+
+.models-search-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.models-search-bar input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.models-search-bar input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.models-system-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .models-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
-  padding: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.models-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
 }
 
 .model-card,
@@ -2129,55 +2184,131 @@ button.full {
 
 .model-card {
   border-radius: 8px;
-  padding: 1rem;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  transition: all 0.2s;
+  gap: 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .model-card:hover {
   border-color: var(--primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.model-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.model-row:first-child {
+  border-top: none;
+}
+
+.model-row:hover {
+  background: color-mix(in srgb, var(--panel-2) 65%, var(--panel));
+}
+
+.model-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .model-header {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .model-name {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+}
+
+.model-tag {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .model-badge {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
   border-radius: 4px;
-  background: var(--success);
-  color: white;
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .model-desc {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--secondary-text);
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
 .model-meta {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--tertiary-text);
   display: flex;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.model-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--secondary-text);
+}
+
+.model-pill em {
+  font-style: normal;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.model-compat {
+  font-weight: 600;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.model-compat.compat-best {
+  color: #1a7f4b;
+  background: color-mix(in srgb, #1a7f4b 14%, transparent);
+}
+
+.model-compat.compat-good {
+  color: #8a6d1d;
+  background: color-mix(in srgb, #c9a227 16%, transparent);
+}
+
+.model-compat.compat-bad {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.model-best {
+  color: var(--secondary-text);
 }
 
 .model-progress {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .model-progress .progress-bar {
@@ -2201,13 +2332,22 @@ button.full {
 .model-actions {
   display: flex;
   gap: 0.5rem;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.model-card .model-actions {
   margin-top: auto;
 }
 
-.model-actions button {
+.model-card .model-actions button {
   flex: 1;
-  font-size: 0.85rem;
-  padding: 0.5rem 0.75rem;
+}
+
+.model-actions button {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.7rem;
+  white-space: nowrap;
 }
 
 /* ===== Governance notes in chat ===== */
@@ -2493,6 +2633,32 @@ button.full {
 .org-row.policy-row .switch {
   display: block;
   margin: 0 auto;
+}
+
+/* Tools manager: labels left, actions + switch flush right */
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+.tool-row:first-child {
+  border-top: none;
+}
+.tool-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.tool-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.tool-row > .switch {
+  flex-shrink: 0;
+  margin-left: 4px;
 }
 .org-row.cols-5 {
   grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
@@ -2969,7 +3135,23 @@ button.full {
   background: var(--panel);
   overflow-y: auto;
 }
-#settings-nav button {
+#settings-back {
+  display: none;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  color: var(--muted);
+}
+#app.sidebar-collapsed #settings-back {
+  display: block;
+}
+#settings-back:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
+#settings-nav button[data-settings] {
   display: block;
   width: 100%;
   text-align: left;
@@ -2981,10 +3163,10 @@ button.full {
   color: var(--text);
   cursor: pointer;
 }
-#settings-nav button:hover {
+#settings-nav button[data-settings]:hover {
   background: var(--panel-2);
 }
-#settings-nav button.active {
+#settings-nav button[data-settings].active {
   background: var(--accent-grad);
   color: var(--accent-contrast);
 }
@@ -3007,6 +3189,14 @@ button.full {
 #settings-view #tools-view,
 #settings-view #skills-view {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#settings-view #models-view .models-browser {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 .settings-panel-body {
   flex: 1;

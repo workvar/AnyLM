@@ -3,6 +3,7 @@
 import { el, qsa } from "./dom.js";
 import { state } from "./state.js";
 import { showView } from "./nav.js";
+import { loadProjects } from "./projects.js";
 import { openModelsView } from "./models.js";
 import { openOrgView } from "./org.js";
 import { openToolsView } from "./tools-view.js";
@@ -41,7 +42,7 @@ export function selectSettingsSection(section: SettingsSection | string = "gener
   const s = normalize(section);
   state.settingsSection = s;
 
-  for (const btn of qsa("#settings-nav button")) {
+  for (const btn of qsa("#settings-nav button[data-settings]")) {
     btn.classList.toggle("active", btn.dataset.settings === s);
   }
   for (const [key, id] of Object.entries(PANEL_IDS) as Array<[SettingsSection, string]>) {
@@ -57,9 +58,15 @@ export function selectSettingsSection(section: SettingsSection | string = "gener
   else if (s === "customize") paintCustomize();
 }
 
+function backToHome() {
+  showView("projects");
+  loadProjects();
+}
+
 export function initSettingsHub() {
   el("open-settings").onclick = () => openSettingsHub("general");
-  for (const btn of qsa("#settings-nav button")) {
+  el("settings-back").onclick = backToHome;
+  for (const btn of qsa("#settings-nav button[data-settings]")) {
     btn.onclick = () => selectSettingsSection(btn.dataset.settings || "general");
   }
 }

@@ -221,6 +221,7 @@
         <!-- Settings hub: General + Models/Org/Tools/Skills/Customize -->
         <section id="settings-view" class="hidden">
           <aside id="settings-nav">
+            <button type="button" id="settings-back" class="icon-btn settings-back" title="Back to home" aria-label="Back to home">‹ Home</button>
             <button type="button" data-settings="general" class="active">General</button>
             <button type="button" data-settings="models">Models</button>
             <button type="button" data-settings="org">Organization</button>
@@ -403,16 +404,23 @@
               <button id="sidebar-toggle-models" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
               <h1 class="view-title">Models</h1>
               <div class="view-actions">
-                <div class="view-search" style="flex: 1; margin-right: 1rem;">
-                  <input id="models-search" type="text" placeholder="Search models…" autocomplete="off" />
-                </div>
                 <div class="seg" id="models-filter">
                   <button data-filter="all" class="active">All</button>
                   <button data-filter="installed">Installed</button>
                 </div>
+                <div class="seg" id="models-layout">
+                  <button data-layout="list" class="active" title="List view">List</button>
+                  <button data-layout="grid" title="Grid view">Grid</button>
+                </div>
               </div>
             </header>
-            <div id="models-container" class="models-grid"></div>
+            <div class="models-browser">
+              <div class="models-search-bar">
+                <input id="models-search" type="search" placeholder="Search models…" autocomplete="off" />
+                <span id="models-system-hint" class="models-system-hint"></span>
+              </div>
+              <div id="models-container" class="models-list"></div>
+            </div>
           </section>
             <div id="settings-panel-customize" class="settings-panel hidden">
               <header class="view-toolbar">

@@ -399,6 +399,23 @@ interface PullProgress {
   error?: string;
 }
 
+/** Models settings browser entry (curated + live search). */
+type ModelCompatRating = "best" | "good" | "bad";
+
+interface ModelCatalogEntry {
+  name: string;
+  display: string;
+  description: string;
+  sizeLabel: string;
+  sizeBytes: number | null;
+  minRamGB: number;
+  requirements: string;
+  bestFor: string;
+  compatibility: ModelCompatRating;
+  installed: boolean;
+  popular?: boolean;
+}
+
 interface ProjectFileEntry {
   name: string;
   ext: string;
