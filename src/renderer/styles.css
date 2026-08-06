@@ -2580,3 +2580,118 @@ button.full {
   margin-top: 12px;
   min-height: 1.2em;
 }
+
+/* ===== Clarifying question ============================================= */
+.ask-card {
+  align-self: stretch;
+  margin: 8px 0;
+  padding: 12px 6px 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.ask-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 10px 10px;
+}
+.ask-question {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+.ask-skip {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+.ask-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ask-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  text-align: left;
+  font-size: 13.5px;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+}
+.ask-option.on {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+.ask-num {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.ask-option-label {
+  flex: 1;
+  min-width: 0;
+}
+.ask-rec {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.ask-arrow {
+  opacity: 0;
+  color: var(--muted);
+}
+.ask-option.on .ask-arrow {
+  opacity: 1;
+}
+.ask-other .ask-option-label {
+  color: var(--muted);
+}
+.ask-hint {
+  padding: 8px 10px 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.ask-dock {
+  flex-shrink: 0;
+  padding: 0 18px 8px;
+  background: transparent;
+}
+.ask-dock:not(.hidden) {
+  /* visible */
+}
+.ask-dock .ask-card {
+  margin: 0;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+.ask-answered {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-self: flex-start;
+  margin: 2px 0 6px;
+}
+.ask-answered-q {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ask-answered-a {
+  font-size: 12.5px;
+  color: var(--text);
+}

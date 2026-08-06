@@ -9,9 +9,9 @@ import { persistCurrentChat } from "./chats.js";
 import { persistProjectThread } from "./threads.js";
 import { setContextUsage } from "./contextmeter.js";
 import { getAttachments, getImageThumbs, hasAttachments, clearAttachments } from "./attach.js";
-import { attachExportActions } from "./exports.js";
 import { attachTokenStats } from "./tokenstats.js";
 import { showDocConfirm, showFileCard } from "./file-cards.js";
+import { llmMessages } from "./messages.js";
 
 // Governance policy warnings (redactions, near-limit notices) surfaced inline.
 let govBound = false;
@@ -126,13 +126,12 @@ export async function sendMessage() {
   const stream = createStreamRenderer(bubble);
   try {
     const result = await window.api.chat(
-      { projectId, threadId, model, messages: state.chat, attachments, useTools },
+      { projectId, threadId, model, messages: llmMessages(state.chat), attachments, useTools },
       (piece) => stream.push(piece)
     );
     stream.cancel();
     const acc = stream.text();
     setBubbleMarkdown(bubble, acc);
-    attachExportActions(bubble, acc); // Save MD / Save PDF into the project folder
     el("messages").scrollTop = el("messages").scrollHeight;
     state.chat.push({ role: "assistant", content: acc });
     if (result && result.usage) {
@@ -147,3 +146,8 @@ export async function sendMessage() {
   if (state.mode === "project") await persistProjectThread();
   else if (state.mode === "chat") await persistCurrentChat();
 }
+
+
+// Stubs until newer chat WIP is restored (turns-based stop/send live elsewhere).
+export function stopActive() {}
+export function paintSendButton() {}

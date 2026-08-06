@@ -1,5 +1,7 @@
 // Generates a concise chat title by summarizing the conversation with the
 // model, used once a conversation has its first reply and is still untitled.
+import { llmMessages } from "./messages.js";
+
 const DEFAULT_TITLES = new Set(["", "New chat", "Continued"]);
 
 function clean(raw) {
@@ -17,7 +19,7 @@ export async function maybeTitle(model, messages, currentTitle) {
   const hasReply = (messages || []).some((m) => m.role === "assistant" && m.content);
   if (!hasReply) return null;
   try {
-    return clean(await window.api.titleChat(model, messages));
+    return clean(await window.api.titleChat(model, llmMessages(messages)));
   } catch {
     return null;
   }

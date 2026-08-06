@@ -13,6 +13,7 @@ import { renderAsk, clearAsk } from "./ask-card.js";
 import { attachTokenStats } from "./tokenstats.js";
 import { setContextUsage } from "./contextmeter.js";
 import { maybeTitle } from "./titler.js";
+import { askArtifact } from "./messages.js";
 
 const turns = new Map<string, any>();
 const byRequest = new Map<string, any>();
@@ -32,6 +33,19 @@ export function pendingAsk() {
 }
 
 // --- persistence ------------------------------------------------------------
+
+async function persistStoredMessage(turn, artifact: StoredMessage) {
+  if (turn.mode === "project") {
+    const stored = await window.api.getThread(turn.projectId, turn.threadId);
+    const messages = [...((stored && stored.messages) || []), artifact];
+    await window.api.updateThread(turn.projectId, turn.threadId, { messages });
+  } else {
+    const stored = await window.api.getChat(turn.chatId);
+    const messages = [...((stored && stored.messages) || []), artifact];
+    await window.api.updateChat(turn.chatId, { messages });
+  }
+  if (activeKey() === turn.key) state.chat.push(artifact);
+}
 
 // Append the finished reply to whichever conversation it belongs to, reading
 // the stored record rather than the on-screen one: the user may be elsewhere.
@@ -86,18 +100,29 @@ export function attachTurn(key: string): void {
 
 // --- questions --------------------------------------------------------------
 
-function answer(turn, text: string | null) {
+export function appendAskAnswered(question: string, text: string | null) {
+  const wrap = el("messages");
+  const box = node("div", "ask-answered");
+  box.appendChild(node("div", "ask-answered-q", question));
+  box.appendChild(
+    node("div", "ask-answered-a", text == null ? "Skipped" : `You chose: ${text}`)
+  );
+  wrap.appendChild(box);
+}
+
+async function answer(turn, text: string | null) {
   const ask = turn.pendingAsk;
   if (!ask) return;
   turn.pendingAsk = null;
+  const question = ask.question || "";
+  const artifact = askArtifact({ question, answer: text });
+  await persistStoredMessage(turn, artifact);
   window.api.replyAsk(ask.token, text);
   setActivity(turn.key, "working");
   if (activeKey() === turn.key) {
     clearAsk();
-    // Show what was chosen so the transcript still reads as a conversation.
-    const wrap = el("messages");
-    wrap.appendChild(node("div", "ask-answered", text == null ? "Skipped" : `You chose: ${text}`));
-    wrap.scrollTop = wrap.scrollHeight;
+    appendAskAnswered(question, text);
+    el("messages").scrollTop = el("messages").scrollHeight;
     el("chat-input").placeholder = turn.placeholder || "Message…";
   }
 }

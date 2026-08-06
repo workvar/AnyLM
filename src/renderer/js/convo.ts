@@ -6,7 +6,7 @@ import { setModelDropdown, setModelDropdownEnabled } from "./dropdown.js";
 import { clearMessages, addMessage, setBubbleMarkdown } from "./views.js";
 import { hideContext } from "./contextmeter.js";
 import { showView } from "./nav.js";
-import { attachExportActions } from "./exports.js";
+import { appendAskAnswered } from "./turns.js";
 
 export function showEmpty() {
   state.mode = null;
@@ -40,10 +40,16 @@ export function updateModelLock() {
 export function renderHistory(messages) {
   clearMessages();
   for (const m of messages || []) {
+    if (m.role === "artifact" && m.type === "file") {
+      continue;
+    }
+    if (m.role === "ask") {
+      appendAskAnswered(m.question, m.answer);
+      continue;
+    }
     if (m.role === "assistant") {
       const bubble = addMessage("assistant", "");
       setBubbleMarkdown(bubble, m.content);
-      attachExportActions(bubble, m.content);
     } else {
       addMessage(m.role, m.content);
     }

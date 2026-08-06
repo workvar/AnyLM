@@ -5,6 +5,7 @@ import { el } from "./dom.js";
 import { getSelectedModel } from "./dropdown.js";
 import { newThreadSeeded } from "./threads.js";
 import { newChatSeeded } from "./chats.js";
+import { llmMessages } from "./messages.js";
 
 let busy = false;
 
@@ -19,7 +20,7 @@ export async function compactConversation() {
   btn.disabled = true;
   btn.textContent = "Summarizing…";
   try {
-    const summary = await window.api.summarizeChat(model, state.chat);
+    const summary = await window.api.summarizeChat(model, llmMessages(state.chat));
     const seed = [{ role: "assistant", content: `Summary of the previous conversation:\n\n${summary}` }];
     if (state.mode === "project") await newThreadSeeded(seed, "Continued");
     else await newChatSeeded(seed, "Continued");
