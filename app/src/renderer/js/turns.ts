@@ -451,6 +451,7 @@ export async function runTurn(ctx): Promise<void> {
         messages: llmMessages(ctx.messages),
         attachments: ctx.attachments,
         useTools: ctx.useTools,
+        skillOverrides: ctx.skillOverrides || [],
       },
       (piece) => {
         turn.acc += piece;

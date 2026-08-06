@@ -65,6 +65,7 @@ interface ChatPayload {
     images?: string[];
   };
   useTools?: boolean;
+  skillOverrides?: string[];
 }
 
 interface AnyLmApi {

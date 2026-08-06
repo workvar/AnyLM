@@ -105,6 +105,8 @@ export async function sendMessage() {
     messages: llmMessages(state.chat),
     attachments,
     useTools,
+    skillOverrides:
+      (state.mode === "chat" ? state.current?.skillOverrides : state.thread?.skillOverrides) || [],
     label: el("convo-name").value || "Chat",
     placeholder: el("chat-input").placeholder,
     projectId,
