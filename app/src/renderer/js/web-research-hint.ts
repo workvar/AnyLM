@@ -1,6 +1,7 @@
 // src/renderer/js/web-research-hint.ts
 import { el } from "./dom.js";
 import { hasHttpUrl } from "./has-http-url.js";
+import { refreshSkills } from "./rail/index.js";
 import { state } from "./state.js";
 import { setUseTools } from "./tools-toggle.js";
 
@@ -97,21 +98,9 @@ async function persistPatchFor(
   }
 }
 
-async function syncWebResearchHint(): Promise<void> {
-  const host = el("web-research-hint");
-  if (!host) return;
-
-  const input = el("chat-input");
-  const globalEnabled = await isGlobalWebResearchEnabled();
-  const show = shouldShowWebResearchHint({
-    text: input?.value || "",
-    globalEnabled,
-    skillOverrides: currentOverrides(),
-    dismissed,
-  });
-  host.classList.toggle("hidden", !show);
-  if (!show || host.dataset.ready) return;
-
+function ensureWebResearchHint(host: UiElement): void {
+  if (host.dataset.ready) return;
+  host.dataset.ready = "1";
   const message = document.createElement("span");
   message.textContent = "This looks like a link — enable Web research?";
 
@@ -142,6 +131,7 @@ async function syncWebResearchHint(): Promise<void> {
     if (!target) return;
     const next = nextWebResearchSkillOverrides(target.overrides, true);
     await window.api.skillsToggle(SKILL_ID, true);
+    await refreshSkills();
     await persistPatchFor(target, { skillOverrides: next, useTools: true });
     if (isCurrentTarget(target)) {
       setUseTools(true, { persist: false });
@@ -162,7 +152,28 @@ async function syncWebResearchHint(): Promise<void> {
 
   actions.append(enable, keep, dismiss);
   host.append(message, actions);
-  host.dataset.ready = "1";
+}
+
+async function syncWebResearchHint(): Promise<void> {
+  const host = el("web-research-hint");
+  if (!host) return;
+
+  const input = el("chat-input");
+  const text = input?.value || "";
+  if (!hasHttpUrl(text)) {
+    host.classList.add("hidden");
+    return;
+  }
+
+  ensureWebResearchHint(host);
+  const globalEnabled = await isGlobalWebResearchEnabled();
+  const show = shouldShowWebResearchHint({
+    text: input?.value || "",
+    globalEnabled,
+    skillOverrides: currentOverrides(),
+    dismissed,
+  });
+  host.classList.toggle("hidden", !show);
 }
 
 function initWebResearchHint(): void {

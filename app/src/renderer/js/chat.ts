@@ -18,8 +18,7 @@ import {
   clearPendingConfirm,
 } from "./turns.js";
 import { getUseTools, setUseTools } from "./tools-toggle.js";
-
-export { getUseTools, setUseTools } from "./tools-toggle.js";
+import { syncWebResearchHint } from "./web-research-hint.js";
 
 // Governance policy warnings (redactions, near-limit notices) surfaced inline.
 let govBound = false;
@@ -73,6 +72,7 @@ export async function sendMessage() {
 
   if (text && answerFromComposer(text)) {
     input.value = "";
+    void syncWebResearchHint();
     return;
   }
 
@@ -88,6 +88,7 @@ export async function sendMessage() {
   clearAttachments();
 
   input.value = "";
+  void syncWebResearchHint();
   addUserMessage(text, thumbs);
   state.chat.push({ role: "user", content: text });
   updateModelLock(); // model is fixed once the conversation has started
