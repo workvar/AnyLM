@@ -10,6 +10,8 @@ import { maybeTitle } from "./titler.js";
 import { paintRecentsTitle } from "./views.js";
 import { detachAll, attachTurn } from "./turns.js";
 import { resetRail } from "./rail/index.js";
+import { setUseTools } from "./tools-toggle.js";
+import { resetWebResearchHintDismiss } from "./web-research-hint.js";
 
 export async function selectChat(id) {
   detachAll();
@@ -27,6 +29,8 @@ export async function selectChat(id) {
   attachTurn(`chat:${id}`);
   estimateContext(state.current.model, state.chat);
   updateModelLock();
+  setUseTools(!!state.current.useTools, { persist: false });
+  resetWebResearchHintDismiss();
   await loadRecents();
 }
 

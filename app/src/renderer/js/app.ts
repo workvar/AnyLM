@@ -45,6 +45,7 @@ import { toggleOrgShare, toggleAutoLog } from "./projects.js";
 import { initSidebar } from "./sidebar/index.js";
 import { initCustomize } from "./customize.js";
 import { initSettingsHub } from "./settings-hub.js";
+import { initWebResearchHint } from "./web-research-hint.js";
 
 async function refreshStatus() {
   const s = await window.api.ollamaStatus();
@@ -208,6 +209,7 @@ async function startApp(settings) {
   initTools();
   initSkills();
   initToolUse();
+  initWebResearchHint();
   initTurns();
   initWorkingStrip();
   initRail(settings);

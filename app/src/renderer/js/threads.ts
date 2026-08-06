@@ -10,6 +10,8 @@ import { maybeTitle } from "./titler.js";
 import { paintRecentsTitle } from "./views.js";
 import { detachAll, attachTurn } from "./turns.js";
 import { resetRail } from "./rail/index.js";
+import { setUseTools } from "./tools-toggle.js";
+import { resetWebResearchHintDismiss } from "./web-research-hint.js";
 
 // Fetch (or initialise) the active project's threads without opening one.
 export async function fetchThreads() {
@@ -38,6 +40,8 @@ export async function openThread(threadId) {
   attachTurn(`thread:${threadId}`);
   estimateContext(state.current.model, state.chat);
   updateModelLock();
+  setUseTools(!!state.thread.useTools, { persist: false });
+  resetWebResearchHintDismiss();
   // Repaint recents so this thread shows as the selected item in the sidebar.
   await loadRecents();
 }

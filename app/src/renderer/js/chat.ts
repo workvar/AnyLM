@@ -17,6 +17,9 @@ import {
   handleFileGenerated,
   clearPendingConfirm,
 } from "./turns.js";
+import { getUseTools, setUseTools } from "./tools-toggle.js";
+
+export { getUseTools, setUseTools } from "./tools-toggle.js";
 
 // Governance policy warnings (redactions, near-limit notices) surfaced inline.
 let govBound = false;
@@ -38,7 +41,6 @@ function bindGovernanceNotes() {
 
 // --- Tools: per-chat toggle, inline activity, risky-run confirmations ---
 
-let useTools = false;
 let toolsBound = false;
 
 export function initToolUse() {
@@ -46,11 +48,7 @@ export function initToolUse() {
   toolsBound = true;
 
   const toggle = el("tools-toggle");
-  toggle.onclick = () => {
-    useTools = !useTools;
-    toggle.classList.toggle("active", useTools);
-    toggle.title = useTools ? "Tools enabled for this chat" : "Let the model use tools";
-  };
+  toggle.onclick = () => setUseTools(!getUseTools());
 
   // Document generation keeps the inline file-card permission UI. Other risky
   // tools confirm via the activity trail + Working strip (no modal).
@@ -104,7 +102,7 @@ export async function sendMessage() {
     model,
     messages: llmMessages(state.chat),
     attachments,
-    useTools,
+    useTools: getUseTools(),
     skillOverrides:
       (state.mode === "chat" ? state.current?.skillOverrides : state.thread?.skillOverrides) || [],
     label: el("convo-name").value || "Chat",

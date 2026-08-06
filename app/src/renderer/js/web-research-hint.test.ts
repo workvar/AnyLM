@@ -1,6 +1,9 @@
 // src/renderer/js/web-research-hint.test.ts
 import { describe, expect, test } from "bun:test";
-import { shouldShowWebResearchHint } from "./web-research-hint";
+import {
+  nextWebResearchHintDismissed,
+  shouldShowWebResearchHint,
+} from "./web-research-hint";
 
 describe("shouldShowWebResearchHint", () => {
   const base = {
@@ -25,5 +28,15 @@ describe("shouldShowWebResearchHint", () => {
   });
   test("hidden without URL", () => {
     expect(shouldShowWebResearchHint({ ...base, text: "no link here" })).toBe(false);
+  });
+});
+
+describe("dismiss state", () => {
+  test("stays dismissed while the input still contains a URL", () => {
+    expect(nextWebResearchHintDismissed(true, "Read https://example.com please")).toBe(true);
+  });
+
+  test("clears dismissal after the URL is removed", () => {
+    expect(nextWebResearchHintDismissed(true, "no link here")).toBe(false);
   });
 });
