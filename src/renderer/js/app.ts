@@ -38,6 +38,7 @@ import { updateDraft } from "./contextmeter.js";
 import { bindEvents as bindModelEvents } from "./models.js";
 import { compactConversation } from "./compact.js";
 import { initOrg } from "./org.js";
+import { initTurns } from "./turns.js";
 import { toggleOrgShare, toggleAutoLog } from "./projects.js";
 import { initSidebar } from "./sidebar/index.js";
 import { initCustomize } from "./customize.js";
@@ -205,6 +206,7 @@ async function startApp(settings) {
   initTools();
   initSkills();
   initToolUse();
+  initTurns();
   initSidebar();
   initSettingsHub();
   initCustomize();

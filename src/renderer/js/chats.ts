@@ -8,8 +8,10 @@ import { estimateContext } from "./contextmeter.js";
 import { loadRecents } from "./recents.js";
 import { maybeTitle } from "./titler.js";
 import { paintRecentsTitle } from "./views.js";
+import { detachAll, attachTurn } from "./turns.js";
 
 export async function selectChat(id) {
+  detachAll();
   state.current = await window.api.getChat(id);
   state.chat = (state.current.messages || []).map((m) => ({ ...m }));
   openConvo({
@@ -20,6 +22,7 @@ export async function selectChat(id) {
     placeholder: "Message…",
   });
   renderHistory(state.chat);
+  attachTurn(`chat:${id}`);
   estimateContext(state.current.model, state.chat);
   updateModelLock();
   await loadRecents();

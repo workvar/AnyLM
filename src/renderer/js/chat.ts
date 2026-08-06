@@ -1,17 +1,16 @@
 // Chat sending and streaming.
 import { el } from "./dom.js";
 import { state } from "./state.js";
-import { addMessage, addUserMessage, addThinking, setBubbleMarkdown } from "./views.js";
-import { createStreamRenderer } from "./stream.js";
+import { addMessage, addUserMessage } from "./views.js";
 import { updateModelLock } from "./convo.js";
 import { getSelectedModel } from "./dropdown.js";
 import { persistCurrentChat } from "./chats.js";
 import { persistProjectThread } from "./threads.js";
-import { setContextUsage } from "./contextmeter.js";
 import { getAttachments, getImageThumbs, hasAttachments, clearAttachments } from "./attach.js";
-import { attachTokenStats } from "./tokenstats.js";
 import { showDocConfirm, showFileCard } from "./file-cards.js";
 import { llmMessages } from "./messages.js";
+import { activeKey } from "./activity.js";
+import { runTurn, answerFromComposer, stopTurn } from "./turns.js";
 
 // Governance policy warnings (redactions, near-limit notices) surfaced inline.
 let govBound = false;
@@ -102,6 +101,11 @@ export async function sendMessage() {
   const text = input.value.trim();
   if ((!text && !hasAttachments()) || !state.current) return;
 
+  if (text && answerFromComposer(text)) {
+    input.value = "";
+    return;
+  }
+
   const model = getSelectedModel();
   if (!model || model === "No models found") {
     addMessage("assistant", "No model selected. Pull a model in Ollama, then pick it above.");
@@ -118,36 +122,31 @@ export async function sendMessage() {
   state.chat.push({ role: "user", content: text });
   updateModelLock(); // model is fixed once the conversation has started
 
-  // Projects inject context server-side; standalone chats have no project.
+  const key = activeKey();
   const projectId = state.mode === "project" ? state.current.id : null;
   const threadId = state.mode === "project" ? state.thread?.id : null;
 
-  const bubble = addThinking();
-  const stream = createStreamRenderer(bubble);
-  try {
-    const result = await window.api.chat(
-      { projectId, threadId, model, messages: llmMessages(state.chat), attachments, useTools },
-      (piece) => stream.push(piece)
-    );
-    stream.cancel();
-    const acc = stream.text();
-    setBubbleMarkdown(bubble, acc);
-    el("messages").scrollTop = el("messages").scrollHeight;
-    state.chat.push({ role: "assistant", content: acc });
-    if (result && result.usage) {
-      setContextUsage(result.usage);
-      attachTokenStats(bubble, result.usage);
-    }
-  } catch (e) {
-    stream.cancel();
-    bubble.classList.remove("thinking", "raw");
-    bubble.textContent = `Error: ${e.message}`;
-  }
+  await runTurn({
+    key,
+    mode: state.mode,
+    model,
+    messages: llmMessages(state.chat),
+    attachments,
+    useTools,
+    label: el("convo-name").value || "Chat",
+    placeholder: el("chat-input").placeholder,
+    projectId,
+    threadId,
+    chatId: state.mode === "chat" ? state.current.id : null,
+  });
+
   if (state.mode === "project") await persistProjectThread();
   else if (state.mode === "chat") await persistCurrentChat();
 }
 
+export function stopActive() {
+  const key = activeKey();
+  if (key) stopTurn(key);
+}
 
-// Stubs until newer chat WIP is restored (turns-based stop/send live elsewhere).
-export function stopActive() {}
 export function paintSendButton() {}

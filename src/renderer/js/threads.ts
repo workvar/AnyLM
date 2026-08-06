@@ -8,6 +8,7 @@ import { estimateContext } from "./contextmeter.js";
 import { loadRecents } from "./recents.js";
 import { maybeTitle } from "./titler.js";
 import { paintRecentsTitle } from "./views.js";
+import { detachAll, attachTurn } from "./turns.js";
 
 // Fetch (or initialise) the active project's threads without opening one.
 export async function fetchThreads() {
@@ -21,6 +22,7 @@ export async function fetchThreads() {
 
 // Open a thread in the conversation view.
 export async function openThread(threadId) {
+  detachAll();
   state.thread = await window.api.getThread(state.current.id, threadId);
   state.chat = (state.thread.messages || []).map((m) => ({ ...m }));
   openConvo({
@@ -31,6 +33,7 @@ export async function openThread(threadId) {
     placeholder: "Message your project model…",
   });
   renderHistory(state.chat);
+  attachTurn(`thread:${threadId}`);
   estimateContext(state.current.model, state.chat);
   updateModelLock();
   // Repaint recents so this thread shows as the selected item in the sidebar.

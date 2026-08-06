@@ -13,7 +13,7 @@ import { renderAsk, clearAsk } from "./ask-card.js";
 import { attachTokenStats } from "./tokenstats.js";
 import { setContextUsage } from "./contextmeter.js";
 import { maybeTitle } from "./titler.js";
-import { askArtifact } from "./messages.js";
+import { askArtifact, llmMessages } from "./messages.js";
 
 const turns = new Map<string, any>();
 const byRequest = new Map<string, any>();
@@ -205,7 +205,7 @@ export async function runTurn(ctx): Promise<void> {
         projectId: ctx.projectId,
         threadId: ctx.threadId,
         model: ctx.model,
-        messages: ctx.messages,
+        messages: llmMessages(ctx.messages),
         attachments: ctx.attachments,
         useTools: ctx.useTools,
       },
