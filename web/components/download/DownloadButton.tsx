@@ -20,12 +20,7 @@ export default function DownloadButton({ release }: Props) {
   if (!release) {
     return (
       <div className="flex flex-col items-center gap-2">
-        <a
-          href={RELEASES_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-full border border-white/15 px-7 py-3 font-medium text-white hover:bg-white/5"
-        >
+        <a href={RELEASES_URL} target="_blank" rel="noreferrer" className="btn-ghost">
           No build published yet
         </a>
         <p className="text-sm text-[var(--color-mist)]">
@@ -40,11 +35,17 @@ export default function DownloadButton({ release }: Props) {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <a
-        href={asset?.downloadUrl ?? "/download"}
-        className="rounded-full bg-[var(--color-slime)] px-8 py-3.5 text-base font-semibold text-black transition hover:bg-white"
-      >
+      <a href={asset?.downloadUrl ?? "/download"} className="btn-primary text-base">
         {asset ? `Download for ${platformName}` : "See downloads"}
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
+          <path
+            d="M7 17L17 7M10 7h7v7"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </a>
 
       <p className="text-sm text-[var(--color-mist)]">

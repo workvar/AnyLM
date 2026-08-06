@@ -4,7 +4,7 @@ export default function AssetRow({ asset }: { asset: ReleaseAsset }) {
   return (
     <a
       href={asset.downloadUrl}
-      className="group flex items-center justify-between gap-4 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 transition hover:border-[var(--color-slime)]/50 hover:bg-white/[0.05]"
+      className="group flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/30 px-4 py-3 transition hover:border-[var(--color-slime)]/50 hover:bg-black/45"
     >
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-white">{asset.label}</p>

@@ -1,8 +1,21 @@
 import type { Metadata } from "next";
+import { Space_Grotesk, Manrope } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/site/Nav";
 import Footer from "@/components/site/Footer";
 import { PRODUCT_NAME, TAGLINE } from "@/lib/config";
+
+const display = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const sans = Manrope({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -15,8 +28,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="grain min-h-screen antialiased">
+    <html lang="en" className={`${display.variable} ${sans.variable}`}>
+      <body className="grain min-h-dvh antialiased">
         <Nav />
         <main>{children}</main>
         <Footer />

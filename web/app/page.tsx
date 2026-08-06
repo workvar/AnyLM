@@ -1,5 +1,9 @@
 import Hero from "@/components/home/Hero";
-import MonsterScroll from "@/components/home/MonsterScroll";
+import Insights from "@/components/home/Insights";
+import ActivityStrip from "@/components/home/ActivityStrip";
+import Comparison from "@/components/home/Comparison";
+import EnhanceModels from "@/components/home/EnhanceModels";
+import Capabilities from "@/components/home/Capabilities";
 import Features from "@/components/home/Features";
 import CodeSample from "@/components/home/CodeSample";
 import { getLatestRelease } from "@/lib/github";
@@ -12,7 +16,11 @@ export default async function HomePage() {
   return (
     <>
       <Hero release={release} />
-      <MonsterScroll />
+      <Insights />
+      <ActivityStrip />
+      <Comparison />
+      <EnhanceModels />
+      <Capabilities />
       <Features />
       <CodeSample />
     </>

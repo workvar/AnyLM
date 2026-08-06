@@ -9,9 +9,9 @@ export default function ReleaseCard({ release, latest }: { release: Release; lat
   const groups = groupByPlatform(release);
 
   return (
-    <article className="rounded-2xl border border-white/8 bg-[var(--color-void-soft)] p-6">
+    <article className="glass rounded-3xl p-6 sm:p-7">
       <header className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="flex items-center gap-3 text-2xl font-semibold tracking-tight">
+        <h2 className="flex items-center gap-3 font-display text-2xl font-semibold tracking-tight">
           v{release.version}
           {latest ? (
             <span className="rounded-full bg-[var(--color-slime)] px-2.5 py-0.5 text-xs font-semibold text-black">

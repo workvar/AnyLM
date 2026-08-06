@@ -32,14 +32,14 @@ unauthenticated rate limit while developing.
 
 | Route       | What it does                                                       |
 | ----------- | ------------------------------------------------------------------ |
-| `/`         | Hero with a one-click download for the visitor's OS, the scroll animation, features |
+| `/`         | Glass hero with constellation, insights, comparison, capabilities catalog, features |
 | `/download` | Every asset in the latest release, grouped by platform and arch      |
 | `/releases` | Full version history, so older builds stay reachable                 |
 | `/api/releases`, `/api/releases/latest` | JSON, same data, for anything else that needs it |
 
-## The animation
+## Visual language
 
-`components/home/MonsterScroll.tsx` drives everything from a single scroll
-progress value: a small monster (one duplicated model process) drifts toward a
-larger one (the router), which opens its jaws, swallows it and settles into a
-single endpoint. `prefers-reduced-motion` swaps it for a static block of text.
+Dark glassmorphism with mint accents: pill nav, nebula glows, constellation
+backdrop, and frosted cards. Homepage content covers comparison vs peer desktop
+apps, how AnyLM enhances local models, and the full skills/tools catalog from
+the desktop app.
