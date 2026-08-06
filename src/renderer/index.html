@@ -119,13 +119,13 @@
         </section>
 
         <section id="convo-view" class="hidden">
-          <header id="convo-header">
-            <button id="sidebar-toggle" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
-            <button id="convo-back" class="icon-btn" title="Back" aria-label="Back">‹</button>
-            <input id="convo-name" class="name-input" />
-          </header>
-
+          <div id="convo-body">
           <div id="chat-col">
+            <header id="convo-header">
+              <button id="sidebar-toggle" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+              <button id="convo-back" class="icon-btn" title="Back" aria-label="Back">‹</button>
+              <input id="convo-name" class="name-input" />
+            </header>
             <div id="messages"></div>
             <div id="ctx-meter" class="ctx-meter hidden">
               <div class="ctx-track"><div id="ctx-bar" class="ctx-bar"></div></div>
@@ -176,6 +176,7 @@
             <input type="file" id="attach-image-input" accept="image/*" multiple hidden />
             <input type="file" id="attach-doc-input" accept=".txt,.md,.json,.csv,.log,.tsv,.yml,.yaml" multiple hidden />
             <input type="file" id="attach-folder-input" webkitdirectory multiple hidden />
+          </div>
           </div>
         </section>
         </section>

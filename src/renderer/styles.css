@@ -288,6 +288,7 @@ button.danger:not(.ghost):hover {
 #convo-header {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   padding: 12px 18px;
   border-bottom: 1px solid var(--border);
   gap: 10px;
@@ -299,6 +300,7 @@ button.danger:not(.ghost):hover {
   font-size: 18px;
   font-weight: 600;
   flex: 1;
+  text-align: left;
 }
 .name-input:focus {
   outline: none;
@@ -497,6 +499,15 @@ select {
 }
 
 /* Chat */
+#convo-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+#convo-body #chat-col {
+  flex: 1;
+  min-width: 0;
+}
 #chat-col {
   flex: 1;
   display: flex;

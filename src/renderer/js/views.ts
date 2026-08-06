@@ -1,6 +1,7 @@
 // Pure rendering helpers. They touch the DOM but hold no app logic.
 import { el, node } from "./dom.js";
 import { renderMarkdown } from "./markdown.js";
+import { state } from "./state.js";
 
 // Human-friendly relative time ("Updated 3h ago").
 export function relTime(iso) {
@@ -106,6 +107,15 @@ export function renderProjectChats(folders, threads, handlers) {
   if (!any) wrap.appendChild(node("div", "grid-empty", "No chats yet. Start one with “New chat”."));
 }
 
+// Patch a single sidebar row title without re-fetching or re-rendering the list.
+export function paintRecentsTitle(key: string, title: string) {
+  const it = state.recents?.find((r) => `${r.kind}:${r.id}` === key);
+  if (it) it.title = title;
+  const row = document.querySelector<HTMLElement>(`#recents-list li[data-conv-key="${key}"]`);
+  const titleEl = row?.querySelector(".conv-title");
+  if (titleEl) titleEl.textContent = title;
+}
+
 // Sidebar recents. handlers: { onOpen(item), onMenu(item, x, y) }
 export function renderRecents(items, activeKey, handlers) {
   const ul = el("recents-list");
@@ -117,6 +127,7 @@ export function renderRecents(items, activeKey, handlers) {
   for (const it of items) {
     const key = `${it.kind}:${it.id}`;
     const li = node("li", key === activeKey ? "active" : "");
+    li.dataset.convKey = key;
     li.appendChild(node("span", "conv-title", it.title || "New chat"));
     li.onclick = () => handlers.onOpen(it);
     li.oncontextmenu = (e) => {
