@@ -1,6 +1,7 @@
 // Models browser: browse, search, download, and manage Ollama models
 import { el, node, qsa } from "./dom.js";
 import { state } from "./state.js";
+import { setModelDropdown, getSelectedModel } from "./dropdown.js";
 
 // All available models (from popular registries)
 const POPULAR_MODELS = [
@@ -43,26 +44,43 @@ export function openModelsView() {
 }
 
 export function render() {
-  const query = el("models-search")?.value || "";
+  const query = (el("models-search")?.value || "").toLowerCase();
   const filter = state.modelsFilter || "all";
-  
-  const filtered = POPULAR_MODELS.filter(m => {
-    const matchesQuery = !query || m.display.toLowerCase().includes(query.toLowerCase()) || m.name.toLowerCase().includes(query.toLowerCase());
-    const isInstalled = installedModels.has(m.name);
-    const matchesFilter = filter === "all" || (filter === "installed" && isInstalled);
-    return matchesQuery && matchesFilter;
-  });
+
+  const installedCards = [...installedModels].map((name) => ({
+    name,
+    display: name,
+    description: "Installed on this device",
+    size: "—",
+    installedOnly: true,
+  }));
+
+  let rows;
+
+  if (filter === "installed") {
+    rows = installedCards.filter((m) => !query || m.name.toLowerCase().includes(query));
+  } else if (filter === "all") {
+    const popular = POPULAR_MODELS.filter(
+      (m) => !query || m.display.toLowerCase().includes(query) || m.name.toLowerCase().includes(query)
+    );
+    const extra = installedCards.filter((m) => !POPULAR_MODELS.some((p) => p.name === m.name));
+    rows = [...extra, ...popular].filter(
+      (m) => !query || m.display.toLowerCase().includes(query) || m.name.toLowerCase().includes(query)
+    );
+  } else {
+    rows = [];
+  }
 
   const container = el("models-container");
   container.innerHTML = "";
 
-  if (!filtered.length) {
-    container.appendChild(node("div", "grid-empty", 
+  if (!rows.length) {
+    container.appendChild(node("div", "grid-empty",
       filter === "installed" ? "No installed models" : "No models found"));
     return;
   }
 
-  for (const model of filtered) {
+  for (const model of rows) {
     const card = renderModelCard(model);
     container.appendChild(card);
   }
@@ -112,7 +130,7 @@ function renderModelCard(model) {
     cancelBtn.onclick = () => cancelDownload(model.name);
     actions.appendChild(cancelBtn);
   } else if (isInstalled) {
-    const deleteBtn = node("button", "danger small", "Delete");
+    const deleteBtn = node("button", "danger small", "Remove");
     deleteBtn.onclick = () => deleteModel(model.name);
     actions.appendChild(deleteBtn);
   } else {
@@ -160,16 +178,20 @@ function cancelDownload(modelName) {
 }
 
 async function deleteModel(modelName) {
-  const confirmed = confirm(`Delete ${modelName}? This cannot be undone.`);
+  const confirmed = confirm(`Remove ${modelName}? This cannot be undone.`);
   if (!confirmed) return;
 
   try {
     await window.api.deleteModel(modelName);
-    installedModels.delete(modelName);
-    await loadModels();
+    state.models = await window.api.listModels();
+    installedModels = new Set(state.models);
+    const current = getSelectedModel();
+    const nextSelected = state.models.includes(current) ? current : state.models[0];
+    setModelDropdown(state.models, nextSelected);
+    render();
   } catch (e) {
-    console.error(`Failed to delete ${modelName}:`, e);
-    alert(`Failed to delete ${modelName}: ${e.message}`);
+    console.error(`Failed to remove ${modelName}:`, e);
+    alert(`Failed to remove ${modelName}: ${e.message}`);
   }
 }
 
