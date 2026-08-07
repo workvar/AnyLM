@@ -1,6 +1,7 @@
 // Inline activity trail above the assistant bubble (live + collapsed history).
 import { node } from "./dom.js";
 import { formatThought } from "./activity-store.js";
+import { paintAgentTrail } from "./agent-trail.js";
 
 export function createTrailHost(): HTMLElement {
   return node("div", "activity-trail-host");
@@ -104,6 +105,12 @@ export function paintTrail(
       trail.appendChild(row);
     }
   }
+
+  // host.innerHTML = "" above wipes out any `.agent-trail` node a previous
+  // paintAgentTrail() call appended to this same host — re-add it so
+  // expanding/collapsing the plain trail doesn't permanently delete the
+  // agent-trail summary alongside it.
+  paintAgentTrail(host, events);
 }
 
 /** Collapsed summary; click toggles full read-only trail. */
@@ -120,4 +127,8 @@ export function paintCollapsed(host: HTMLElement, activity: MessageActivity): vo
     host.insertBefore(collapse, host.firstChild);
   };
   host.appendChild(btn);
+  // Same reasoning as in paintTrail: host.innerHTML = "" above would
+  // otherwise permanently drop the agent-trail summary the first time this
+  // (or the "Hide steps" handler above, which re-enters here) runs.
+  paintAgentTrail(host, activity.events);
 }

@@ -9,6 +9,7 @@ import { showView } from "./nav.js";
 import { appendAskAnswered } from "./turns.js";
 import { renderFileCard } from "./file-cards.js";
 import { paintCollapsed, createTrailHost } from "./activity-trail.js";
+import { paintAgentTrail } from "./agent-trail.js";
 
 export function showEmpty() {
   state.mode = null;
@@ -56,6 +57,10 @@ export async function renderHistory(messages) {
         const host = createTrailHost();
         el("messages").appendChild(host);
         paintCollapsed(host, m.activity);
+        // Same as live turns (see turns.ts collapseTrail): restore the
+        // agent-trail summary alongside the collapsed trail so reopening a
+        // chat doesn't silently lose it.
+        paintAgentTrail(host, m.activity.events || []);
       }
       const bubble = addMessage("assistant", "");
       setBubbleMarkdown(bubble, m.content);

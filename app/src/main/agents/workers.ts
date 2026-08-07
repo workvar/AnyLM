@@ -190,8 +190,15 @@ async function runTool(
  *  surface. Non-interactive tool execution still runs fully in parallel. */
 export function makeWorkers(deps: WorkersDeps): (step: AgentStep) => Promise<StepResult> {
   const lock = createMutex();
-  const serialConfirm: ConfirmFn = (tool, args) => lock(() => deps.confirm(tool, args));
-  const serialAsk: AskFn = (payload) => lock(() => deps.ask(payload));
+  // Re-check isCancelled() after acquiring the lock, not just before queuing:
+  // a confirm/ask queued behind another worker's prompt has no token yet
+  // when the user hits Stop, so rejectPendingForChat (ipc.ts) can't reach it.
+  // Without this, the queued prompt fires for real once the lock frees up —
+  // surfacing a confirm dialog after the turn was already cancelled.
+  const serialConfirm: ConfirmFn = (tool, args) =>
+    lock(() => (deps.isCancelled() ? Promise.resolve(false) : deps.confirm(tool, args)));
+  const serialAsk: AskFn = (payload) =>
+    lock(() => (deps.isCancelled() ? Promise.resolve(null) : deps.ask(payload)));
 
   return async function runStep(step: AgentStep): Promise<StepResult> {
     try {

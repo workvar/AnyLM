@@ -283,6 +283,58 @@ describe("makeWorkers: confirm/ask serialization", () => {
     expect(maxActive).toBe(1);
   });
 
+  test("a confirm queued behind the mutex resolves false (not deps.confirm) once cancelled", async () => {
+    let confirmCalls = 0;
+    let cancelled = false;
+    let releaseFirst: (() => void) | null = null;
+    const firstGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const approvals: boolean[] = [];
+    const runStep = makeWorkers(
+      baseDeps({
+        toolDefs: [
+          {
+            type: "function",
+            function: { name: "risky_tool", description: "", parameters: { type: "object", properties: {}, required: [] } },
+          },
+        ],
+        chat: async () => ({
+          text: "",
+          promptTokens: 0,
+          completionTokens: 0,
+          toolCalls: [{ function: { name: "risky_tool", arguments: {} } }],
+        }),
+        ownsSkill: () => false,
+        execTool: async (_name, _args, confirm) => {
+          approvals.push(!!(await confirm({ name: "risky_tool", description: "" }, {})));
+          return "done";
+        },
+        isCancelled: () => cancelled,
+        confirm: async () => {
+          confirmCalls += 1;
+          // First caller holds the lock until we've simulated Stop and
+          // queued the second worker's confirm behind it.
+          await firstGate;
+          return true;
+        },
+      })
+    );
+
+    const first = runStep({ id: "a", goal: "step a", dependsOn: [], kind: "tool" });
+    // Give the first confirm() a tick to register and take the lock.
+    await delay(1);
+    const second = runStep({ id: "b", goal: "step b", dependsOn: [], kind: "tool" });
+    // User hits Stop while the second worker's confirm is still queued
+    // behind the first (no token registered for it yet).
+    cancelled = true;
+    releaseFirst?.();
+
+    await Promise.all([first, second]);
+    expect(confirmCalls).toBe(1); // deps.confirm never called for the queued (cancelled) one
+    expect(approvals).toEqual([true, false]); // first (in-flight) approved, second (queued) auto-denied
+  });
+
   test("non-interactive tool execution still runs in parallel (no serialization)", async () => {
     let active = 0;
     let maxActive = 0;

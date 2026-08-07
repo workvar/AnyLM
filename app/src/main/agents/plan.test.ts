@@ -25,3 +25,19 @@ test("assignKinds maps retrieve-ish goals", () => {
   });
   expect(p.steps[0].kind).toBe("retrieve");
 });
+
+test("assignKinds does not route a bare 'document' mention to retrieve", () => {
+  const p = assignKinds({
+    steps: [{ id: "a", goal: "Email the signed document to Bob", dependsOn: [], kind: "tool" }],
+  });
+  expect(p.steps[0].kind).not.toBe("retrieve");
+  expect(p.steps[0].kind).toBe("tool");
+});
+
+test("assignKinds does not route document generation to retrieve", () => {
+  const p = assignKinds({
+    steps: [{ id: "a", goal: "Generate a PDF document from the findings", dependsOn: [], kind: "tool" }],
+  });
+  expect(p.steps[0].kind).not.toBe("retrieve");
+  expect(p.steps[0].kind).toBe("tool");
+});

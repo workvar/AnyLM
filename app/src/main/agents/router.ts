@@ -1,6 +1,10 @@
 import type { AgentPlan, AgentStepKind } from "./types";
 
-const RETRIEVE_PATTERN = /retriev|document|rag|project (doc|context)|knowledge base/i;
+// Deliberately does NOT match a bare "document" — that word alone shows up
+// in plenty of tool goals ("email the signed document", "generate a PDF
+// document") that have nothing to do with retrieval. Require a stronger,
+// retrieval-specific phrase instead.
+const RETRIEVE_PATTERN = /retriev|search (the )?(docs|documents)|rag|project (doc|context)|knowledge base/i;
 const MEMORY_PATTERN = /memor|prior (chat|decision)|what we (said|decided)/i;
 const SYNTHESIZE_PATTERN = /synthes|final answer|write the reply|compose/i;
 

@@ -476,6 +476,11 @@ function registerIpc() {
       if (warnings.length) send("chat:governance", { id, warnings });
 
       const blocks = [];
+      // Also collected into `toolInstructionBlocks` (below) so multi-agent
+      // tool workers (workers.ts) see the same context the single-agent
+      // loop does — declared up front since the attached-document block
+      // needs to land in both.
+      const toolInstructionBlocks = [];
 
       if (project) {
         // Project's own context (retrieval, else summaries).
@@ -504,18 +509,23 @@ function registerIpc() {
         if (gen.length) blocks.push(formatGeneral(gen));
       }
 
-      // Attached documents become a per-turn context block.
+      // Attached documents become a per-turn context block. Also pushed into
+      // toolInstructionBlocks: without this, a multi-agent tool worker
+      // asked to "summarize this document" has no way to see the document
+      // text at all (it only gets step.goal), and produces a confidently
+      // wrong answer instead of using the attachment.
       if (attachments && attachments.docs && attachments.docs.length) {
-        blocks.push(
-          attachments.docs.map((d) => `Attached document "${d.name}":\n${d.text}`).join("\n\n")
-        );
+        const docsBlock = attachments.docs
+          .map((d) => `Attached document "${d.name}":\n${d.text}`)
+          .join("\n\n");
+        blocks.push(docsBlock);
+        toolInstructionBlocks.push(docsBlock);
       }
 
       // Enabled skills add their usage instructions when tools are on. Also
       // collected into `toolInstructionBlocks` so the multi-agent tool
       // worker (workers.ts) gets the same tool-usage guidance the
       // single-agent loop does — not just the tool definitions themselves.
-      const toolInstructionBlocks = [];
       if (useTools) {
         const follow = followUpPromptBlock();
         if (follow) {
