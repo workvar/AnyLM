@@ -336,6 +336,45 @@
 
                 <div class="setting-row">
                 <div class="label">
+                Multi-agent
+                <small>On complex chats, AnyLM can plan and run steps in parallel.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="agents-enabled" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Max parallel steps
+                <small>How many agent steps can run at once (1–8).</small>
+                </div>
+                <input type="number" id="agents-max-parallel" class="auth-input agents-max-parallel" min="1" max="8" />
+                </div>
+
+                <div class="setting-row">
+                <div class="label">Planner model</div>
+                <select id="agents-model-planner"><option value="">Same as chat</option></select>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">Router model</div>
+                <select id="agents-model-router"><option value="">Same as chat</option></select>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">Tool executor model</div>
+                <select id="agents-model-tool"><option value="">Same as chat</option></select>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">Synthesize model</div>
+                <select id="agents-model-synth"><option value="">Same as chat</option></select>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
                 Embedding model
                 <small id="embed-status">Checking…</small>
                 </div>

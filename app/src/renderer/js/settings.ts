@@ -1,9 +1,16 @@
-// General settings panel: theme, updates, notifications, knowledge.
+// General settings panel: theme, updates, notifications, knowledge, agents.
 import { el, qsa } from "./dom.js";
 import { applyTheme } from "./theme.js";
 import { checkNow } from "./updates/index.js";
 
 let settings: AppSettings = { theme: "system", checkUpdatesOnLaunch: null } as AppSettings;
+
+const AGENT_MODEL_SELECTS: { id: string; key: keyof AgentModelMap }[] = [
+  { id: "agents-model-planner", key: "planner" },
+  { id: "agents-model-router", key: "router" },
+  { id: "agents-model-tool", key: "toolExecutor" },
+  { id: "agents-model-synth", key: "synthesize" },
+];
 
 function paintThemeSeg() {
   for (const b of qsa("#theme-seg button")) {
@@ -20,9 +27,48 @@ async function refreshKnowledge() {
   el("knowledge-count").textContent = `${n} chunk${n === 1 ? "" : "s"} stored`;
 }
 
+function fillModelSelect(selectId: string, models: string[], selected: string | null) {
+  const select = el(selectId);
+  select.replaceChildren();
+  const defaultOpt = document.createElement("option");
+  defaultOpt.value = "";
+  defaultOpt.textContent = "Same as chat";
+  select.appendChild(defaultOpt);
+  for (const m of models) {
+    const opt = document.createElement("option");
+    opt.value = m;
+    opt.textContent = m;
+    select.appendChild(opt);
+  }
+  select.value = selected ?? "";
+}
+
+async function populateAgentModelSelects() {
+  let models: string[] = [];
+  try {
+    models = await window.api.listModels();
+  } catch (e) {
+    console.error("Failed to load models for agents settings:", e);
+  }
+  const agentModels = settings.agents?.models;
+  for (const { id, key } of AGENT_MODEL_SELECTS) {
+    fillModelSelect(id, models, agentModels?.[key] ?? null);
+  }
+}
+
+function paintAgentsSettings() {
+  const agents = settings.agents;
+  el("agents-enabled").checked = agents?.enabled !== false;
+  el("agents-max-parallel").value = String(agents?.maxParallel ?? 2);
+  for (const { id, key } of AGENT_MODEL_SELECTS) {
+    el(id).value = agents?.models?.[key] ?? "";
+  }
+}
+
 /** Re-paint general panel values when the hub opens that section. */
 export function refreshSettingsGeneral() {
   refreshKnowledge();
+  void populateAgentModelSelects();
 }
 
 function bind() {
@@ -51,6 +97,17 @@ function bind() {
     await window.api.knowledgeClear();
     await refreshKnowledge();
   };
+
+  el("agents-enabled").onchange = (e) =>
+    save({ agents: { enabled: (e.target as UiElement).checked } });
+  el("agents-max-parallel").onchange = (e) =>
+    save({ agents: { maxParallel: Number((e.target as UiElement).value) } });
+  for (const { id, key } of AGENT_MODEL_SELECTS) {
+    el(id).onchange = (e) => {
+      const v = (e.target as UiElement).value;
+      save({ agents: { models: { [key]: v || null } } });
+    };
+  }
 }
 
 // Load settings, apply theme, and reflect values in the UI.
@@ -68,6 +125,8 @@ export async function initSettings() {
     notifyInterventions.checked = settings.notifyInterventions !== false;
   }
   el("report-frequency").value = settings.reportFrequency || "off";
+  paintAgentsSettings();
+  await populateAgentModelSelects();
   el("settings-version").textContent = `AnyLM v${await window.api.getVersion()}`;
   bind();
   return settings;

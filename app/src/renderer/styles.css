@@ -1488,6 +1488,11 @@ button.full {
   font-size: 12px;
   margin-top: 2px;
 }
+.agents-max-parallel {
+  width: 4rem;
+  flex: none;
+  text-align: center;
+}
 .modal-foot {
   display: flex;
   justify-content: flex-end;
