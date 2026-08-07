@@ -25,7 +25,7 @@ export async function runOrchestratedTurn(
 
   deps.act({
     kind: "agent:plan",
-    steps: steps.map((s) => ({ id: s.id, goal: s.goal, kind: s.kind })),
+    steps: steps.map((s) => ({ id: s.id, goal: s.goal, stepKind: s.kind })),
   });
 
   const runnableSteps = steps.filter((s) => s.kind !== "synthesize");
@@ -48,7 +48,7 @@ export async function runOrchestratedTurn(
         kind: "agent:step",
         id: step.id,
         goal: step.goal,
-        kind: step.kind,
+        stepKind: step.kind,
         parallelGroup,
         status: "running",
       });
@@ -78,7 +78,7 @@ export async function runOrchestratedTurn(
         kind: "agent:step",
         id: step.id,
         goal: step.goal,
-        kind: step.kind,
+        stepKind: step.kind,
         parallelGroup,
         status: result.ok ? "done" : "error",
         ...(result.error ? { detail: result.error } : {}),

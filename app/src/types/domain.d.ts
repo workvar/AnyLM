@@ -101,12 +101,12 @@ type ActivityEvent =
       toolCount: number;
       summary: string;
     }
-  | { kind: "agent:plan"; steps: { id: string; goal: string; kind: string }[] }
+  | { kind: "agent:plan"; steps: { id: string; goal: string; stepKind: string }[] }
   | {
       kind: "agent:step";
       id: string;
       goal: string;
-      kind: string;
+      stepKind: string;
       parallelGroup: number;
       status: "running" | "done" | "error";
       detail?: string;
