@@ -3,6 +3,7 @@
 import { app } from "electron";
 import * as fs from "fs";
 import * as path from "path";
+import { clampMaxParallel } from "./agents/max-parallel";
 import { env } from "./env";
 
 const DEFAULTS: AppSettings = {
@@ -73,7 +74,7 @@ function write(patch: Partial<AppSettings>): AppSettings {
       ...prev.agents,
       ...patch.agents,
       models: { ...prev.agents.models, ...(patch.agents.models || {}) },
-      maxParallel: Math.max(1, Number(patch.agents.maxParallel ?? prev.agents.maxParallel) || 2),
+      maxParallel: clampMaxParallel(patch.agents.maxParallel ?? prev.agents.maxParallel),
     };
   }
   fs.writeFileSync(filePath(), JSON.stringify(next, null, 2));
