@@ -973,6 +973,46 @@ select {
   content: "▾";
 }
 
+/* Collapsed-by-default multi-agent plan summary (agent-trail.ts) */
+.agent-trail {
+  margin: 2px 0 0;
+}
+.agent-trail-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  list-style: none;
+}
+.agent-trail-summary::-webkit-details-marker {
+  display: none;
+}
+.agent-trail-summary::before {
+  content: "▸";
+  font-size: 10px;
+  opacity: 0.7;
+}
+.agent-trail[open] > .agent-trail-summary::before {
+  content: "▾";
+}
+.agent-trail-summary:hover {
+  color: var(--text);
+}
+.agent-trail-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0 2px 15px;
+}
+.agent-trail-line {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 /* Thinking / typing indicator */
 .typing {
   display: inline-flex;

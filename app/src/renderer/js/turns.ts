@@ -17,6 +17,7 @@ import { askArtifact, fileArtifact, llmMessages } from "./messages.js";
 import { renderFileCard } from "./file-cards.js";
 import { applyActivity, buildSummary, toolCountOf, thoughtMsOf, formatThought } from "./activity-store.js";
 import { createTrailHost, paintTrail, paintCollapsed } from "./activity-trail.js";
+import { paintAgentTrail } from "./agent-trail.js";
 import { paintWorkingStrip, setWorkingStripActions } from "./working-strip.js";
 
 const turns = new Map<string, any>();
@@ -107,6 +108,9 @@ function stripLabel(turn): string {
     if (ev.kind === "thinking" && ev.phase === "start") {
       return formatThought(thoughtTickMs(turn) ?? 0);
     }
+    if (ev.kind === "agent:merge") return "Combining results…";
+    if (ev.kind === "agent:step" && ev.status === "running") return `${ev.goal} (${ev.stepKind})`;
+    if (ev.kind === "agent:plan") return "Planning…";
   }
   if (turn.pendingAsk) return "Waiting for your answer…";
   return "Working…";
@@ -134,6 +138,7 @@ function repaintTrail(turn): void {
       onAllow: (token) => replyConfirm(turn, token, true),
       onDeny: (token) => replyConfirm(turn, token, false),
     });
+    paintAgentTrail(turn.trailHost, turn.events || []);
   }
   syncWorkingStrip();
 }
@@ -146,6 +151,7 @@ function collapseTrail(turn): void {
   if (meta) {
     turn.activityMeta = meta;
     paintCollapsed(turn.trailHost, meta);
+    paintAgentTrail(turn.trailHost, meta.events || []);
   } else {
     turn.trailHost.innerHTML = "";
   }
