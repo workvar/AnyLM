@@ -29,6 +29,13 @@ import * as graph from "./graph";
 import * as modelCatalog from "./model-catalog";
 import { labelFor, detailFor } from "./activity-labels";
 import { activitySend, createThoughtTimer } from "./activity";
+import { leanComplexity } from "./agents/complexity";
+import { classifyComplexity } from "./agents/classify";
+import { planTurn } from "./agents/planner";
+import { assignKinds } from "./agents/router";
+import { runOrchestratedTurn } from "./agents/orchestrator";
+import { resolveAgentSettings, modelForRole } from "./agents/settings";
+import { makeWorkers } from "./agents/workers";
 
 // Pending risky-tool confirmations, keyed by a one-time token → { resolve, id }.
 const pendingConfirms = new Map();
@@ -590,6 +597,194 @@ function registerIpc() {
           send("chat:ask", { id, token, ...payload });
         });
 
+      // Shared turn-completion logic — meter usage, tell the renderer the
+      // turn is done, and persist the exchange. Used by both the
+      // multi-agent orchestrator's success path and the single-agent loop
+      // below, so the two paths behave identically once a final answer
+      // exists.
+      const finishTurn = async (
+        text: string,
+        totalPrompt: number,
+        totalCompletion: number,
+        stopped: boolean
+      ) => {
+        // Meter real token consumption against the user's limits/budget.
+        governance.report(
+          useModel,
+          totalPrompt || estimateTokens(full),
+          totalCompletion || Math.round(text.length / 4)
+        );
+        scheduler.checkSoon(); // fire limit alerts promptly if a threshold was crossed
+
+        // Compliance logging: stored server-side only for orgs that enabled it.
+        if (lastUser && text) {
+          auth
+            .request("POST", "/logs", {
+              model: useModel,
+              prompt: lastUser.content,
+              response: text,
+              flags: warnings,
+            })
+            .catch(() => {});
+        }
+
+        // Context-window utilization: prompt sent + the new reply.
+        const ctx = await modelContext(useModel);
+        const tokens =
+          (totalPrompt || estimateTokens(full)) +
+          (totalCompletion || Math.round(text.length / 4));
+        const percent = Math.min(100, Math.round((tokens / ctx) * 100));
+        {
+          const thoughtMs = thought.totalMs();
+          act({ kind: "done", thoughtMs, toolCount: toolsRun, summary: summaryOf(thoughtMs, toolsRun) });
+        }
+        send("chat:done", {
+          id,
+          full: text,
+          stopped,
+          usage: {
+            tokens,
+            ctx,
+            percent,
+            promptTokens: totalPrompt || estimateTokens(full),
+            completionTokens: totalCompletion || Math.round(text.length / 4),
+            measured: !!(totalPrompt || totalCompletion), // real Ollama counts vs ~4 chars/token estimate
+          },
+        });
+
+        // Persist the turn: project chats build shared project memory; standalone
+        // chats feed the general knowledge base.
+        if (project && lastUser && text) {
+          memory
+            .remember({ projectId: project.id, threadId, userText: lastUser.content, assistantText: text })
+            .catch(() => {});
+          // Decisions log is opt-in per project (Settings → "Auto-log exchanges").
+          if (project.autoLog) {
+            projectFiles.appendLog(project.id, { userText: lastUser.content, assistantText: text });
+          }
+        } else if (!project && lastUser && text) {
+          vectorstore.add([{ text: `${lastUser.content}\n${text}`, source: "chat" }]).catch(() => {});
+        }
+      };
+
+      // --- Multi-agent gate --------------------------------------------
+      // Cheap heuristic first (leanComplexity, no model call); an LLM
+      // classify only runs for the ambiguous middle ground. Simple turns
+      // and agents.enabled === false always stay on the single-agent path
+      // below. A planner fallback (fellBack) also falls through below.
+      const agentCfg = resolveAgentSettings(settings.read());
+      const lastText = (lastUser && lastUser.content) || "";
+      let useMulti = false;
+      if (agentCfg.enabled && lastText) {
+        const lean = leanComplexity({
+          text: lastText,
+          useTools: !!useTools,
+          hasProject: !!project,
+          hasAttachments: !!(
+            attachments &&
+            ((attachments.docs && attachments.docs.length) ||
+              (attachments.images && attachments.images.length))
+          ),
+        });
+        if (lean === "complex") {
+          useMulti = true;
+        } else if (lean === "ambiguous") {
+          try {
+            const mode = await classifyComplexity({
+              model: modelForRole(agentCfg, "router", useModel),
+              text: lastText,
+              preferMulti: !!useTools || !!project,
+              generate: ollama.generate,
+            });
+            useMulti = mode === "multi";
+          } catch {
+            useMulti = !!useTools || !!project;
+          }
+        }
+      }
+
+      if (useMulti) {
+        act({ kind: "status", text: "Planning…" });
+        const runStep = makeWorkers({
+          project,
+          threadId,
+          toolModel: modelForRole(agentCfg, "toolExecutor", useModel),
+          toolDefs,
+          skillToolAllow,
+          confirm,
+          ask,
+          act,
+          onFile: (file) => send("chat:file", { id, ...file }),
+          onToolCall: () => {
+            toolsRun += 1;
+          },
+          isCancelled: () => cancelledChats.has(id),
+        });
+
+        let multiPrompt = 0;
+        let multiCompletion = 0;
+        const orchResult = await runOrchestratedTurn(lastText, {
+          maxParallel: agentCfg.maxParallel,
+          planTurn: () =>
+            planTurn({
+              model: modelForRole(agentCfg, "planner", useModel),
+              userText: lastText,
+              generate: ollama.generate,
+            }),
+          assignKinds,
+          runStep,
+          synthesize: async (_ctx, results) => {
+            const notes = results
+              .map(
+                (r, i) =>
+                  `Worker ${i + 1} (${r.ok ? "ok" : "error"}): ${r.output || r.error || "(no output)"}`
+              )
+              .join("\n\n");
+            const synthMessages = [
+              ...full,
+              {
+                role: "system",
+                content:
+                  `Findings gathered by worker agents for this turn:\n\n${notes}\n\n` +
+                  `Use these findings to write the final reply to the user. Do not mention ` +
+                  `that the work was delegated to worker agents.`,
+              },
+            ];
+            thought.start();
+            thinkingOpen = true;
+            act({ kind: "thinking", phase: "start" });
+            let wroteStatus = false;
+            const onPiece = (piece: string) => {
+              if (!wroteStatus) {
+                wroteStatus = true;
+                endThinking();
+                act({ kind: "status", text: "Writing reply…" });
+              }
+              send("chat:chunk", { id, text: piece });
+            };
+            const synthModel = modelForRole(agentCfg, "synthesize", useModel);
+            const r = await ollama.chatStream(synthModel, synthMessages, onPiece);
+            endThinking();
+            multiPrompt = r.promptTokens || 0;
+            multiCompletion = r.completionTokens || 0;
+            return r.text || "";
+          },
+          act,
+          isCancelled: () => cancelledChats.has(id),
+        });
+
+        if (!orchResult.fellBack) {
+          // isCancelled() returning true mid-run short-circuits the
+          // orchestrator with fellBack:false and empty text — treat that
+          // the same way the single-agent loop treats a stop request.
+          const wasCancelled = cancelledChats.has(id);
+          if (wasCancelled) cancelledChats.delete(id);
+          await finishTurn(orchResult.text, multiPrompt, multiCompletion, wasCancelled);
+          return;
+        }
+        act({ kind: "status", text: "Falling back to standard chat…" });
+      }
+
       let result;
       let totalPrompt = 0;
       let totalCompletion = 0;
@@ -675,64 +870,7 @@ function registerIpc() {
         }
       }
       const text = (result && result.text) || "";
-
-      // Meter real token consumption against the user's limits/budget.
-      governance.report(
-        useModel,
-        totalPrompt || estimateTokens(full),
-        totalCompletion || Math.round(text.length / 4)
-      );
-      scheduler.checkSoon(); // fire limit alerts promptly if a threshold was crossed
-
-      // Compliance logging: stored server-side only for orgs that enabled it.
-      if (lastUser && text) {
-        auth
-          .request("POST", "/logs", {
-            model: useModel,
-            prompt: lastUser.content,
-            response: text,
-            flags: warnings,
-          })
-          .catch(() => {});
-      }
-
-      // Context-window utilization: prompt sent + the new reply.
-      const ctx = await modelContext(useModel);
-      const tokens =
-        (totalPrompt || estimateTokens(full)) +
-        (totalCompletion || Math.round(text.length / 4));
-      const percent = Math.min(100, Math.round((tokens / ctx) * 100));
-      {
-        const thoughtMs = thought.totalMs();
-        act({ kind: "done", thoughtMs, toolCount: toolsRun, summary: summaryOf(thoughtMs, toolsRun) });
-      }
-      send("chat:done", {
-        id,
-        full: text,
-        stopped,
-        usage: {
-          tokens,
-          ctx,
-          percent,
-          promptTokens: totalPrompt || estimateTokens(full),
-          completionTokens: totalCompletion || Math.round(text.length / 4),
-          measured: !!(totalPrompt || totalCompletion), // real Ollama counts vs ~4 chars/token estimate
-        },
-      });
-
-      // Persist the turn: project chats build shared project memory; standalone
-      // chats feed the general knowledge base.
-      if (project && lastUser && text) {
-        memory
-          .remember({ projectId: project.id, threadId, userText: lastUser.content, assistantText: text })
-          .catch(() => {});
-        // Decisions log is opt-in per project (Settings → "Auto-log exchanges").
-        if (project.autoLog) {
-          projectFiles.appendLog(project.id, { userText: lastUser.content, assistantText: text });
-        }
-      } else if (!project && lastUser && text) {
-        vectorstore.add([{ text: `${lastUser.content}\n${text}`, source: "chat" }]).catch(() => {});
-      }
+      await finishTurn(text, totalPrompt, totalCompletion, stopped);
     } catch (e) {
       if (activityStarted) {
         // Close an open thinking span before done so Task 5 ticker is not stuck.
