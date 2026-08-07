@@ -40,6 +40,16 @@ const DEFAULTS: AppSettings = {
   proxyPort: env.proxyPort,
   // Customize: personal context prepended to every chat (see user-context.ts).
   userContext: { enabled: true, name: "", about: "", work: "", style: "", extra: "" },
+  agents: {
+    enabled: true,
+    maxParallel: 2,
+    models: {
+      planner: null,
+      router: null,
+      toolExecutor: null,
+      synthesize: null,
+    },
+  },
 };
 
 function filePath(): string {
@@ -56,7 +66,16 @@ function read(): AppSettings {
 }
 
 function write(patch: Partial<AppSettings>): AppSettings {
-  const next: AppSettings = { ...read(), ...patch };
+  const prev = read();
+  const next: AppSettings = { ...prev, ...patch };
+  if (patch.agents) {
+    next.agents = {
+      ...prev.agents,
+      ...patch.agents,
+      models: { ...prev.agents.models, ...(patch.agents.models || {}) },
+      maxParallel: Math.max(1, Number(patch.agents.maxParallel ?? prev.agents.maxParallel) || 2),
+    };
+  }
   fs.writeFileSync(filePath(), JSON.stringify(next, null, 2));
   return next;
 }

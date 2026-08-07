@@ -7,6 +7,19 @@
 type ThemePreference = "system" | "light" | "dark";
 type ReportFrequency = "off" | "daily" | "weekly" | "monthly";
 
+interface AgentModelMap {
+  planner: string | null;
+  router: string | null;
+  toolExecutor: string | null;
+  synthesize: string | null;
+}
+
+interface AgentSettings {
+  enabled: boolean;
+  maxParallel: number;
+  models: AgentModelMap;
+}
+
 interface AppSettings {
   theme: ThemePreference;
   checkUpdatesOnLaunch: boolean | null;
@@ -31,6 +44,7 @@ interface AppSettings {
   proxyPort: number;
   /** Customize: personal context added to every chat. */
   userContext: UserContext;
+  agents: AgentSettings;
 }
 
 interface UserContext {
@@ -86,7 +100,18 @@ type ActivityEvent =
       thoughtMs: number;
       toolCount: number;
       summary: string;
-    };
+    }
+  | { kind: "agent:plan"; steps: { id: string; goal: string; kind: string }[] }
+  | {
+      kind: "agent:step";
+      id: string;
+      goal: string;
+      kind: string;
+      parallelGroup: number;
+      status: "running" | "done" | "error";
+      detail?: string;
+    }
+  | { kind: "agent:merge" };
 
 interface MessageActivity {
   thoughtMs: number;
