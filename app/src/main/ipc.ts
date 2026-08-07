@@ -511,20 +511,37 @@ function registerIpc() {
         );
       }
 
-      // Enabled skills add their usage instructions when tools are on.
+      // Enabled skills add their usage instructions when tools are on. Also
+      // collected into `toolInstructionBlocks` so the multi-agent tool
+      // worker (workers.ts) gets the same tool-usage guidance the
+      // single-agent loop does — not just the tool definitions themselves.
+      const toolInstructionBlocks = [];
       if (useTools) {
         const follow = followUpPromptBlock();
-        if (follow) blocks.push(follow);
+        if (follow) {
+          blocks.push(follow);
+          toolInstructionBlocks.push(follow);
+        }
         const skillBlock = skillsRegistry.instructionsBlock(extras);
-        if (skillBlock) blocks.push(skillBlock);
+        if (skillBlock) {
+          blocks.push(skillBlock);
+          toolInstructionBlocks.push(skillBlock);
+        }
         // Working folder: tells the model where file tools operate.
         const wsBlock = workspace.promptBlock();
-        if (wsBlock) blocks.push(wsBlock);
+        if (wsBlock) {
+          blocks.push(wsBlock);
+          toolInstructionBlocks.push(wsBlock);
+        }
         // "Create a PDF" etc: nudge the model to call generate_document
         // instead of pasting the document into its reply.
         if (lastUser) {
           const wantedFormat = documentIntent.detect(lastUser.content);
-          if (wantedFormat) blocks.push(documentIntent.promptBlock(wantedFormat));
+          if (wantedFormat) {
+            const docBlock = documentIntent.promptBlock(wantedFormat);
+            blocks.push(docBlock);
+            toolInstructionBlocks.push(docBlock);
+          }
         }
       }
 
@@ -672,6 +689,23 @@ function registerIpc() {
       // classify only runs for the ambiguous middle ground. Simple turns
       // and agents.enabled === false always stay on the single-agent path
       // below. A planner fallback (fellBack) also falls through below.
+      //
+      // `multiPromptTokens`/`multiCompletionTokens` accumulate every model
+      // call the gate/orchestrator makes on this turn — classify, planTurn
+      // (including its repair retry), every worker tool-loop round, and the
+      // final synthesis — so metering doesn't silently drop the cost of the
+      // heaviest-usage turns. They're added into whichever path's
+      // `finishTurn` call ends up happening, single or multi, since a
+      // classify() call can run even when the turn ultimately falls back.
+      let multiPromptTokens = 0;
+      let multiCompletionTokens = 0;
+      const trackedGenerate = async (genModel: string, prompt: string): Promise<string> => {
+        const r = await ollama.generateWithUsage(genModel, prompt);
+        multiPromptTokens += r.promptTokens || 0;
+        multiCompletionTokens += r.completionTokens || 0;
+        return r.text;
+      };
+
       const agentCfg = resolveAgentSettings(settings.read());
       const lastText = (lastUser && lastUser.content) || "";
       let useMulti = false;
@@ -694,7 +728,7 @@ function registerIpc() {
               model: modelForRole(agentCfg, "router", useModel),
               text: lastText,
               preferMulti: !!useTools || !!project,
-              generate: ollama.generate,
+              generate: trackedGenerate,
             });
             useMulti = mode === "multi";
           } catch {
@@ -711,6 +745,7 @@ function registerIpc() {
           toolModel: modelForRole(agentCfg, "toolExecutor", useModel),
           toolDefs,
           skillToolAllow,
+          toolSystemPrompt: toolInstructionBlocks.length ? toolInstructionBlocks.join("\n\n---\n\n") : null,
           confirm,
           ask,
           act,
@@ -721,19 +756,31 @@ function registerIpc() {
           isCancelled: () => cancelledChats.has(id),
         });
 
-        let multiPrompt = 0;
-        let multiCompletion = 0;
+        // Note: a thrown planTurn (Ollama down, missing model, etc.) is
+        // soft-failed to fellBack *inside* runOrchestratedTurn (see
+        // orchestrator.ts), not caught here. Catching broadly at this call
+        // site would also swallow a failure from `synthesize` — which can
+        // run after tool steps already had real side effects (sent an
+        // email, created a calendar event) — and falling back to the
+        // single-agent loop at that point would re-run the model and risk
+        // re-executing those same tools. So only the planning phase soft-
+        // fails; a post-planning throw here is a genuine error and should
+        // surface as chat:error like any other mid-turn failure.
         const orchResult = await runOrchestratedTurn(lastText, {
           maxParallel: agentCfg.maxParallel,
           planTurn: () =>
             planTurn({
               model: modelForRole(agentCfg, "planner", useModel),
               userText: lastText,
-              generate: ollama.generate,
+              generate: trackedGenerate,
             }),
           assignKinds,
           runStep,
           synthesize: async (_ctx, results) => {
+            for (const r of results) {
+              multiPromptTokens += r.promptTokens || 0;
+              multiCompletionTokens += r.completionTokens || 0;
+            }
             const notes = results
               .map(
                 (r, i) =>
@@ -765,8 +812,8 @@ function registerIpc() {
             const synthModel = modelForRole(agentCfg, "synthesize", useModel);
             const r = await ollama.chatStream(synthModel, synthMessages, onPiece);
             endThinking();
-            multiPrompt = r.promptTokens || 0;
-            multiCompletion = r.completionTokens || 0;
+            multiPromptTokens += r.promptTokens || 0;
+            multiCompletionTokens += r.completionTokens || 0;
             return r.text || "";
           },
           act,
@@ -779,7 +826,7 @@ function registerIpc() {
           // the same way the single-agent loop treats a stop request.
           const wasCancelled = cancelledChats.has(id);
           if (wasCancelled) cancelledChats.delete(id);
-          await finishTurn(orchResult.text, multiPrompt, multiCompletion, wasCancelled);
+          await finishTurn(orchResult.text, multiPromptTokens, multiCompletionTokens, wasCancelled);
           return;
         }
         act({ kind: "status", text: "Falling back to standard chat…" });
@@ -870,7 +917,10 @@ function registerIpc() {
         }
       }
       const text = (result && result.text) || "";
-      await finishTurn(text, totalPrompt, totalCompletion, stopped);
+      // Include any gate-level generate() cost (e.g. an ambiguous-turn
+      // classify() call that ended up choosing single-agent) so it isn't
+      // dropped just because the turn didn't go multi-agent.
+      await finishTurn(text, multiPromptTokens + totalPrompt, multiCompletionTokens + totalCompletion, stopped);
     } catch (e) {
       if (activityStarted) {
         // Close an open thinking span before done so Task 5 ticker is not stuck.

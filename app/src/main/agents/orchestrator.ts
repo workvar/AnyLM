@@ -15,7 +15,15 @@ export async function runOrchestratedTurn(
   userText: string,
   deps: OrchestratorDeps
 ): Promise<{ text: string; fellBack: boolean }> {
-  const plan = await deps.planTurn(userText);
+  // A thrown error here (Ollama down, missing model, network hiccup) must
+  // degrade to the single-agent path exactly like a malformed-JSON plan —
+  // not surface as a hard chat:error — so soft-fail it the same way.
+  let plan: AgentPlan | null;
+  try {
+    plan = await deps.planTurn(userText);
+  } catch {
+    plan = null;
+  }
   if (!plan) {
     return { text: "", fellBack: true };
   }
@@ -84,6 +92,13 @@ export async function runOrchestratedTurn(
         ...(result.error ? { detail: result.error } : {}),
       });
     }
+  }
+
+  // Re-check right before merge/synthesize: the wave loop only checks at the
+  // top of each iteration, so a stop landing after the last wave finishes
+  // would otherwise still pay for a full synthesis generation.
+  if (deps.isCancelled()) {
+    return { text: "", fellBack: false };
   }
 
   deps.act({ kind: "agent:merge" });

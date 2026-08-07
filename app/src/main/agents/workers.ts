@@ -11,10 +11,17 @@ import * as skillsExec from "../skills/exec";
 import { recoverToolCalls } from "../tools/recover-tool-calls";
 import { labelFor, detailFor } from "../activity-labels";
 import * as ollama from "../ollama";
+import { createMutex } from "./mutex";
 import type { AgentStep, StepResult } from "./types";
 
 const RETRIEVE_CHAR_CAP = 6000;
 const MAX_TOOL_ROUNDS = 3;
+
+type ConfirmFn = (
+  tool: { name: string; description: string },
+  args: Record<string, unknown>
+) => Promise<unknown>;
+type AskFn = (payload: { question: string; options?: string[] }) => Promise<unknown>;
 
 export interface WorkersDeps {
   project: Project | null;
@@ -23,8 +30,12 @@ export interface WorkersDeps {
   toolModel: string;
   toolDefs: OllamaToolDef[] | null;
   skillToolAllow: Set<string> | null;
-  confirm: (tool: { name: string; description: string }, args: Record<string, unknown>) => Promise<unknown>;
-  ask: (payload: { question: string; options?: string[] }) => Promise<unknown>;
+  /** Same skills-instructions / workspace / follow-up blocks the single-agent
+   *  loop prepends when tools are on, so worker tool calls get the same
+   *  guidance. Null/omitted when tools are off or there's nothing to add. */
+  toolSystemPrompt?: string | null;
+  confirm: ConfirmFn;
+  ask: AskFn;
   act: (event: ActivityEvent) => void;
   isCancelled: () => boolean;
   /** Surfaces generated documents as file cards, same as the single-agent loop. */
@@ -40,6 +51,12 @@ export interface WorkersDeps {
   execSkill?: typeof skillsExec.execute;
   ownsSkill?: typeof skillsExec.owns;
   recover?: typeof recoverToolCalls;
+}
+
+interface ToolRunOutput {
+  text: string;
+  promptTokens: number;
+  completionTokens: number;
 }
 
 function errMessage(err: unknown): string {
@@ -75,28 +92,44 @@ async function runRetrieve(step: AgentStep, deps: WorkersDeps): Promise<string> 
   return joined;
 }
 
-async function runTool(step: AgentStep, deps: WorkersDeps): Promise<string> {
+// `confirm`/`ask` are pre-serialized by makeWorkers (one interactive prompt
+// across the whole turn at a time) before they reach here.
+async function runTool(
+  step: AgentStep,
+  deps: WorkersDeps,
+  confirm: ConfirmFn,
+  ask: AskFn
+): Promise<ToolRunOutput> {
   const chat = deps.chat || ollama.chatStream;
   const execTool = deps.execTool || toolsExec.execute;
   const execSkill = deps.execSkill || skillsExec.execute;
   const ownsSkill = deps.ownsSkill || skillsExec.owns;
   const recover = deps.recover || recoverToolCalls;
 
-  const messages: ChatMessage[] = [
-    {
-      role: "system",
-      content:
-        "You are a worker agent completing one step of a larger task on behalf of another " +
-        "assistant. Use tools when they help, then report your findings concisely.",
-    },
-    { role: "user", content: step.goal },
-  ];
+  const messages: ChatMessage[] = [];
+  // Same tool-usage guidance (skills instructions, workspace folder,
+  // follow-up nudge) the single-agent loop gives the model — without it the
+  // worker only knows tools exist, not how the app expects them to be used.
+  if (deps.toolSystemPrompt) {
+    messages.push({ role: "system", content: deps.toolSystemPrompt });
+  }
+  messages.push({
+    role: "system",
+    content:
+      "You are a worker agent completing one step of a larger task on behalf of another " +
+      "assistant. Use tools when they help, then report your findings concisely.",
+  });
+  messages.push({ role: "user", content: step.goal });
 
   let lastText = "";
+  let promptTokens = 0;
+  let completionTokens = 0;
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     if (deps.isCancelled()) break;
 
     const result = await chat(deps.toolModel, messages, () => {}, deps.toolDefs);
+    promptTokens += result.promptTokens || 0;
+    completionTokens += result.completionTokens || 0;
     lastText = result.text || lastText;
     let calls = result.toolCalls || [];
 
@@ -122,11 +155,11 @@ async function runTool(step: AgentStep, deps: WorkersDeps): Promise<string> {
       deps.act({ kind: "tool", name: fname, label, detail, args: fargs, status: "running" });
 
       const output = ownsSkill(fname)
-        ? await execSkill(fname, fargs, deps.confirm)
-        : await execTool(fname, fargs, deps.confirm, deps.skillToolAllow, {
+        ? await execSkill(fname, fargs, confirm)
+        : await execTool(fname, fargs, confirm, deps.skillToolAllow, {
             projectId: deps.project ? deps.project.id : null,
             onFile: deps.onFile || (() => {}),
-            ask: deps.ask,
+            ask,
           });
       deps.onToolCall?.();
 
@@ -143,15 +176,28 @@ async function runTool(step: AgentStep, deps: WorkersDeps): Promise<string> {
     }
   }
 
-  return lastText || "(no output)";
+  return { text: lastText || "(no output)", promptTokens, completionTokens };
 }
 
 /** Builds a runStep function for `runOrchestratedTurn`, dispatching each
- *  AgentStep to the memory / retrieve / tool worker by its kind. */
+ *  AgentStep to the memory / retrieve / tool worker by its kind.
+ *
+ *  Interactive `confirm`/`ask` calls are serialized across every step this
+ *  runStep is used for (i.e. per turn): the orchestrator runs up to
+ *  `maxParallel` "tool" steps concurrently, but only one of them may prompt
+ *  the user at a time — others queue on the same lock instead of firing a
+ *  second confirm/ask the renderer (which tracks one pending prompt) can't
+ *  surface. Non-interactive tool execution still runs fully in parallel. */
 export function makeWorkers(deps: WorkersDeps): (step: AgentStep) => Promise<StepResult> {
+  const lock = createMutex();
+  const serialConfirm: ConfirmFn = (tool, args) => lock(() => deps.confirm(tool, args));
+  const serialAsk: AskFn = (payload) => lock(() => deps.ask(payload));
+
   return async function runStep(step: AgentStep): Promise<StepResult> {
     try {
-      let output: string;
+      let output = "";
+      let promptTokens = 0;
+      let completionTokens = 0;
       switch (step.kind) {
         case "memory":
           output = await runMemory(step, deps);
@@ -159,11 +205,15 @@ export function makeWorkers(deps: WorkersDeps): (step: AgentStep) => Promise<Ste
         case "retrieve":
           output = await runRetrieve(step, deps);
           break;
-        default:
-          output = await runTool(step, deps);
+        default: {
+          const r = await runTool(step, deps, serialConfirm, serialAsk);
+          output = r.text;
+          promptTokens = r.promptTokens;
+          completionTokens = r.completionTokens;
           break;
+        }
       }
-      return { id: step.id, ok: true, output };
+      return { id: step.id, ok: true, output, promptTokens, completionTokens };
     } catch (err) {
       return { id: step.id, ok: false, output: "", error: errMessage(err) };
     }

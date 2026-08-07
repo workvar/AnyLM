@@ -107,6 +107,26 @@ describe("makeWorkers: tool", () => {
     expect(r.ok).toBe(true);
     expect(calls).toBe(3); // MAX_TOOL_ROUNDS
     expect(toolEvents.filter((k) => k === "tool").length).toBe(6); // running+done per round
+    expect(r.promptTokens).toBe(3); // 1 per round
+    expect(r.completionTokens).toBe(3);
+  });
+
+  test("prepends toolSystemPrompt (skills/workspace instructions) when provided", async () => {
+    const seenMessages: ChatMessage[][] = [];
+    const runStep = makeWorkers(
+      baseDeps({
+        toolSystemPrompt: "Use the workspace folder at /tmp/proj.",
+        chat: async (_model, messages) => {
+          seenMessages.push(messages as ChatMessage[]);
+          return { text: "ok", promptTokens: 0, completionTokens: 0, toolCalls: [] };
+        },
+      })
+    );
+    await runStep(step("tool"));
+    expect(seenMessages[0][0]).toEqual({
+      role: "system",
+      content: "Use the workspace folder at /tmp/proj.",
+    });
   });
 
   test("uses skillsExec when ownsSkill is true", async () => {
@@ -176,6 +196,123 @@ describe("makeWorkers: tool", () => {
     );
     await runStep(step("tool"));
     expect(calls).toBe(1);
+  });
+});
+
+describe("makeWorkers: confirm/ask serialization", () => {
+  function delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  test("confirm() calls from parallel tool workers never overlap", async () => {
+    let active = 0;
+    let maxActive = 0;
+    const runStep = makeWorkers(
+      baseDeps({
+        toolDefs: [
+          {
+            type: "function",
+            function: { name: "risky_tool", description: "", parameters: { type: "object", properties: {}, required: [] } },
+          },
+        ],
+        chat: async () => ({
+          text: "",
+          promptTokens: 0,
+          completionTokens: 0,
+          toolCalls: [{ function: { name: "risky_tool", arguments: {} } }],
+        }),
+        ownsSkill: () => false,
+        execTool: async (_name, _args, confirm) => {
+          await confirm({ name: "risky_tool", description: "" }, {});
+          return "done";
+        },
+        confirm: async () => {
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          await delay(10);
+          active -= 1;
+          return true;
+        },
+      })
+    );
+
+    await Promise.all([
+      runStep({ id: "a", goal: "step a", dependsOn: [], kind: "tool" }),
+      runStep({ id: "b", goal: "step b", dependsOn: [], kind: "tool" }),
+    ]);
+    expect(maxActive).toBe(1);
+  });
+
+  test("ask() calls from parallel tool workers never overlap", async () => {
+    let active = 0;
+    let maxActive = 0;
+    const runStep = makeWorkers(
+      baseDeps({
+        toolDefs: [
+          {
+            type: "function",
+            function: { name: "ask_user", description: "", parameters: { type: "object", properties: {}, required: [] } },
+          },
+        ],
+        chat: async () => ({
+          text: "",
+          promptTokens: 0,
+          completionTokens: 0,
+          toolCalls: [{ function: { name: "ask_user", arguments: {} } }],
+        }),
+        ownsSkill: () => false,
+        execTool: async (_name, _args, _confirm, _allow, ctx) => {
+          await (ctx as { ask: (p: { question: string }) => Promise<unknown> }).ask({ question: "q?" });
+          return "answered";
+        },
+        ask: async () => {
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          await delay(10);
+          active -= 1;
+          return "yes";
+        },
+      })
+    );
+
+    await Promise.all([
+      runStep({ id: "a", goal: "step a", dependsOn: [], kind: "tool" }),
+      runStep({ id: "b", goal: "step b", dependsOn: [], kind: "tool" }),
+      runStep({ id: "c", goal: "step c", dependsOn: [], kind: "tool" }),
+    ]);
+    expect(maxActive).toBe(1);
+  });
+
+  test("non-interactive tool execution still runs in parallel (no serialization)", async () => {
+    let active = 0;
+    let maxActive = 0;
+    const runStep = makeWorkers(
+      baseDeps({
+        toolDefs: [
+          { type: "function", function: { name: "web_search", description: "", parameters: { type: "object", properties: {}, required: [] } } },
+        ],
+        chat: async () => ({
+          text: "",
+          promptTokens: 0,
+          completionTokens: 0,
+          toolCalls: [{ function: { name: "web_search", arguments: {} } }],
+        }),
+        ownsSkill: () => false,
+        execTool: async () => {
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          await delay(10);
+          active -= 1;
+          return "result";
+        },
+      })
+    );
+
+    await Promise.all([
+      runStep({ id: "a", goal: "step a", dependsOn: [], kind: "tool" }),
+      runStep({ id: "b", goal: "step b", dependsOn: [], kind: "tool" }),
+    ]);
+    expect(maxActive).toBe(2);
   });
 });
 

@@ -60,6 +60,29 @@ async function generate(model: string, prompt: string): Promise<string> {
   return data.response || "";
 }
 
+// Same as `generate`, but also surfaces token usage (Ollama returns
+// prompt_eval_count / eval_count on the /api/generate response, same fields
+// `chatStream`'s final frame carries). Used by the multi-agent gate
+// (classify/plan) so their cost is metered; `generate` stays string-only
+// since its other callers (context summaries, etc.) don't track usage.
+async function generateWithUsage(
+  model: string,
+  prompt: string
+): Promise<{ text: string; promptTokens: number; completionTokens: number }> {
+  const res = await fetch(`${HOST}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, prompt, stream: false }),
+  });
+  if (!res.ok) throw new Error(`Ollama responded ${res.status}`);
+  const data = ((await res.json()) as any);
+  return {
+    text: data.response || "",
+    promptTokens: data.prompt_eval_count || 0,
+    completionTokens: data.eval_count || 0,
+  };
+}
+
 // Embed one or many strings. Returns an array of vectors (number[][]).
 async function embed(model: string, input: string | string[]): Promise<number[][]> {
   const res = await fetch(`${HOST}/api/embed`, {
@@ -185,6 +208,7 @@ export {
   listModelEntries,
   info,
   generate,
+  generateWithUsage,
   embed,
   chatStream,
   pull,

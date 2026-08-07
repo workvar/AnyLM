@@ -17,6 +17,9 @@ export interface StepResult {
   ok: boolean;
   output: string;
   error?: string;
+  /** Token usage the step's own model calls incurred (tool-calling rounds); 0/absent for memory/retrieve steps, which make no model calls. */
+  promptTokens?: number;
+  completionTokens?: number;
 }
 
 export type AgentRole = "planner" | "router" | "toolExecutor" | "synthesize";

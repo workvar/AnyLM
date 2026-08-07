@@ -15,6 +15,50 @@ test("falls back when planner fails", async () => {
   expect(r.fellBack).toBe(true);
 });
 
+test("falls back when planner throws instead of hard-erroring", async () => {
+  const r = await runOrchestratedTurn("hi", {
+    maxParallel: 2,
+    planTurn: async () => {
+      throw new Error("ollama down");
+    },
+    assignKinds: (p) => p,
+    runStep: async () => ({ id: "x", ok: true, output: "" }),
+    synthesize: async () => "nope",
+    act: () => {},
+    isCancelled: () => false,
+  });
+  expect(r.fellBack).toBe(true);
+  expect(r.text).toBe("");
+});
+
+test("skips synthesize when cancelled right after the last wave", async () => {
+  let synthesizeCalled = false;
+  let cancelNow = false;
+  const r = await runOrchestratedTurn("hi", {
+    maxParallel: 2,
+    planTurn: async () => ({
+      steps: [{ id: "a", goal: "do it", dependsOn: [], kind: "tool" }],
+    }),
+    assignKinds: (p) => p,
+    runStep: async (step) => {
+      // Flip cancellation only after the wave's step has completed, so the
+      // top-of-loop check doesn't short-circuit before we exercise the
+      // pre-synthesize check specifically.
+      cancelNow = true;
+      return { id: step.id, ok: true, output: "done" };
+    },
+    synthesize: async () => {
+      synthesizeCalled = true;
+      return "should not happen";
+    },
+    act: () => {},
+    isCancelled: () => cancelNow,
+  });
+  expect(synthesizeCalled).toBe(false);
+  expect(r.fellBack).toBe(false);
+  expect(r.text).toBe("");
+});
+
 test("runs independent steps with maxParallel and emits events", async () => {
   const events: string[] = [];
   const started: string[] = [];
