@@ -475,7 +475,7 @@ select {
 }
 /* Context list inside the project modal scrolls if long. */
 #project-modal #context-list {
-  max-height: 240px;
+  max-height: 280px;
   overflow-y: auto;
 }
 .ctx-head {
@@ -1471,6 +1471,24 @@ button.full {
   margin: 0 0 18px;
   color: var(--muted);
   font-size: 13px;
+}
+/* Project settings — tabbed layout */
+.modal.modal-project-settings {
+  width: 480px;
+}
+#project-modal .project-settings-tabs {
+  display: flex;
+  width: 100%;
+  margin: 0 0 14px;
+}
+#project-modal .project-settings-tabs button {
+  flex: 1;
+  white-space: nowrap;
+}
+#project-modal .project-settings-panel > .setting-row:first-of-type,
+#project-modal .project-settings-panel > .setting-col:first-of-type {
+  border-top: none;
+  padding-top: 0;
 }
 .setting-row {
   display: flex;
