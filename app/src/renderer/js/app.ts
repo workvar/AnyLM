@@ -11,6 +11,7 @@ import {
   saveProjectModel,
   toggleProjectLock,
   openProjectSettings,
+  initProjectSettingsTabs,
   saveKnowledgeFlow,
   addContextFile,
   newFolder,
@@ -165,6 +166,7 @@ function bindEvents() {
   initWorkspace();
 
   // Project settings modal
+  initProjectSettingsTabs();
   el("project-modal-close").onclick = () => closeModal("project-modal");
   el("project-modal").onclick = (e) => {
     if ((e.target as UiElement).id === "project-modal") closeModal("project-modal");

@@ -297,6 +297,28 @@ export async function openProjectSettingsFor(id) {
   openProjectSettings();
 }
 
+const PROJECT_SETTINGS_TABS = ["general", "memory", "context"] as const;
+type ProjectSettingsTab = (typeof PROJECT_SETTINGS_TABS)[number];
+
+export function showProjectSettingsTab(tab: ProjectSettingsTab) {
+  for (const b of qsa("#project-settings-tabs button")) {
+    b.classList.toggle("active", b.dataset.tab === tab);
+  }
+  for (const id of PROJECT_SETTINGS_TABS) {
+    el(`ps-panel-${id}`).classList.toggle("hidden", id !== tab);
+  }
+}
+
+export function initProjectSettingsTabs() {
+  for (const b of qsa("#project-settings-tabs button")) {
+    b.onclick = () => {
+      const tab = b.dataset.tab as ProjectSettingsTab;
+      if (!PROJECT_SETTINGS_TABS.includes(tab)) return;
+      showProjectSettingsTab(tab);
+    };
+  }
+}
+
 export function openProjectSettings() {
   if (!state.current) return;
   el("project-name-input").value = state.current.name || "";
@@ -310,6 +332,7 @@ export function openProjectSettings() {
     r.checked = r.value === value;
   }
   renderContextList(state.current.contexts, removeContext);
+  showProjectSettingsTab("general");
   el("project-modal").classList.remove("hidden");
 }
 
