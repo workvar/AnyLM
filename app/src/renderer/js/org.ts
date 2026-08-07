@@ -5,6 +5,7 @@ import { el, node } from "./dom.js";
 import { promptText } from "./prompt.js";
 import { initPolicyModal, openPolicyModal } from "./policy-editor.js";
 import { POLICY_TEMPLATES } from "./policy-templates.js";
+import { createSwitch } from "./switch.js";
 
 const rank = { member: 0, manager: 1, admin: 2, owner: 3 };
 
@@ -472,15 +473,9 @@ function policyList(policies, scope) {
     main.appendChild(node("div", "org-who-mail", `${TYPE_LABEL[p.type] || p.type} · ${p.action} · ${target}`));
     row.appendChild(main);
 
-    const toggleWrap = node("label", "switch");
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.checked = !!p.enabled;
-    input.onchange = async () => {
-      await window.api.gov("PATCH", `/policies/${p.id}`, { enabled: input.checked });
-    };
-    toggleWrap.appendChild(input);
-    toggleWrap.appendChild(node("span", "track"));
+    const toggleWrap = createSwitch(!!p.enabled, async (next) => {
+      await window.api.gov("PATCH", `/policies/${p.id}`, { enabled: next });
+    });
     row.appendChild(wrapCell(toggleWrap));
 
     const edit = node("button", "ghost small", "Edit");

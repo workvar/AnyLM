@@ -23,7 +23,16 @@ export function anyWorking(): boolean {
   return status.size > 0;
 }
 
+export function listActivity(): { key: string; status: Status; title: string }[] {
+  const out: { key: string; status: Status; title: string }[] = [];
+  for (const [key, value] of status) {
+    out.push({ key, status: value, title: titles.get(key) || key });
+  }
+  return out;
+}
+
 export function paintActivity(): void {
+  if (typeof document === "undefined") return;
   for (const row of document.querySelectorAll<HTMLElement>("[data-conv-key]")) {
     const s = status.get(row.dataset.convKey || "");
     row.classList.toggle("is-working", s === "working");

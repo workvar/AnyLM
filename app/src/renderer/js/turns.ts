@@ -8,7 +8,7 @@ import { el, node } from "./dom.js";
 import { state } from "./state.js";
 import { addThinking, setBubbleMarkdown, paintRecentsTitle } from "./views.js";
 import { createStreamRenderer } from "./stream.js";
-import { setActivity, clearActivity, activeKey, notifyWaiting } from "./activity.js";
+import { setActivity, clearActivity, activeKey, notifyWaiting, listActivity } from "./activity.js";
 import { renderAsk, clearAsk } from "./ask-card.js";
 import { attachTokenStats } from "./tokenstats.js";
 import { setContextUsage } from "./contextmeter.js";
@@ -19,6 +19,7 @@ import { applyActivity, buildSummary, toolCountOf, thoughtMsOf, formatThought } 
 import { createTrailHost, paintTrail, paintCollapsed } from "./activity-trail.js";
 import { paintAgentTrail } from "./agent-trail.js";
 import { paintWorkingStrip, setWorkingStripActions } from "./working-strip.js";
+import { resolveWorkingStrip } from "./working-strip-mode.js";
 
 const turns = new Map<string, any>();
 const byRequest = new Map<string, any>();
@@ -118,14 +119,20 @@ function stripLabel(turn): string {
 
 function syncWorkingStrip(): void {
   const turn = activeTurn();
-  if (!turn || turn.status === "done") {
-    paintWorkingStrip(null);
-    return;
-  }
-  const pending = turn.pendingConfirm;
+  const openBusy = !!(turn && turn.status !== "done");
+  const pending = openBusy ? turn.pendingConfirm : null;
   const confirmToken =
     pending && pending.tool?.name !== "generate_document" ? pending.token : undefined;
-  paintWorkingStrip({ label: stripLabel(turn), confirmToken });
+  paintWorkingStrip(
+    resolveWorkingStrip({
+      openBusy,
+      openLabel: openBusy ? stripLabel(turn) : undefined,
+      openConfirmToken: confirmToken,
+      others: openBusy
+        ? []
+        : listActivity().map((e) => ({ status: e.status, title: e.title })),
+    })
+  );
 }
 
 function repaintTrail(turn): void {
@@ -298,7 +305,10 @@ export function detachAll(): void {
 // Called after a conversation's history is rendered: re-attach a live turn.
 export function attachTurn(key: string): void {
   const turn = turnFor(key);
-  if (!turn || turn.status === "done") return;
+  if (!turn || turn.status === "done") {
+    syncWorkingStrip();
+    return;
+  }
   const wrap = el("messages");
   turn.trailHost = createTrailHost();
   wrap.appendChild(turn.trailHost);
@@ -376,8 +386,8 @@ function onAsk(payload) {
   notifyWaiting(turn.key, payload.question);
   if (activeKey() === turn.key) {
     showAsk(turn);
-    syncWorkingStrip();
   }
+  syncWorkingStrip();
 }
 
 let bound = false;
@@ -498,7 +508,7 @@ export async function runTurn(ctx): Promise<void> {
     clearActivity(turn.key);
     if (activeKey() === turn.key) {
       clearAsk();
-      paintWorkingStrip(null);
     }
+    syncWorkingStrip();
   }
 }

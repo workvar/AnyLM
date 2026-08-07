@@ -277,6 +277,7 @@ button.danger:not(.ghost):hover {
 /* Main */
 #main {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -1559,48 +1560,57 @@ button.full {
   color: var(--accent-contrast);
 }
 
-/* Switch — high-contrast track + knob so toggles stay readable on dark panels */
+/* Switch — in-flow track + knob (no absolute ::before). Absolute knobs were
+   invisible over Electron Liquid Glass / transparent windows on macOS. */
 .switch {
   position: relative;
-  display: inline-block;
-  width: 42px;
-  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  width: 44px;
+  height: 26px;
+  min-width: 44px;
   flex: none;
+  flex-shrink: 0;
   vertical-align: middle;
   cursor: pointer;
+  z-index: 2;
 }
 .switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-}
-.switch .track {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--text) 16%, var(--panel-2));
-  border: 1px solid color-mix(in srgb, var(--text) 32%, var(--border));
-  border-radius: 999px;
-  transition: background 0.15s, border-color 0.15s;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);
+  z-index: 2;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
 }
-.switch .track::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
+.switch .track {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 3px;
+  border-radius: 999px;
+  background: #4a554c;
+  border: 1px solid #8b968c;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: background 0.15s, border-color 0.15s;
+  pointer-events: none;
+}
+.switch .knob {
+  display: block;
   width: 18px;
   height: 18px;
-  background: #f4f3ec;
   border-radius: 50%;
+  background: #f4f3ec;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
   transition: transform 0.15s, background 0.15s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 .switch input:checked + .track {
   background: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 70%, var(--text));
+  border-color: #c5ddcf;
 }
-.switch input:checked + .track::before {
+.switch input:checked + .track .knob {
   transform: translateX(18px);
   background: #ffffff;
 }
@@ -1608,7 +1618,12 @@ button.full {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-:root[data-theme="light"] .switch .track::before {
+:root[data-theme="light"] .switch .track {
+  background: #b7c0b4;
+  border-color: #7d8678;
+  box-shadow: inset 0 1px 2px rgba(26, 28, 24, 0.12);
+}
+:root[data-theme="light"] .switch .knob {
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(26, 28, 24, 0.28), 0 0 0 1px rgba(26, 28, 24, 0.1);
 }
@@ -2221,6 +2236,12 @@ button.full {
   padding: 0 1rem 1rem;
   min-height: 0;
   flex: 1;
+  overflow: hidden;
+}
+#models-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .models-search-bar {
@@ -2264,7 +2285,6 @@ button.full {
   gap: 0;
   border: 1px solid var(--border);
   border-radius: 10px;
-  overflow: hidden;
   background: var(--panel);
 }
 
@@ -2612,6 +2632,11 @@ button.full {
 }
 .org-body {
   flex: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 8px 24px 32px;
 }
@@ -2704,6 +2729,9 @@ button.full {
 
 /* Members / policies tables */
 .org-table {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -2730,11 +2758,15 @@ button.full {
   margin: 0 auto;
 }
 
-/* Tools manager: labels left, actions + switch flush right */
+/* Tools manager: labels left, actions + enable control flush right */
 .tool-row {
   display: flex;
   align-items: center;
   gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 12px 16px;
   border-top: 1px solid var(--border);
 }
@@ -2742,18 +2774,48 @@ button.full {
   border-top: none;
 }
 .tool-row-main {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  overflow: hidden;
 }
 .tool-row-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
+}
+.tool-row > .switch,
+.tool-row-actions .switch {
   flex-shrink: 0;
 }
-.tool-row > .switch {
+.tool-enable {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
-  margin-left: 4px;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel-2));
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+.tool-enable input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.tool-enable.is-off {
+  border-color: var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-weight: 500;
 }
 .org-row.cols-5 {
   grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
@@ -2933,13 +2995,13 @@ button.full {
   transform: translate(-50%, 0);
 }
 
-/* Glass treatment for org surfaces (matches existing macOS glass rules). */
+/* Glass treatment for org surfaces (matches existing macOS glass rules).
+   No backdrop-filter here — it can hide absolute-positioned switch knobs
+   inside tool/skill/policy rows on Electron + Liquid Glass. */
 .platform-darwin .org-card,
 .platform-darwin .org-table,
 .platform-darwin .org-audit {
-  background: var(--glass-card);
-  -webkit-backdrop-filter: blur(20px) saturate(1.6);
-  backdrop-filter: blur(20px) saturate(1.6);
+  background: var(--panel);
 }
 
 /* Policy template presets + teams + compliance logs */
@@ -3220,7 +3282,9 @@ button.full {
 #settings-view {
   display: flex;
   height: 100vh;
+  min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 #settings-nav {
   width: 200px;
@@ -3269,29 +3333,35 @@ button.full {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 .settings-panel {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 #settings-view #org-view,
 #settings-view #models-view,
 #settings-view #tools-view,
 #settings-view #skills-view {
-  height: 100%;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  overflow: hidden;
 }
 #settings-view #models-view .models-browser {
-  overflow-y: auto;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 .settings-panel-body {
   flex: 1;
@@ -3440,6 +3510,13 @@ button.full {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+}
+.working-strip.is-compact .working-strip-title {
+  color: var(--muted);
+  font-weight: 500;
+}
+.working-strip.is-compact .working-strip-actions {
+  display: none;
 }
 .ask-dock .ask-card {
   margin: 0;

@@ -1,5 +1,7 @@
-// Sticky “Working” strip above the composer for the open busy turn.
+// Sticky “Working” strip above the composer for the open busy turn,
+// or a compact multi-chat indicator when the open turn is idle.
 import { el } from "./dom.js";
+import type { WorkingStripState } from "./working-strip-mode.js";
 
 type StripActions = {
   stop: () => void;
@@ -33,23 +35,45 @@ export function initWorkingStrip(): void {
   };
 }
 
-export function paintWorkingStrip(
-  state: null | { label: string; confirmToken?: string }
-): void {
+export function paintWorkingStrip(state: WorkingStripState | null): void {
   const strip = el("working-strip");
+  const titleEl = el("working-strip-title");
+  const labelEl = el("working-strip-label");
+  const allow = el("working-allow");
+  const deny = el("working-deny");
+  const stop = el("working-stop");
+
   if (!state) {
     strip.classList.add("hidden");
+    strip.classList.remove("is-compact");
     confirmToken = undefined;
-    el("working-allow").classList.add("hidden");
-    el("working-deny").classList.add("hidden");
-    el("working-strip-label").textContent = "";
+    allow.classList.add("hidden");
+    deny.classList.add("hidden");
+    stop.classList.remove("hidden");
+    titleEl.textContent = "1 Working";
+    labelEl.textContent = "";
     return;
   }
 
   strip.classList.remove("hidden");
-  el("working-strip-label").textContent = state.label;
+
+  if (state.mode === "compact") {
+    strip.classList.add("is-compact");
+    confirmToken = undefined;
+    titleEl.textContent = state.title;
+    labelEl.textContent = state.label;
+    allow.classList.add("hidden");
+    deny.classList.add("hidden");
+    stop.classList.add("hidden");
+    return;
+  }
+
+  strip.classList.remove("is-compact");
+  titleEl.textContent = "1 Working";
+  labelEl.textContent = state.label;
   confirmToken = state.confirmToken;
   const showConfirm = !!state.confirmToken;
-  el("working-allow").classList.toggle("hidden", !showConfirm);
-  el("working-deny").classList.toggle("hidden", !showConfirm);
+  allow.classList.toggle("hidden", !showConfirm);
+  deny.classList.toggle("hidden", !showConfirm);
+  stop.classList.remove("hidden");
 }

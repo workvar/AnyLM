@@ -36,6 +36,7 @@ import { assignKinds } from "./agents/router";
 import { runOrchestratedTurn } from "./agents/orchestrator";
 import { resolveAgentSettings, modelForRole } from "./agents/settings";
 import { makeWorkers } from "./agents/workers";
+import { modelSupportsThink } from "./think";
 
 // Pending risky-tool confirmations, keyed by a one-time token → { resolve, id }.
 const pendingConfirms = new Map();
@@ -858,15 +859,36 @@ function registerIpc() {
         act({ kind: "thinking", phase: "start" });
         if (rounds > 0) act({ kind: "status", text: "Continuing with tool results…" });
         let wroteStatus = false;
-        const onPiece = (piece: string) => {
-          if (!wroteStatus) {
-            wroteStatus = true;
-            endThinking();
-            act({ kind: "status", text: "Writing reply…" });
+        let sawReasoning = false;
+        const useThink = modelSupportsThink(useModel);
+        const onPiece = (piece: { content?: string; thinking?: string }) => {
+          if (piece.thinking && !sawReasoning) {
+            sawReasoning = true;
+            act({ kind: "status", text: "Reasoning…" });
           }
-          send("chat:chunk", { id, text: piece });
+          if (piece.content) {
+            if (!wroteStatus) {
+              wroteStatus = true;
+              endThinking();
+              act({ kind: "status", text: "Writing reply…" });
+            }
+            send("chat:chunk", { id, text: piece.content });
+          }
         };
-        result = await ollama.chatStream(useModel, full, onPiece, toolDefs);
+        try {
+          result = await ollama.chatStream(
+            useModel,
+            full,
+            onPiece,
+            toolDefs,
+            null,
+            undefined,
+            useThink || undefined
+          );
+        } catch (e) {
+          if (!useThink || wroteStatus || sawReasoning) throw e;
+          result = await ollama.chatStream(useModel, full, onPiece, toolDefs);
+        }
         endThinking();
         totalPrompt += result.promptTokens || 0;
         totalCompletion += result.completionTokens || 0;

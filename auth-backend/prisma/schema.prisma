@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  name               String?
+  avatarUrl          String?
+  // Null for OAuth-only accounts that never set a password.
+  passwordHash       String?
+  // How the account was created / last linked: local | google | github
+  provider           String   @default("local")
+  providerId         String?
+  // Hashed current refresh token (rotation + logout). Null when logged out.
+  hashedRefreshToken String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  memberships OrgMember[]
+  policies    Policy[]
+  usage       UsageRecord[]
+  apiKeys     ApiKey[]
+  connectors  ConnectorToken[]
+}
+
+// OAuth tokens for skill connectors (Google Calendar, Outlook, …), one row
+// per user+provider. Access tokens are refreshed server-side on demand.
+model ConnectorToken {
+  id           String    @id @default(cuid())
+  userId       String
+  // google-calendar | outlook | future providers
+  provider     String
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  scope        String    @default("")
+  accountEmail String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Token-to-money conversion: `tokensPerUnit` tokens cost `pricePerUnit`.
+  tokensPerUnit Int    @default(1000)
+  pricePerUnit  Float  @default(0)
+  currency      String @default("USD")
+
+  // Org-wide default limit applied to members without their own limit.
+  defaultTokenLimit  Int?
+  defaultLimitPeriod String @default("monthly")
+
+  // SSO enforcement + domain-based auto-join.
+  // ssoProvider: any | google | github — required sign-in method when enforced.
+  ssoProvider     String  @default("any")
+  ssoRequired     Boolean @default(false)
+  // Comma-separated email domains that auto-join this org on signup/login.
+  autoJoinDomains String  @default("")
+
+  // Compliance: prompt/response logging with retention.
+  loggingEnabled Boolean @default(false)
+  retentionDays  Int     @default(30)
+
+  // Optional remote ChromaDB endpoint (e.g. https://chroma.acme.com:8000).
+  // When set, members' shared org memory collection lives there, so the whole
+  // organization's context syncs centrally. Blank = each member's local server.
+  chromaUrl String @default("")
+
+  members  OrgMember[]
+  policies Policy[]
+  usage    UsageRecord[]
+  audit    AuditLog[]
+  invites  Invite[]
+  teams    Team[]
+  logs     InteractionLog[]
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  orgId       String
+  email       String
+  role        String    @default("member")
+  // pending | accepted | declined | revoked
+  status      String    @default("pending")
+  invitedBy   String
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, status])
+  @@index([email, status])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  // Rolled-up limits for the whole team (null = none).
+  tokenLimit  Int?
+  budgetLimit Float?
+  limitPeriod String   @default("monthly")
+  createdAt   DateTime @default(now())
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  members OrgMember[]
+
+  @@index([orgId])
+}
+
+model InteractionLog {
+  id        String   @id @default(cuid())
+  orgId     String
+  userId    String
+  model     String
+  prompt    String
+  response  String
+  // JSON array of policy warnings/redactions that fired.
+  flags     String   @default("[]")
+  createdAt DateTime @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  // First characters of the key, for display.
+  prefix     String
+  keyHash    String    @unique
+  revoked    Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model OrgMember {
+  id     String @id @default(cuid())
+  orgId  String
+  userId String
+  // owner | admin | manager | member
+  role   String @default("member")
+
+  // Per-user governance limits (null = inherit org default / unlimited).
+  tokenLimit  Int?
+  // daily | weekly | monthly | lifetime
+  limitPeriod String @default("monthly")
+  // Money budget in org currency (null = none). Enforced via pricing config.
+  budgetLimit Float?
+  // Department/team membership (rolled-up budgets).
+  teamId      String?
+
+  createdAt DateTime @default(now())
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, userId])
+}
+
+model Policy {
+  id     String  @id @default(cuid())
+  // Org-scoped policy (null = personal policy).
+  orgId  String?
+  // When set with orgId: applies to that member only. Without orgId: personal.
+  userId String?
+  // content_filter | pii | model_allowlist | rate_limit
+  type    String
+  name    String
+  enabled Boolean @default(true)
+  // block | warn | redact (redact applies to pii/content_filter)
+  action  String  @default("block")
+  // JSON blob, shape depends on `type`.
+  config  String  @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org  Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([userId])
+}
+
+model UsageRecord {
+  id               String   @id @default(cuid())
+  userId           String
+  orgId            String?
+  model            String
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([orgId, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  orgId     String
+  actorId   String
+  action    String
+  detail    String?
+  createdAt DateTime @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+}

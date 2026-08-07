@@ -114,9 +114,9 @@ async function chatCompletions(
       );
     try {
       chunk({ role: "assistant" }, null);
-      const result = await ollama.chatStream(body.model, messages, (piece) =>
-        chunk({ content: piece }, null)
-      );
+      const result = await ollama.chatStream(body.model, messages, (piece) => {
+        if (piece.content) chunk({ content: piece.content }, null);
+      });
       chunk({}, "stop");
       res.write("data: [DONE]\n\n");
       res.end();

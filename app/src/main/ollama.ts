@@ -127,18 +127,23 @@ async function pull(model: string, onProgress: (p: PullProgress) => void = () =>
   }
 }
 
-// Streaming chat. Calls onToken(text) per chunk. Returns
-// { text, promptTokens, completionTokens, toolCalls } — counts come from
+/** One streamed chat piece. Thinking text is for phase detection only — do not show in UI. */
+type ChatStreamPiece = { content?: string; thinking?: string };
+
+// Streaming chat. Calls onPiece per chunk with optional content / thinking.
+// Returns { text, promptTokens, completionTokens, toolCalls } — counts come from
 // Ollama's final stream frame (prompt_eval_count / eval_count) for exact usage
 // metering. Pass `tools` (Ollama function schemas) to enable tool calling;
 // any tool_calls the model emits are collected into `toolCalls`.
+// When `think` is true, Ollama may emit `message.thinking` before content.
 async function chatStream(
   model: string,
   messages: ChatMessage[],
-  onToken: (piece: string) => void,
+  onPiece: (piece: ChatStreamPiece) => void,
   tools?: OllamaToolDef[] | null,
   numCtx?: number | null,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  think?: boolean
 ): Promise<ChatStreamResult> {
   const res = await fetch(`${HOST}/api/chat`, {
     method: "POST",
@@ -148,6 +153,7 @@ async function chatStream(
       model,
       messages,
       stream: true,
+      ...(think ? { think: true } : {}),
       ...(tools && tools.length ? { tools } : {}),
       // Ollama defaults to a small window regardless of what the model
       // supports, which silently drops the start of a long conversation.
@@ -173,10 +179,14 @@ async function chatStream(
     for (const line of lines) {
       if (!line.trim()) continue;
       const obj = JSON.parse(line);
-      const piece = obj.message?.content || "";
-      if (piece) {
-        full += piece;
-        onToken(piece);
+      const thinking = obj.message?.thinking || "";
+      const content = obj.message?.content || "";
+      if (thinking || content) {
+        if (content) full += content;
+        onPiece({
+          ...(thinking ? { thinking } : {}),
+          ...(content ? { content } : {}),
+        });
       }
       if (Array.isArray(obj.message?.tool_calls)) {
         toolCalls.push(...obj.message.tool_calls);

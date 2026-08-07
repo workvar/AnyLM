@@ -56,16 +56,23 @@ function skillRow(s) {
   main.appendChild(node("div", "org-who-mail", toolsLine ? `${sub} — tools: ${toolsLine}` : sub));
   row.appendChild(main);
 
-  // Enable toggle
-  const toggleWrap = node("label", "switch");
+  // Enable control — native checkbox (custom .switch knobs fail to paint here
+  // under Electron Liquid Glass; same fix as Tools).
+  const enabled = s.enabled !== false;
+  const cell = node("div", "org-cell");
+  const enable = node("label", `tool-enable${enabled ? "" : " is-off"}`);
   const input = document.createElement("input");
   input.type = "checkbox";
-  input.checked = s.enabled !== false;
-  input.onchange = () => window.api.skillsToggle(s.id, input.checked);
-  toggleWrap.appendChild(input);
-  toggleWrap.appendChild(node("span", "track"));
-  const cell = node("div", "org-cell");
-  cell.appendChild(toggleWrap);
+  input.checked = enabled;
+  const caption = node("span", null, enabled ? "On" : "Off");
+  input.onchange = () => {
+    const on = !!input.checked;
+    caption.textContent = on ? "On" : "Off";
+    enable.classList.toggle("is-off", !on);
+    window.api.skillsToggle(s.id, on);
+  };
+  enable.append(input, caption);
+  cell.appendChild(enable);
   row.appendChild(cell);
 
   const actions = node("div", "org-cell org-row-actions");

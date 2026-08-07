@@ -52,16 +52,24 @@ function toolRow(t) {
     };
     actions.append(edit, del);
   }
-  row.appendChild(actions);
 
-  const toggleWrap = node("label", "switch");
+  // Native checkbox + label — custom .switch knobs were not painting on the
+  // right edge of this view under Electron Liquid Glass (pixel-verified).
+  const enabled = t.enabled !== false;
+  const enable = node("label", `tool-enable${enabled ? "" : " is-off"}`);
   const input = document.createElement("input");
   input.type = "checkbox";
-  input.checked = t.enabled !== false;
-  input.onchange = () => window.api.toolsToggle(t.id, input.checked);
-  toggleWrap.appendChild(input);
-  toggleWrap.appendChild(node("span", "track"));
-  row.appendChild(toggleWrap);
+  input.checked = enabled;
+  const caption = node("span", null, enabled ? "On" : "Off");
+  input.onchange = () => {
+    const on = !!input.checked;
+    caption.textContent = on ? "On" : "Off";
+    enable.classList.toggle("is-off", !on);
+    window.api.toolsToggle(t.id, on);
+  };
+  enable.append(input, caption);
+  actions.appendChild(enable);
+  row.appendChild(actions);
   return row;
 }
 
