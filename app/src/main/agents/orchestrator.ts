@@ -1,0 +1,92 @@
+import { nextWave } from "./scheduler";
+import type { AgentPlan, AgentStep, StepResult } from "./types";
+
+export interface OrchestratorDeps {
+  maxParallel: number;
+  planTurn: (userText: string) => Promise<AgentPlan | null>;
+  assignKinds: (plan: AgentPlan) => AgentPlan;
+  runStep: (step: AgentStep) => Promise<StepResult>;
+  synthesize: (ctx: { userText: string }, results: StepResult[]) => Promise<string>;
+  act: (event: ActivityEvent) => void;
+  isCancelled: () => boolean;
+}
+
+export async function runOrchestratedTurn(
+  userText: string,
+  deps: OrchestratorDeps
+): Promise<{ text: string; fellBack: boolean }> {
+  const plan = await deps.planTurn(userText);
+  if (!plan) {
+    return { text: "", fellBack: true };
+  }
+
+  const assigned = deps.assignKinds(plan);
+  const steps = assigned.steps;
+
+  deps.act({
+    kind: "agent:plan",
+    steps: steps.map((s) => ({ id: s.id, goal: s.goal, kind: s.kind })),
+  });
+
+  const runnableSteps = steps.filter((s) => s.kind !== "synthesize");
+  const done = new Set<string>();
+  const results: StepResult[] = [];
+  let parallelGroup = 0;
+
+  while (done.size < runnableSteps.length) {
+    if (deps.isCancelled()) {
+      return { text: "", fellBack: false };
+    }
+
+    const wave = nextWave(runnableSteps, done, deps.maxParallel);
+    if (wave.length === 0) break;
+
+    parallelGroup += 1;
+
+    for (const step of wave) {
+      deps.act({
+        kind: "agent:step",
+        id: step.id,
+        goal: step.goal,
+        kind: step.kind,
+        parallelGroup,
+        status: "running",
+      });
+    }
+
+    const waveResults = await Promise.all(
+      wave.map(async (step) => {
+        try {
+          return await deps.runStep(step);
+        } catch (err) {
+          return {
+            id: step.id,
+            ok: false,
+            output: "",
+            error: err instanceof Error ? err.message : String(err),
+          };
+        }
+      })
+    );
+
+    for (let i = 0; i < wave.length; i++) {
+      const step = wave[i];
+      const result = waveResults[i];
+      results.push(result);
+      done.add(step.id);
+      deps.act({
+        kind: "agent:step",
+        id: step.id,
+        goal: step.goal,
+        kind: step.kind,
+        parallelGroup,
+        status: result.ok ? "done" : "error",
+        ...(result.error ? { detail: result.error } : {}),
+      });
+    }
+  }
+
+  deps.act({ kind: "agent:merge" });
+  const text = await deps.synthesize({ userText }, results);
+  return { text, fellBack: false };
+}
