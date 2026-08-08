@@ -8,6 +8,9 @@ name: Release
 #   git tag v0.4.0 && git push origin v0.4.0
 #
 # Optional notes file: docs/releases/vX.Y.Z.md (used when present).
+#
+# Assets are uploaded straight to the GitHub Release (no Actions artifacts),
+# so packaging is not blocked by artifact storage quota.
 
 on:
   push:
@@ -50,6 +53,55 @@ jobs:
           fi
           echo "version=$pkg" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare release shell + notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.check.outputs.version }}
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          notes="docs/releases/v${VERSION}.md"
+          if [ -f "$notes" ]; then
+            cp "$notes" release-notes.md
+          else
+            {
+              echo "## AnyLM v${VERSION}"
+              echo
+              echo "Desktop installers for **macOS**, **Windows**, and **Linux**."
+              echo
+              echo "Download from the [AnyLM site](https://anylm.app/download) or the assets below."
+            } > release-notes.md
+          fi
+
+          {
+            echo
+            echo "---"
+            echo
+            gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+              -f tag_name="$TAG" \
+              -f target_commitish="${GITHUB_SHA}" \
+              --jq .body 2>/dev/null || true
+          } >> release-notes.md || true
+
+          prerelease_args=()
+          if [[ "$TAG" == *"-beta"* || "$TAG" == *"-rc"* ]]; then
+            prerelease_args+=(--prerelease)
+          fi
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "AnyLM v${VERSION}" \
+              --notes-file release-notes.md \
+              "${prerelease_args[@]}"
+          else
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "AnyLM v${VERSION}" \
+              --notes-file release-notes.md \
+              --verify-tag \
+              "${prerelease_args[@]}"
+          fi
 
   build:
     name: Build ${{ matrix.artifact }}
@@ -101,8 +153,6 @@ jobs:
         working-directory: app
         shell: bash
         env:
-          # Public Firebase identifiers (see app/scripts/env-schema.js). Prefer
-          # repo Variables; secrets accepted as a fallback for older setups.
           ANYLM_FIREBASE_PROJECT: ${{ vars.ANYLM_FIREBASE_PROJECT || secrets.ANYLM_FIREBASE_PROJECT }}
           ANYLM_FIREBASE_API_KEY: ${{ vars.ANYLM_FIREBASE_API_KEY || secrets.ANYLM_FIREBASE_API_KEY }}
           ANYLM_FIREBASE_AUTH_DOMAIN: ${{ vars.ANYLM_FIREBASE_AUTH_DOMAIN || secrets.ANYLM_FIREBASE_AUTH_DOMAIN }}
@@ -124,30 +174,52 @@ jobs:
             echo "::error::Set repo Variables ANYLM_FIREBASE_PROJECT and ANYLM_FIREBASE_API_KEY (public Firebase web identifiers)."
             exit 1
           fi
-          if [ -z "$CSC_LINK" ] && [ -z "$WIN_CSC_LINK" ]; then
+
+          # Empty CSC_* makes electron-builder treat "" as a cert path and fail
+          # with "<projectDir> not a file". Only keep them when actually set.
+          if [ -z "${CSC_LINK:-}" ]; then
+            unset CSC_LINK CSC_KEY_PASSWORD
             export CSC_IDENTITY_AUTO_DISCOVERY=false
           fi
+          if [ -z "${WIN_CSC_LINK:-}" ]; then
+            unset WIN_CSC_LINK WIN_CSC_KEY_PASSWORD
+          fi
+
           bun run build
           bunx electron-builder ${{ matrix.args }} --publish never
 
-      - name: Upload installers
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          retention-days: 7
-          if-no-files-found: error
-          path: |
-            app/release/*.dmg
-            app/release/*.zip
-            app/release/*.exe
-            app/release/*.AppImage
-            app/release/*.deb
-            app/release/*.blockmap
-            app/release/latest*.yml
+      - name: Upload installers to GitHub Release
+        shell: bash
+        working-directory: app
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.verify.outputs.tag }}
+        run: |
+          shopt -s nullglob
+          files=(
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.blockmap
+            release/latest*.yml
+          )
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No installers produced in app/release"
+            ls -la release || true
+            exit 1
+          fi
+          echo "Uploading to $TAG:"
+          printf '  %s\n' "${files[@]}"
+          gh release upload "$TAG" "${files[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
 
-  publish:
-    name: Publish GitHub release
+  finalize:
+    name: Merge auto-update feeds
     needs: [verify, build]
+    if: always() && needs.verify.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -158,92 +230,33 @@ jobs:
         with:
           node-version: 20
 
-      - name: Download all build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Merge auto-update manifests and collect installers
-        run: |
-          npm install --no-save js-yaml
-          mkdir -p dist
-          node app/scripts/merge-update-feeds.js artifacts dist
-          find artifacts -type f \
-            \( -name '*.dmg' -o -name '*.zip' -o -name '*.exe' \
-               -o -name '*.AppImage' -o -name '*.deb' -o -name '*.blockmap' \) \
-            -exec cp {} dist/ \;
-          echo "Release assets:"
-          ls -la dist
-
-      - name: Prepare release notes
-        id: notes
-        shell: bash
-        env:
-          VERSION: ${{ needs.verify.outputs.version }}
-          TAG: ${{ needs.verify.outputs.tag }}
-        run: |
-          notes="docs/releases/v${VERSION}.md"
-          if [ -f "$notes" ]; then
-            cp "$notes" release-notes.md
-          else
-            {
-              echo "## AnyLM v${VERSION}"
-              echo
-              echo "Desktop installers for **macOS**, **Windows**, and **Linux**."
-              echo
-              echo "Download from the [AnyLM site](https://anylm.app/download) or the assets below."
-              echo
-              echo "### Downloads"
-              echo
-              echo "| Platform | Recommended |"
-              echo "| --- | --- |"
-              echo "| macOS (Apple Silicon) | \`.dmg\` arm64 |"
-              echo "| macOS (Intel) | \`.dmg\` x64 |"
-              echo "| Windows | \`-setup.exe\` |"
-              echo "| Linux | \`.AppImage\` |"
-            } > release-notes.md
-          fi
-
-          # Append auto-generated commit summary when available.
-          {
-            echo
-            echo "---"
-            echo
-            gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
-              -f tag_name="$TAG" \
-              -f target_commitish="${GITHUB_SHA}" \
-              --jq .body 2>/dev/null || true
-          } >> release-notes.md || true
-
-          echo "path=release-notes.md" >> "$GITHUB_OUTPUT"
-
-      - name: Create or update GitHub Release
-        shell: bash
+      - name: Download release assets and merge manifests
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.verify.outputs.tag }}
-          VERSION: ${{ needs.verify.outputs.version }}
         run: |
-          prerelease_args=()
-          if [[ "$TAG" == *"-beta"* || "$TAG" == *"-rc"* ]]; then
-            prerelease_args+=(--prerelease)
+          mkdir -p artifacts/release dist
+          # Pull only the update manifests + installers we need to re-merge.
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir artifacts/release \
+            --pattern 'latest*.yml' \
+            --pattern '*.dmg' \
+            --pattern '*.zip' \
+            --pattern '*.exe' \
+            --pattern '*.AppImage' \
+            --pattern '*.deb' \
+            --pattern '*.blockmap' || true
+
+          if ! ls artifacts/release/latest*.yml >/dev/null 2>&1; then
+            echo "No latest*.yml assets yet; skipping merge."
+            exit 0
           fi
 
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit "$TAG" \
+          npm install --no-save js-yaml
+          node app/scripts/merge-update-feeds.js artifacts dist
+          if ls dist/latest*.yml >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/latest*.yml \
               --repo "$GITHUB_REPOSITORY" \
-              --title "AnyLM v${VERSION}" \
-              --notes-file release-notes.md \
-              "${prerelease_args[@]}"
-          else
-            gh release create "$TAG" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "AnyLM v${VERSION}" \
-              --notes-file release-notes.md \
-              --verify-tag \
-              "${prerelease_args[@]}"
+              --clobber
           fi
-
-          gh release upload "$TAG" dist/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --clobber
+          echo "Release assets:"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
