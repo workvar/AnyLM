@@ -17,7 +17,11 @@ function fakeElement(id: string) {
     id,
     title: "",
     textContent: "",
+    innerHTML: "",
+    dataset: {} as Record<string, string>,
+    style: {} as Record<string, string>,
     onclick: null as (() => void) | null,
+    appendChild() {},
     classList: {
       add: (name: string) => classes.add(name),
       remove: (name: string) => classes.delete(name),
@@ -42,6 +46,16 @@ describe("toggleUseTools navigation safety", () => {
       "tools-scope-all",
       "tools-scope-this",
       "tools-scope-cancel",
+      "update-toast",
+      "up-title",
+      "up-msg",
+      "up-notes",
+      "up-progress",
+      "up-bar",
+      "up-stats",
+      "up-pill-text",
+      "up-toast-ring",
+      "up-actions",
     ]) {
       elements.set(id, fakeElement(id));
     }
@@ -108,10 +122,14 @@ describe("toggleUseTools navigation safety", () => {
 
   test("persists to the initiating chat when navigation occurs during settings update", async () => {
     const settingsUpdate = deferred<AppSettings>();
+    const settingsPatches: Array<Partial<AppSettings>> = [];
     const updates: Array<{ id: string; patch: Record<string, unknown> }> = [];
     globalThis.window = {
       api: {
-        setSettings: () => settingsUpdate.promise,
+        setSettings: (patch: Partial<AppSettings>) => {
+          settingsPatches.push(patch);
+          return settingsUpdate.promise;
+        },
         updateChat: async (id: string, patch: Record<string, unknown>) => {
           updates.push({ id, patch });
         },
@@ -127,8 +145,75 @@ describe("toggleUseTools navigation safety", () => {
     settingsUpdate.resolve({ defaultUseToolsForChats: true } as AppSettings);
     await toggling;
 
+    expect(settingsPatches).toEqual([{ defaultUseToolsForChats: true }]);
     expect(updates).toEqual([{ id: "chat-1", patch: { useTools: true } }]);
     expect(state.current).toEqual({ id: "chat-2", useTools: false });
+    expect(getUseTools()).toBe(false);
+  });
+
+  test("persists the disabled default when choosing all new chats", async () => {
+    const settingsPatches: Array<Partial<AppSettings>> = [];
+    const updates: Array<{ id: string; patch: Record<string, unknown> }> = [];
+    globalThis.window = {
+      api: {
+        getSettings: async () => ({ defaultUseToolsForChats: true }) as AppSettings,
+        setSettings: async (patch: Partial<AppSettings>) => {
+          settingsPatches.push(patch);
+          return { defaultUseToolsForChats: false } as AppSettings;
+        },
+        updateChat: async (id: string, patch: Record<string, unknown>) => {
+          updates.push({ id, patch });
+        },
+      },
+    } as unknown as Window & typeof globalThis;
+    state.mode = "chat";
+    state.current = { id: "chat-1", useTools: true };
+    setUseTools(true, { persist: false });
+
+    const toggling = toggleUseTools();
+    await Promise.resolve();
+    elements.get("tools-scope-all")!.onclick!();
+    await toggling;
+
+    expect(settingsPatches).toEqual([{ defaultUseToolsForChats: false }]);
+    expect(updates).toEqual([{ id: "chat-1", patch: { useTools: false } }]);
+    expect(getUseTools()).toBe(false);
+  });
+
+  test("surfaces an error when a project tools update returns null", async () => {
+    globalThis.window = {
+      api: {
+        setProjectDefaultUseTools: async () => null,
+      },
+    } as unknown as Window & typeof globalThis;
+    state.mode = "project";
+    state.current = { id: "project-1", name: "One" };
+    state.thread = { id: "thread-1", useTools: false };
+
+    await toggleUseTools();
+
+    expect(elements.get("up-title")!.textContent).toBe("Couldn't update tools");
+    expect(elements.get("update-toast")!.classList.contains("hidden")).toBe(false);
+    expect(getUseTools()).toBe(false);
+  });
+
+  test("surfaces an error when chat persistence fails after updating settings", async () => {
+    globalThis.window = {
+      api: {
+        setSettings: async () => ({ defaultUseToolsForChats: true }) as AppSettings,
+        updateChat: async () => {
+          throw new Error("disk full");
+        },
+      },
+    } as unknown as Window & typeof globalThis;
+    state.mode = "chat";
+    state.current = { id: "chat-1", useTools: false };
+
+    const toggling = toggleUseTools();
+    elements.get("tools-scope-all")!.onclick!();
+    await toggling;
+
+    expect(elements.get("up-title")!.textContent).toBe("Couldn't update tools");
     expect(getUseTools()).toBe(false);
   });
 

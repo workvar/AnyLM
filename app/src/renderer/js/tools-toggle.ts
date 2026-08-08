@@ -1,6 +1,7 @@
 import { el } from "./dom.js";
 import { state } from "./state.js";
 import { promptToolsScope } from "./tools-scope-prompt.js";
+import { show as showToast } from "./updates/toast.js";
 
 let useTools = false;
 
@@ -23,53 +24,57 @@ export function setUseTools(on: boolean, { persist = true } = {}): void {
 export async function toggleUseTools(): Promise<void> {
   const turningOn = !getUseTools();
 
-  if (state.mode === "project" && state.current) {
-    const projectId = state.current.id;
-    const threadId = state.thread?.id;
-    const updated = await window.api.setProjectDefaultUseTools(projectId, turningOn);
-    if (!updated) return;
-    if (
-      state.mode !== "project" ||
-      state.current?.id !== projectId ||
-      state.thread?.id !== threadId
-    ) {
-      return;
-    }
-    state.current = { ...state.current, ...updated };
-    if (state.thread) state.thread = { ...state.thread, useTools: turningOn };
-    setUseTools(turningOn, { persist: false });
-    return;
-  }
-
-  if (state.mode === "chat" && state.current) {
-    const chatId = state.current.id;
-    if (turningOn) {
-      const choice = await promptToolsScope("enable");
-      if (choice === "cancel") return;
-      if (choice === "all-new") {
-        await window.api.setSettings({ defaultUseToolsForChats: true });
+  try {
+    if (state.mode === "project" && state.current) {
+      const projectId = state.current.id;
+      const threadId = state.thread?.id;
+      const updated = await window.api.setProjectDefaultUseTools(projectId, turningOn);
+      if (!updated) throw new Error("Project tools update returned no project");
+      if (
+        state.mode !== "project" ||
+        state.current?.id !== projectId ||
+        state.thread?.id !== threadId
+      ) {
+        return;
       }
-      await persistChatUseTools(chatId, true);
+      state.current = { ...state.current, ...updated };
+      if (state.thread) state.thread = { ...state.thread, useTools: turningOn };
+      setUseTools(turningOn, { persist: false });
       return;
     }
 
-    const settings = await window.api.getSettings();
-    if (settings.defaultUseToolsForChats) {
-      const choice = await promptToolsScope("disable-default");
-      if (choice === "cancel") return;
-      if (choice === "all-new") {
-        await window.api.setSettings({ defaultUseToolsForChats: false });
+    if (state.mode === "chat" && state.current) {
+      const chatId = state.current.id;
+      if (turningOn) {
+        const choice = await promptToolsScope("enable");
+        if (choice === "cancel") return;
+        if (choice === "all-new") {
+          await window.api.setSettings({ defaultUseToolsForChats: true });
+        }
+        await persistChatUseTools(chatId, true);
+        return;
       }
+
+      const settings = await window.api.getSettings();
+      if (settings.defaultUseToolsForChats) {
+        const choice = await promptToolsScope("disable-default");
+        if (choice === "cancel") return;
+        if (choice === "all-new") {
+          await window.api.setSettings({ defaultUseToolsForChats: false });
+        }
+        await persistChatUseTools(chatId, false);
+        return;
+      }
+
       await persistChatUseTools(chatId, false);
       return;
     }
 
-    await persistChatUseTools(chatId, false);
-    return;
+    // No active conversation: toggle UI only (should be rare)
+    setUseTools(turningOn, { persist: false });
+  } catch {
+    showToast({ title: "Couldn't update tools", msg: "Try again." });
   }
-
-  // No active conversation: toggle UI only (should be rare)
-  setUseTools(turningOn, { persist: false });
 }
 
 async function persistChatUseTools(chatId: string, on: boolean): Promise<void> {
