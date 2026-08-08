@@ -20,6 +20,11 @@ import { followUpPromptBlock } from "./tools/follow-up-prompt";
 import * as skillsRegistry from "./skills/registry";
 import * as skillsExec from "./skills/exec";
 import * as workspace from "./workspace";
+import { isProjectCodingIntent } from "./project-coding/intent";
+import { projectFirstPromptBlock } from "./project-coding/prompt";
+import { lookupCodingDocs } from "./project-coding/docs";
+import { buildProjectSummary, type ToolOutcome } from "./project-coding/summary";
+import * as webSearch from "./tools/web-search";
 import * as documentIntent from "./documents/intent";
 import * as proxy from "./proxy/server";
 import * as projectFiles from "./project-files";
@@ -37,6 +42,7 @@ import { runOrchestratedTurn } from "./agents/orchestrator";
 import { resolveAgentSettings, modelForRole } from "./agents/settings";
 import { makeWorkers } from "./agents/workers";
 import { modelSupportsThink } from "./think";
+import * as appMenu from "./menu";
 
 // Pending risky-tool confirmations, keyed by a one-time token → { resolve, id }.
 const pendingConfirms = new Map();
@@ -63,6 +69,10 @@ function rejectPendingForChat(id: string): void {
 
 function registerIpc() {
   // Settings
+  ipcMain.on("menu:set-context", (_e, ctx) => {
+    appMenu.setContext(ctx && typeof ctx === "object" ? ctx : {});
+  });
+
   ipcMain.handle("settings:get", () => settings.read());
   ipcMain.handle("settings:set", (_e, patch) => {
     const next = settings.write(patch);
@@ -476,6 +486,13 @@ function registerIpc() {
       }
       if (warnings.length) send("chat:governance", { id, warnings });
 
+      // Project-first coding: coding intent + tools on → ensure workspace,
+      // docs lookup, suppress streamed source, finish with a file/command summary.
+      const projectCoding =
+        !!useTools && !!lastUser && isProjectCodingIntent(lastUser.content);
+      let projectCodingDocsNote: string | null = null;
+      const projectCodingOutcomes: ToolOutcome[] = [];
+
       const blocks = [];
       // Also collected into `toolInstructionBlocks` (below) so multi-agent
       // tool workers (workers.ts) see the same context the single-agent
@@ -528,6 +545,27 @@ function registerIpc() {
       // worker (workers.ts) gets the same tool-usage guidance the
       // single-agent loop does — not just the tool definitions themselves.
       if (useTools) {
+        if (projectCoding) {
+          act({ kind: "status", text: "Setting up project" });
+          const ensured = workspace.ensureAutoProject(lastUser.content);
+          if (ensured.created) {
+            act({ kind: "status", text: `Created project folder: ${ensured.root}` });
+            send("workspace:changed", { root: ensured.root });
+          }
+          act({ kind: "status", text: "Looking up docs" });
+          const docs = await lookupCodingDocs({
+            text: lastUser.content,
+            search: (q) => webSearch.search(q),
+          });
+          projectCodingDocsNote = docs.note;
+          if (docs.block) {
+            blocks.push(docs.block);
+            toolInstructionBlocks.push(docs.block);
+          }
+          const pf = projectFirstPromptBlock();
+          blocks.push(pf);
+          toolInstructionBlocks.push(pf);
+        }
         const follow = followUpPromptBlock();
         if (follow) {
           blocks.push(follow);
@@ -539,6 +577,7 @@ function registerIpc() {
           toolInstructionBlocks.push(skillBlock);
         }
         // Working folder: tells the model where file tools operate.
+        // Re-read after project-coding ensure so the new root is included.
         const wsBlock = workspace.promptBlock();
         if (wsBlock) {
           blocks.push(wsBlock);
@@ -747,6 +786,9 @@ function registerIpc() {
           }
         }
       }
+      // Project-coding owns scaffolding via the single-agent tool loop
+      // (avoids parallel tool waves dumping code via synthesize).
+      if (projectCoding) useMulti = false;
 
       if (useMulti) {
         act({ kind: "status", text: "Planning…" });
@@ -871,9 +913,11 @@ function registerIpc() {
             if (!wroteStatus) {
               wroteStatus = true;
               endThinking();
-              act({ kind: "status", text: "Writing reply…" });
+              act({ kind: "status", text: projectCoding ? "Generating code" : "Writing reply…" });
             }
-            send("chat:chunk", { id, text: piece.content });
+            if (!projectCoding) {
+              send("chat:chunk", { id, text: piece.content });
+            }
           }
         };
         try {
@@ -946,10 +990,33 @@ function registerIpc() {
             status: "done",
             output: String(output).slice(0, 400),
           });
+          projectCodingOutcomes.push({
+            name: fname,
+            args: (fargs && typeof fargs === "object" ? fargs : {}) as Record<string, unknown>,
+            output: String(output),
+            denied: /^denied|user denied|not approved/i.test(String(output)),
+          });
+          if (projectCoding && fname === "run_shell") {
+            act({ kind: "status", text: "Using terminal" });
+          }
+          if (projectCoding && (fname === "write_file" || fname === "create_directory")) {
+            act({ kind: "status", text: "Generating code" });
+          }
           full.push({ role: "tool", content: String(output), tool_name: fname });
         }
       }
-      const text = (result && result.text) || "";
+      let text = (result && result.text) || "";
+      // Stop mid-turn: still summarize whatever tools already landed.
+      if (projectCoding && (!stopped || projectCodingOutcomes.length)) {
+        act({ kind: "status", text: "Writing summary" });
+        text = buildProjectSummary({
+          root: workspace.get() || "",
+          outcomes: projectCodingOutcomes,
+          docsNote: projectCodingDocsNote,
+          modelText: text,
+        });
+        send("chat:replace", { id, text });
+      }
       // Include any gate-level generate() cost (e.g. an ambiguous-turn
       // classify() call that ended up choosing single-agent) so it isn't
       // dropped just because the turn didn't go multi-agent.

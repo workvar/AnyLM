@@ -27,6 +27,11 @@ const api: AnyLmApi = {
   workspaceGet: () => ipcRenderer.invoke("workspace:get"),
   workspacePick: () => ipcRenderer.invoke("workspace:pick"),
   workspaceClear: () => ipcRenderer.invoke("workspace:clear"),
+  onWorkspaceChanged: (cb) => {
+    const handler = (_e, payload) => cb(payload);
+    ipcRenderer.on("workspace:changed", handler);
+    return () => ipcRenderer.removeListener("workspace:changed", handler);
+  },
 
   // Tools (model function calling)
   toolsList: () => ipcRenderer.invoke("tools:list"),
@@ -123,6 +128,14 @@ const api: AnyLmApi = {
     const fn = (_e, msg) => cb(msg);
     ipcRenderer.on("update:status", fn);
     return () => ipcRenderer.removeListener("update:status", fn);
+  },
+
+  // Application menu
+  setMenuContext: (ctx) => ipcRenderer.send("menu:set-context", ctx || {}),
+  onMenuAction: (cb) => {
+    const fn = (_e, msg) => cb(msg);
+    ipcRenderer.on("menu:action", fn);
+    return () => ipcRenderer.removeListener("menu:action", fn);
   },
 
   // Ollama

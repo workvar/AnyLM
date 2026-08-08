@@ -33,4 +33,5 @@ export function initWorkspace() {
 
   btn.onclick = async () => render(await window.api.workspacePick());
   window.api.workspaceGet().then(render);
+  window.api.onWorkspaceChanged?.(({ root }) => render(root));
 }

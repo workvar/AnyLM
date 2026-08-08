@@ -2,7 +2,9 @@
 // sandboxed to. Persisted in userData/anylm-workspace.json.
 import { app, dialog } from "electron";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
+import { ensureWorkspaceForCoding } from "./project-coding/ensure";
 
 function filePath() {
   return path.join(app.getPath("userData"), "anylm-workspace.json");
@@ -66,5 +68,16 @@ function promptBlock() {
   ].join("\n");
 }
 
-export { get, set, clear, pick, resolveInside, promptBlock };
+function ensureAutoProject(text: string): { root: string; created: boolean } {
+  return ensureWorkspaceForCoding({
+    get,
+    set,
+    home: os.homedir(),
+    mkdir: (p) => fs.mkdirSync(p, { recursive: true }),
+    exists: (p) => fs.existsSync(p),
+    text,
+  });
+}
+
+export { get, set, clear, pick, resolveInside, promptBlock, ensureAutoProject };
 

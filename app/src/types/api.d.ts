@@ -88,6 +88,7 @@ interface AnyLmApi {
   workspaceGet(): Promise<string>;
   workspacePick(): Promise<string>;
   workspaceClear(): Promise<boolean>;
+  onWorkspaceChanged(cb: (p: { root: string }) => void): Unsubscribe;
 
   // Tools
   toolsList(): Promise<ToolDefinition[]>;
@@ -144,6 +145,12 @@ interface AnyLmApi {
   cancelUpdate(): Promise<boolean>;
   installUpdate(): Promise<void>;
   onUpdateStatus(cb: (msg: UpdateStatus) => void): Unsubscribe;
+
+  // Application menu
+  setMenuContext(ctx: { projectId?: string | null; projectName?: string | null }): void;
+  onMenuAction(
+    cb: (msg: { action: string; section?: string } & Record<string, unknown>) => void
+  ): Unsubscribe;
 
   // Ollama + Chroma
   ollamaStatus(): Promise<{ ok: boolean; host: string; error?: string }>;
