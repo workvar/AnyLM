@@ -1,6 +1,6 @@
 // Shared renderer state.
 export const state = {
-  view: "projects", // main area: "projects" | "project" | "convo" | "settings"
+  view: "projects", // main area: "projects" | "project" | "artifacts" | "convo" | "settings"
   settingsSection: "general", // Settings hub: general | models | org | tools | skills | customize
   mode: null, // active conversation kind: "project" | "chat" | null
   projects: [], // project grid summaries
@@ -16,7 +16,6 @@ export const state = {
   projectSort: "updated", // "updated" | "name"
   projectQuery: "", // projects grid search text
   sidebarQuery: "", // left rail search text (projects + chats)
-  sidebarPane: "chats", // sidebar content: "chats" | "artifacts"
   modelsQuery: "",  // models view search text
   modelsFilter: "all", // "all" | "installed"
   modelsLayout: "list", // "list" | "grid"

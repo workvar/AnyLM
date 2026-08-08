@@ -166,47 +166,7 @@ body {
   opacity: 0.55;
 }
 
-/* Sidebar artifact explorer */
-#side-chats-pane,
-#artifacts-pane {
-  min-height: 0;
-  height: 100%;
-}
-#artifacts-pane {
-  display: flex;
-  flex-direction: column;
-}
-.artifacts-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 0 2px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-}
-#artifacts-list {
-  margin-top: 4px;
-}
-.artifact-icon {
-  flex: 0 0 auto;
-  color: var(--accent);
-}
-.artifact-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.artifact-ext {
-  text-transform: uppercase;
-}
-.artifacts-empty {
-  color: var(--muted);
-  cursor: default !important;
-}
+/* Sidebar artifact explorer moved to #artifacts-view in main */
 #app {
   display: flex;
   height: 100vh;
@@ -2239,7 +2199,8 @@ button.full {
 
 /* ===== Grid views (projects + a project's chats) ===== */
 #projects-view,
-#project-detail {
+#project-detail,
+#artifacts-view {
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -4061,10 +4022,85 @@ a:focus-visible,
 }
 #projects-view .card-grid,
 #project-detail .folders-wrap,
+#artifacts-view .folders-wrap,
 .settings-panel-body,
 .org-body {
   padding-top: 16px;
 }
+
+/* Finder-style Artifacts icon grid */
+.artifacts-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 10px 8px;
+  align-content: start;
+  padding: 4px 2px 12px;
+}
+.artifact-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 8px 10px;
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+.artifact-tile:hover {
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+  border-color: var(--glass-border);
+}
+.artifact-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.artifact-tile:active {
+  transform: scale(0.98);
+}
+.artifact-icon-wrap {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.28));
+}
+.artifact-type-svg {
+  width: 56px;
+  height: 56px;
+  display: block;
+}
+.artifact-tile-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  word-break: break-word;
+  color: var(--text);
+}
+.artifact-icon-wrap[data-kind="folder"] .artifact-type-svg {
+  width: 60px;
+  height: 60px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artifact-tile {
+    transition: none;
+  }
+  .artifact-tile:active {
+    transform: none;
+  }
+}
+
 
 #chat-form {
   background: linear-gradient(160deg, color-mix(in srgb, var(--panel) 92%, transparent), color-mix(in srgb, var(--panel-2) 72%, transparent));

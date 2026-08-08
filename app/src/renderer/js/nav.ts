@@ -4,7 +4,7 @@ import { state } from "./state.js";
 
 // Which sidebar button "owns" each view.
 function navFor(view) {
-  if (state.sidebarPane === "artifacts") return "artifacts-nav";
+  if (view === "artifacts") return "artifacts-nav";
   if (view === "projects" || view === "project") return "projects-nav";
   if (view === "convo") return state.mode === "project" ? "projects-nav" : null;
   return null;
@@ -14,6 +14,7 @@ export function showView(view) {
   state.view = view;
   el("projects-view").classList.toggle("hidden", view !== "projects");
   el("project-detail").classList.toggle("hidden", view !== "project");
+  el("artifacts-view").classList.toggle("hidden", view !== "artifacts");
   el("convo-view").classList.toggle("hidden", view !== "convo");
   el("settings-view").classList.toggle("hidden", view !== "settings");
 

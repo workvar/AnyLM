@@ -50,7 +50,7 @@ import { initSettingsHub } from "./settings-hub.js";
 import { initWebResearchHint } from "./web-research-hint.js";
 import { initAppMenu, syncMenuContext } from "./app-menu.js";
 import { initOllamaSetup, runOllamaLaunchFlow } from "./ollama-setup.js";
-import { closeArtifactsPane, initArtifacts, openArtifactsPane } from "./artifacts.js";
+import { initArtifacts, openArtifactsPane } from "./artifacts.js";
 
 async function refreshStatus() {
   const s = await window.api.ollamaStatus();
@@ -109,7 +109,6 @@ function convoBack() {
 }
 
 function openProjectsGrid() {
-  closeArtifactsPane();
   showView("projects");
   loadProjects();
   syncMenuContext();
@@ -123,13 +122,13 @@ function bindClick(id: string, handler: (this: UiElement, ev: MouseEvent) => voi
 function bindEvents() {
   // Sidebar
   bindClick("new-chat-btn", () => {
-    closeArtifactsPane();
     void createChat();
   });
   bindClick("projects-nav", openProjectsGrid);
   bindClick("artifacts-nav", openArtifactsPane);
   bindClick("sidebar-toggle", toggleSidebar);
   bindClick("sidebar-toggle-projects", toggleSidebar);
+  bindClick("sidebar-toggle-artifacts", toggleSidebar);
   bindClick("sidebar-toggle-detail", toggleSidebar);
   bindClick("sidebar-toggle-models", toggleSidebar);
   bindClick("sidebar-toggle-org", toggleSidebar);

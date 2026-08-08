@@ -6,7 +6,6 @@ import { setModelDropdown, setModelDropdownEnabled } from "./dropdown.js";
 import { clearMessages, addMessage, setBubbleMarkdown } from "./views.js";
 import { hideContext } from "./contextmeter.js";
 import { showView } from "./nav.js";
-import { closeArtifactsPane } from "./artifacts.js";
 import { appendAskAnswered } from "./turns.js";
 import { renderFileCard } from "./file-cards.js";
 import { paintCollapsed, createTrailHost } from "./activity-trail.js";
@@ -19,7 +18,6 @@ export function showEmpty() {
   state.chat = [];
   clearMessages();
   hideContext();
-  closeArtifactsPane();
   showView("projects");
 }
 

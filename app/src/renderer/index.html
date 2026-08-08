@@ -104,24 +104,15 @@
           </span>
         </div>
         <button id="new-chat-btn" class="primary">＋ New chat</button>
+        <button id="projects-nav" class="side-nav">▦ Projects</button>
+        <button id="artifacts-nav" class="side-nav" type="button">▭ Artifacts</button>
         <div class="side-search">
           <input id="sidebar-search" type="search" placeholder="Search chats…" autocomplete="off" />
         </div>
-        <button id="projects-nav" class="side-nav">▦ Projects</button>
-        <button id="artifacts-nav" class="side-nav" type="button">▭ Artifacts</button>
 
         <div class="side-scroll">
-          <div id="side-chats-pane">
-            <div class="side-section-label"><span id="side-chats-label">Chats</span></div>
-            <ul id="recents-list" class="nav-list"></ul>
-          </div>
-          <div id="artifacts-pane" class="hidden">
-            <div class="artifacts-head">
-              <button type="button" id="artifacts-back" class="ghost small hidden">← Back</button>
-              <span id="artifacts-title">Artifacts</span>
-            </div>
-            <ul id="artifacts-list" class="nav-list"></ul>
-          </div>
+          <div class="side-section-label"><span id="side-chats-label">Chats</span></div>
+          <ul id="recents-list" class="nav-list"></ul>
         </div>
         <div class="sidebar-foot">
           <div id="ollama-info">checking Ollama…</div>
@@ -156,6 +147,21 @@
             <input id="projects-search" type="text" placeholder="Search projects…" autocomplete="off" />
           </div>
           <div id="projects-grid" class="card-grid"></div>
+        </section>
+
+        <!-- Artifacts explorer (standalone + project-generated files) -->
+        <section id="artifacts-view" class="hidden">
+          <header class="view-toolbar">
+            <button id="sidebar-toggle-artifacts" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <button type="button" id="artifacts-back" class="ghost small hidden">‹ Artifacts</button>
+            <h1 class="view-title" id="artifacts-title">Artifacts</h1>
+          </header>
+          <div id="artifacts-body" class="folders-wrap">
+            <div id="artifacts-path" class="files-head hidden">
+              <span id="artifacts-dir" class="files-dir"></span>
+            </div>
+            <div id="artifacts-list" class="artifacts-icon-grid"></div>
+          </div>
         </section>
 
         <!-- A single project's chats -->
