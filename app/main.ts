@@ -8,11 +8,16 @@ import * as chromaServer from "./src/main/chroma-server";
 import * as proxy from "./src/main/proxy/server";
 import * as settings from "./src/main/settings";
 import * as appMenu from "./src/main/menu";
-import { productDisplayName } from "./src/main/product";
+import { PRODUCT_NAME, productDisplayName } from "./src/main/product";
 
 // Force the app name everywhere (menu bar, dock, About) — without this the dev
 // build shows "Electron". Packaged builds also pick this up via productName.
+// Pin userData to the brand name BEFORE setName: app.setName() would otherwise
+// relocate userData to a path derived from the display name (e.g. "AnyLM
+// (Dev)"), splitting dev/packaged data instead of sharing ~/Library/Application
+// Support/AnyLM.
 const displayName = productDisplayName(app.isPackaged);
+app.setPath("userData", path.join(app.getPath("appData"), PRODUCT_NAME));
 app.setName(displayName);
 
 // This file is compiled to dist/main.js, so __dirname is <app>/dist. The icon
@@ -40,6 +45,11 @@ function createWindow(): void {
       nodeIntegration: false,
     },
     ...macUI.windowOptions(),
+  });
+  // index.html has a static <title>, which would otherwise make Electron
+  // overwrite our displayName (e.g. "AnyLM (Dev)") once the page loads.
+  win.on("page-title-updated", (event) => {
+    event.preventDefault();
   });
   win.loadFile(RENDERER_HTML);
 

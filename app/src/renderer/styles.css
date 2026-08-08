@@ -124,6 +124,13 @@ body {
   flex-direction: column;
   padding: 14px;
 }
+/* The dark-theme gradient above is white-on-white against the light bg;
+   .platform-darwin already gets a tuned --glass-pane, so only cover the
+   non-native-glass fallback here. */
+:root[data-theme="light"]:not(.platform-darwin) #sidebar {
+  background: var(--glass);
+  border-right-color: var(--glass-border);
+}
 .brand {
   display: flex;
   align-items: center;
@@ -1386,6 +1393,13 @@ select {
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
 }
+/* The dark-theme gradient above is white-on-white against the light bg;
+   .platform-darwin already gets a tuned --glass-card, so only cover the
+   non-native-glass fallback here. */
+:root[data-theme="light"]:not(.platform-darwin) .auth-card {
+  background: var(--glass);
+  border-color: var(--glass-border);
+}
 .auth-brand {
   display: flex;
   flex-direction: column;
@@ -1477,6 +1491,14 @@ button.full {
 #auth-screen button.primary:hover {
   background: var(--accent);
   color: var(--accent-contrast);
+}
+/* The dark-theme white CTA reads as invisible white-on-white in light theme. */
+:root[data-theme="light"] #auth-screen button.primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+:root[data-theme="light"] #auth-screen button.primary:hover {
+  background: var(--accent-2);
 }
 .auth-error {
   color: var(--danger);
