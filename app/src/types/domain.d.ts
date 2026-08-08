@@ -34,6 +34,8 @@ interface AppSettings {
   sidebarCollapsed: boolean;
   railCollapsed: boolean;
   lastModel: string;
+  /** Default `useTools` for newly created standalone (non-project) chats. */
+  defaultUseToolsForChats: boolean;
   chromaHost: string;
   chromaPort: number;
   chromaSsl: boolean;
@@ -238,6 +240,8 @@ interface Project {
   locked?: boolean;
   /** Members cannot change the project's model. */
   modelLocked?: boolean;
+  /** When true, threads in this project default to tools on (existing + new). */
+  defaultUseTools?: boolean;
   createdAt: string;
 }
 
