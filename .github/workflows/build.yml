@@ -1,0 +1,136 @@
+name: Build desktop installers
+
+# Reusable Electron build matrix. Called by release.yml with the tag to stamp.
+# Each OS job packages installers and uploads them straight to the GitHub
+# Release (no Actions artifacts — avoids artifact storage quota blocks).
+#
+# The marketing site (web/) reads GitHub Releases via the API, so /download
+# and the homepage button update themselves once assets land.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to build (e.g. v0.4.0)."
+        required: true
+        type: string
+      version:
+        description: "Semver without leading v (e.g. 0.4.0)."
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build (${{ matrix.artifact }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            artifact: mac-arm64
+            args: --mac --arm64
+          - os: macos-13
+            artifact: mac-x64
+            args: --mac --x64
+          - os: windows-latest
+            artifact: windows-x64
+            args: --win --x64
+          - os: windows-latest
+            artifact: windows-ia32
+            args: --win --ia32
+          - os: ubuntu-latest
+            artifact: linux-x64
+            args: --linux --x64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: app
+        run: bun install --frozen-lockfile
+
+      - name: Rebuild native modules (macOS)
+        if: startsWith(matrix.os, 'macos')
+        working-directory: app
+        run: bunx electron-rebuild -f -w electron-liquid-glass || echo "electron-rebuild failed; electron-builder will rebuild during packaging"
+
+      - name: Build and package
+        working-directory: app
+        shell: bash
+        env:
+          # Public Firebase web identifiers (NOT secrets). Set as repository
+          # Variables: Settings → Secrets and variables → Actions → Variables.
+          ANYLM_FIREBASE_PROJECT: ${{ vars.ANYLM_FIREBASE_PROJECT || secrets.ANYLM_FIREBASE_PROJECT }}
+          ANYLM_FIREBASE_API_KEY: ${{ vars.ANYLM_FIREBASE_API_KEY || secrets.ANYLM_FIREBASE_API_KEY }}
+          ANYLM_FIREBASE_AUTH_DOMAIN: ${{ vars.ANYLM_FIREBASE_AUTH_DOMAIN || secrets.ANYLM_FIREBASE_AUTH_DOMAIN }}
+          ANYLM_SITE_URL: ${{ vars.ANYLM_SITE_URL || secrets.ANYLM_SITE_URL }}
+          ANYLM_MS_CLIENT_ID: ${{ vars.ANYLM_MS_CLIENT_ID || secrets.ANYLM_MS_CLIENT_ID }}
+          ANYLM_PROXY_PORT: ${{ vars.ANYLM_PROXY_PORT || secrets.ANYLM_PROXY_PORT }}
+          # Optional code signing. Leave unset for unsigned builds.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          if [ -z "${ANYLM_FIREBASE_PROJECT:-}" ] || [ -z "${ANYLM_FIREBASE_API_KEY:-}" ]; then
+            echo "::error::Set repository Variables ANYLM_FIREBASE_PROJECT and ANYLM_FIREBASE_API_KEY."
+            exit 1
+          fi
+
+          # Empty CSC_* makes electron-builder treat "" as a cert path
+          # ("<projectDir> not a file"). Only keep them when set.
+          if [ -z "${CSC_LINK:-}" ]; then
+            unset CSC_LINK CSC_KEY_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          if [ -z "${WIN_CSC_LINK:-}" ]; then
+            unset WIN_CSC_LINK WIN_CSC_KEY_PASSWORD
+          fi
+
+          bun run build
+          bunx electron-builder ${{ matrix.args }} --publish never
+
+      - name: Upload installers to GitHub Release
+        shell: bash
+        working-directory: app
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          shopt -s nullglob
+          files=(
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.blockmap
+            release/latest*.yml
+          )
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No installers produced in app/release"
+            ls -la release || true
+            exit 1
+          fi
+          echo "Uploading to $TAG:"
+          printf '  %s\n' "${files[@]}"
+          gh release upload "$TAG" "${files[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
