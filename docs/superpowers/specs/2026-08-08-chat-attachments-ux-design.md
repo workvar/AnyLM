@@ -18,7 +18,8 @@
 | Persistence approach | Separate `ChatAttachmentMessage` display messages (not fields on `ChatMessage`) |
 | History visibility | Persisted attachment messages so reopen shows the same cards/thumbs |
 | Composer preview | ChatGPT-style: image thumbnails + file cards with remove |
-| Doc content | Full doc text stays in turn context (`attachments.docs`) **and** is stored on history attachment messages |
+| Doc content | Full doc text stored on history attachment messages; LLM turn reads from those messages |
+| LLM injection | Backend derives current-turn docs/images from trailing `attachment` messages (drop parallel IPC `attachments` payload) |
 | Drag-and-drop | Whole composer shell; same accept rules as attach menu (no folder DnD) |
 | Model picker bug | `#model-trigger` must be `type="button"` inside `#chat-form` |
 
@@ -28,13 +29,14 @@
 2. Reopening a chat restores those attachment visuals (and doc text in stored messages).
 3. Drag files onto the chat bar; show a rich preview tray before send.
 4. Model picker opens the menu even when the textarea has content.
+5. Single source of truth: stored attachment messages drive both UI history and LLM injection for the current turn.
 
 ## Non-goals
 
 - Folder drag-and-drop (folder picker via `+` menu stays).
 - Editing or removing attachments after send.
 - New image compression / size limits beyond current behavior.
-- Changing how the backend injects docs/images into the LLM turn (keep existing `attachments` payload).
+- Re-injecting older history attachments on every later turn (only the trailing group before the latest user message).
 
 ---
 
@@ -59,23 +61,23 @@ Add to `StoredMessage`. Helper e.g. `chatAttachment(...)` in `messages.ts`.
 
 ### Send flow
 
-1. Snapshot pending attaches via existing `getAttachments()` / thumbs.
-2. For each pending item, `state.chat.push(ChatAttachmentMessage)` (docs include `text`; images include `dataUrl`).
+1. Snapshot pending attaches from the tray (name, kind, `text` / `dataUrl`).
+2. For each pending item, `state.chat.push(ChatAttachmentMessage)` (docs include full `text`; images include `dataUrl`).
 3. Push `{ role: "user", content }` as today.
 4. Clear the composer tray.
-5. Call `runTurn` with the existing backend `attachments: { docs, images }` payload (unchanged). Display messages are UI/history only.
+5. Call `runTurn` with the full `messages` list (including attachment messages). **Do not** send a separate `attachments` IPC payload.
 
 ### LLM / compact / title
 
-`isLlmMessage` / `llmMessages` already exclude non-LLM roles — attachment messages never go to Ollama. Compact, title, and summarize stay correct without special cases.
+`isLlmMessage` / `llmMessages` still exclude `role: "attachment"` from the Ollama chat array itself — attachment content is applied by the main-process injector (docs → system block; images → latest user message), not as chat roles. Compact, title, and summarize stay correct.
 
 ### Why store full doc text in history
 
-- Matches what the model saw for that turn (auditable transcript).
+- Single source of truth for what the model saw that turn (auditable transcript).
+- Backend can rebuild the docs context block from messages without a parallel payload.
 - Enables future “show contents” / re-use without re-reading a disk file that may have moved.
-- Turn context at send time continues to use the live `attachments.docs` payload; history storage is the durable copy.
 
-Images already carry large payloads via `dataUrl` for display (vision still uses the separate turn `attachments.images` base64 path).
+Images keep `dataUrl` for display; the injector strips the data-URL prefix to base64 for vision models.
 
 ---
 
@@ -124,7 +126,34 @@ User-only text without attachments continues to use the existing user bubble pat
 
 ---
 
-## 4. Model picker submit bug
+## 4. Backend LLM injection (from messages)
+
+Replace the chat IPC `attachments?: { docs, images }` path with derivation from the message list.
+
+### Current-turn selection
+
+Walk backward from the latest `role: "user"` message and collect contiguous preceding `role: "attachment"` messages. Stop at the first non-attachment. That group is the **current turn** only. Older attachment messages further back remain for UI history and are **not** re-injected.
+
+### Apply (same effects as today)
+
+| Kind | Behavior |
+|------|----------|
+| `doc` | Governance on `text`; append “Attached document …” block to system + `toolInstructionBlocks` |
+| `image` | Set `images: [base64…]` on the latest user message in the Ollama payload (`dataUrl` → raw base64) |
+| Complexity / multi-agent | `hasAttachments` from this derived group, not a separate field |
+
+### API cleanup
+
+- Remove `attachments` from the chat-send IPC args and `api.d.ts` / preload wiring once the renderer no longer passes it.
+- Keep a small pure helper (e.g. `currentTurnAttachments(messages)`) unit-tested for walk-back + doc/image split.
+
+### Compatibility
+
+No migration for old chats: they never stored attachment messages, so reopen shows text-only turns as today. New sends use the message-based path only.
+
+---
+
+## 5. Model picker submit bug
 
 **Cause:** `#model-trigger` is a `<button>` inside `#chat-form` without `type="button"`, so HTML defaults it to `submit`. With non-empty input, click submits; with empty input, `sendMessage` returns early so the menu still appears to “work.”
 
@@ -134,7 +163,7 @@ No change to `chat-form` `onsubmit` or Enter-to-send behavior.
 
 ---
 
-## 5. Error handling
+## 6. Error handling
 
 | Case | Behavior |
 |------|----------|
@@ -142,28 +171,30 @@ No change to `chat-form` `onsubmit` or Enter-to-send behavior.
 | Doc read failure | Skip that file; keep others |
 | Attachment-only send (no text) | Allowed (existing) |
 | Large images | Current behavior; no new compression this pass |
+| Attachment message missing `text` / `dataUrl` | Skip that item for injection; still show name in UI if present |
 
 ---
 
-## 6. Testing
+## 7. Testing
 
 - `messages.ts`: helper creates attachment messages; `isLlmMessage` false; `llmMessages` strips them; doc messages retain `text`.
+- `currentTurnAttachments`: walks back only contiguous attachments before last user; ignores older ones; splits docs/images.
 - Attach / DnD classification: image vs doc vs skip.
 - Views / history: attachment + user text grouping on render and reload shape.
 - Model trigger is `type="button"` (static HTML or small DOM assertion).
+- Chat send path no longer requires/accepts IPC `attachments` (type + call sites).
 
 ---
 
-## 7. Implementation touchpoints (expected)
+## 8. Implementation touchpoints (expected)
 
 | Area | Files (approx.) |
 |------|-----------------|
-| Types | `app/src/types/domain.d.ts` |
+| Types | `app/src/types/domain.d.ts`, `app/src/types/api.d.ts` |
 | Message helpers | `app/src/renderer/js/messages.ts` (+ tests) |
 | Attach / DnD / tray | `app/src/renderer/js/attach.ts`, `styles.css`, `index.html` |
-| Send | `app/src/renderer/js/chat.ts` |
+| Send | `app/src/renderer/js/chat.ts`, `app/src/renderer/js/turns.ts` |
 | Bubbles | `app/src/renderer/js/views.ts` |
 | History | `app/src/renderer/js/convo.ts` |
 | Model picker | `app/src/renderer/index.html` (`#model-trigger`) |
-
-Backend chat IPC attachment injection stays as-is for the live turn.
+| Backend injection | `app/src/main/ipc.ts` (+ pure helper module + tests); preload if args change |
