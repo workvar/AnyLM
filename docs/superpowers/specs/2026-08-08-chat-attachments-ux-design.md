@@ -19,7 +19,8 @@
 | History visibility | Persisted attachment messages so reopen shows the same cards/thumbs |
 | Composer preview | ChatGPT-style: image thumbnails + file cards with remove |
 | Doc content | Full doc text stored on history attachment messages; LLM turn reads from those messages |
-| LLM injection | Backend derives current-turn docs/images from trailing `attachment` messages (drop parallel IPC `attachments` payload) |
+| LLM injection | Backend derives docs/images from **all** `attachment` messages in this chat/thread (drop parallel IPC `attachments` payload); re-inject on every request |
+| Project cross-chat context | Unchanged: other threads/chats contribute via existing project memory settings from creation (`memory.recall`, import-general, project files) — not by merging other threads’ attachment messages |
 | Drag-and-drop | Whole composer shell; same accept rules as attach menu (no folder DnD) |
 | Model picker bug | `#model-trigger` must be `type="button"` inside `#chat-form` |
 
@@ -29,15 +30,15 @@
 2. Reopening a chat restores those attachment visuals (and doc text in stored messages).
 3. Drag files onto the chat bar; show a rich preview tray before send.
 4. Model picker opens the menu even when the textarea has content.
-5. Single source of truth: stored attachment messages drive both UI history and LLM injection for the current turn.
+5. Single source of truth: stored attachment messages drive both UI history and LLM injection.
+6. Every request in a conversation re-feeds that conversation’s attachments so answers stay context-aware.
 
 ## Non-goals
 
 - Folder drag-and-drop (folder picker via `+` menu stays).
 - Editing or removing attachments after send.
 - New image compression / size limits beyond current behavior.
-- Re-injecting older history attachments on every later turn (only the trailing group before the latest user message).
-
+- Pulling attachment messages from *other* project threads into this chat’s injector (cross-chat stays on project memory settings).
 ---
 
 ## 1. Data model & persistence
@@ -69,7 +70,7 @@ Add to `StoredMessage`. Helper e.g. `chatAttachment(...)` in `messages.ts`.
 
 ### LLM / compact / title
 
-`isLlmMessage` / `llmMessages` still exclude `role: "attachment"` from the Ollama chat array itself — attachment content is applied by the main-process injector (docs → system block; images → latest user message), not as chat roles. Compact, title, and summarize stay correct.
+`isLlmMessage` / `llmMessages` still exclude `role: "attachment"` from the Ollama chat array itself — attachment content is applied by the main-process injector (docs → system block; images → latest user message), not as chat roles. Compact, title, and summarize stay correct. Compacted chats keep whatever attachment messages remain in the stored list; those continue to be re-injected.
 
 ### Why store full doc text in history
 
@@ -130,31 +131,38 @@ User-only text without attachments continues to use the existing user bubble pat
 
 Replace the chat IPC `attachments?: { docs, images }` path with derivation from the message list.
 
-### Current-turn selection
+### Conversation-wide selection
 
-Walk backward from the latest `role: "user"` message and collect contiguous preceding `role: "attachment"` messages. Stop at the first non-attachment. That group is the **current turn** only. Older attachment messages further back remain for UI history and are **not** re-injected.
+Collect **every** `role: "attachment"` message in the IPC `messages` array for this chat/thread (standalone chat or project thread). Re-inject that full set on **every** request so later turns still see earlier docs/images.
 
-### Apply (same effects as today)
+Helper name can stay generic (e.g. `conversationAttachments(messages)`) — return ordered docs + images from the whole list.
 
-1. Derive the current-turn attachment group from the IPC `messages` array (which **includes** `role: "attachment"` entries from the renderer).
+### Project scope (unchanged cross-chat path)
+
+Attachment injection is **only** from the open conversation’s messages. Data from other threads in the same project continues to arrive through existing project memory plumbing configured at project creation (e.g. shared memory recall, import-general, project files / knowledge graph). Do **not** merge other threads’ `attachment` messages into this injector.
+
+### Apply (same effects as today, broader input)
+
+1. Derive the conversation attachment set from the IPC `messages` array (which **includes** all `role: "attachment"` entries from the renderer history).
 2. Build the Ollama chat array from LLM roles only (skip `attachment` / `artifact` / `ask`).
 3. Then apply:
 
 | Kind | Behavior |
 |------|----------|
-| `doc` | Governance on `text`; append “Attached document …” block to system + `toolInstructionBlocks` |
-| `image` | Set `images: [base64…]` on the latest user message in the Ollama payload (`dataUrl` → raw base64) |
-| Complexity / multi-agent | `hasAttachments` from this derived group, not a separate field |
+| `doc` | Governance on each `text`; append one combined “Attached document …” block (all docs, in history order) to system + `toolInstructionBlocks` |
+| `image` | Set `images: [base64…]` on the latest user message for **all** conversation images (`dataUrl` → raw base64, history order) |
+| Complexity / multi-agent | `hasAttachments` from this derived set, not a separate field |
+
+Accepted tradeoff: large/long chats with many attachments increase prompt size (and vision payload). No new compression in this pass; existing context meter / compact remain the user escape hatch.
 
 ### API cleanup
 
 - Remove `attachments` from the chat-send IPC args and `api.d.ts` / preload wiring once the renderer no longer passes it.
-- Keep a small pure helper (e.g. `currentTurnAttachments(messages)`) unit-tested for walk-back + doc/image split.
+- Keep a small pure helper unit-tested for full-list collection + doc/image split.
 
 ### Compatibility
 
 No migration for old chats: they never stored attachment messages, so reopen shows text-only turns as today. New sends use the message-based path only.
-
 ---
 
 ## 5. Model picker submit bug
@@ -182,12 +190,12 @@ No change to `chat-form` `onsubmit` or Enter-to-send behavior.
 ## 7. Testing
 
 - `messages.ts`: helper creates attachment messages; `isLlmMessage` false; `llmMessages` strips them; doc messages retain `text`.
-- `currentTurnAttachments`: walks back only contiguous attachments before last user; ignores older ones; splits docs/images.
+- `conversationAttachments`: returns all docs/images from the message list in order; empty when none.
 - Attach / DnD classification: image vs doc vs skip.
 - Views / history: attachment + user text grouping on render and reload shape.
 - Model trigger is `type="button"` (static HTML or small DOM assertion).
 - Chat send path no longer requires/accepts IPC `attachments` (type + call sites).
-
+- Project path: injector does not read other threads; project memory recall remains the cross-chat path (no regress in wiring).
 ---
 
 ## 8. Implementation touchpoints (expected)
