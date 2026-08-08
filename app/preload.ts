@@ -227,7 +227,13 @@ const api: AnyLmApi = {
       const done = (_e, m) => {
         if (m.id !== id) return;
         cleanup();
-        resolve({ full: m.full, usage: m.usage, stopped: !!m.stopped });
+        resolve({
+          full: m.full,
+          usage: m.usage,
+          stopped: !!m.stopped,
+          stopReason: m.stopReason === "memory" ? "memory" : undefined,
+          killPercent: typeof m.killPercent === "number" ? m.killPercent : undefined,
+        });
       };
       const fail = (_e, m) => {
         if (m.id !== id) return;

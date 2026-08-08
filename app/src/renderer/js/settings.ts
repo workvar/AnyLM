@@ -60,6 +60,8 @@ function paintAgentsSettings() {
   const agents = settings.agents;
   el("agents-enabled").checked = agents?.enabled !== false;
   el("agents-max-parallel").value = String(agents?.maxParallel ?? 2);
+  el("load-protection-enabled").checked = agents?.loadProtection?.enabled !== false;
+  el("load-protection-kill").value = String(agents?.loadProtection?.killPercent ?? 90);
   for (const { id, key } of AGENT_MODEL_SELECTS) {
     el(id).value = agents?.models?.[key] ?? "";
   }
@@ -102,6 +104,10 @@ function bind() {
     save({ agents: { enabled: (e.target as UiElement).checked } });
   el("agents-max-parallel").onchange = (e) =>
     save({ agents: { maxParallel: Number((e.target as UiElement).value) } });
+  el("load-protection-enabled").onchange = (e) =>
+    save({ agents: { loadProtection: { enabled: (e.target as UiElement).checked } } });
+  el("load-protection-kill").onchange = (e) =>
+    save({ agents: { loadProtection: { killPercent: Number((e.target as UiElement).value) } } });
   for (const { id, key } of AGENT_MODEL_SELECTS) {
     el(id).onchange = (e) => {
       const v = (e.target as UiElement).value;

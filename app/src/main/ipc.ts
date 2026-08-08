@@ -679,6 +679,30 @@ function registerIpc() {
       // multi-agent orchestrator's success path and the single-agent loop
       // below, so the two paths behave identically once a final answer
       // exists.
+      const agentCfg = resolveAgentSettings(settings.read());
+      const lp = agentCfg.loadProtection;
+      let stopReason: "memory" | undefined;
+      let stopKillPercent: number | undefined;
+      let sampleFailedLogged = false;
+
+      const sampleOrNull = (): number | null => {
+        if (!lp.enabled) return null;
+        const pct = systemRamUsedPercent();
+        if (pct == null && !sampleFailedLogged) {
+          sampleFailedLogged = true;
+          console.warn("[load-guard] system RAM sample failed; failing open");
+        }
+        return pct;
+      };
+
+      const tripSoftStop = (pct: number) => {
+        cancelledChats.add(id);
+        rejectPendingForChat(id);
+        stopReason = "memory";
+        stopKillPercent = lp.killPercent;
+        void pct;
+      };
+
       const finishTurn = async (
         text: string,
         totalPrompt: number,
@@ -719,6 +743,9 @@ function registerIpc() {
           id,
           full: text,
           stopped,
+          ...(stopped && stopReason === "memory"
+            ? { stopReason: "memory", killPercent: stopKillPercent ?? lp.killPercent }
+            : {}),
           usage: {
             tokens,
             ctx,
@@ -744,6 +771,29 @@ function registerIpc() {
         }
       };
 
+      // Soft-stop before classify / plan / model work when already over kill %.
+      let multiPromptTokens = 0;
+      let multiCompletionTokens = 0;
+      if (lp.enabled) {
+        const pct = sampleOrNull();
+        if (isOverKillLimit(pct, lp.killPercent)) {
+          tripSoftStop(pct as number);
+          await finishTurn("", multiPromptTokens, multiCompletionTokens, true);
+          return;
+        }
+      }
+
+      const monitor = createInFlightMonitor({
+        enabled: lp.enabled,
+        killPercent: lp.killPercent,
+        sample: sampleOrNull,
+        onTrip: () => {
+          const pct = sampleOrNull();
+          tripSoftStop(pct ?? lp.killPercent);
+        },
+      });
+      monitor.start();
+      try {
       // --- Multi-agent gate --------------------------------------------
       // Cheap heuristic first (leanComplexity, no model call); an LLM
       // classify only runs for the ambiguous middle ground. Simple turns
@@ -757,8 +807,6 @@ function registerIpc() {
       // heaviest-usage turns. They're added into whichever path's
       // `finishTurn` call ends up happening, single or multi, since a
       // classify() call can run even when the turn ultimately falls back.
-      let multiPromptTokens = 0;
-      let multiCompletionTokens = 0;
       const trackedGenerate = async (genModel: string, prompt: string): Promise<string> => {
         const r = await ollama.generateWithUsage(genModel, prompt);
         multiPromptTokens += r.promptTokens || 0;
@@ -766,7 +814,6 @@ function registerIpc() {
         return r.text;
       };
 
-      const agentCfg = resolveAgentSettings(settings.read());
       const lastText = (lastUser && lastUser.content) || "";
       let useMulti = false;
       if (agentCfg.enabled && lastText) {
@@ -831,6 +878,21 @@ function registerIpc() {
         // surface as chat:error like any other mid-turn failure.
         const orchResult = await runOrchestratedTurn(lastText, {
           maxParallel: agentCfg.maxParallel,
+          beforeWave: () => {
+            if (!lp.enabled) {
+              return { maxParallel: agentCfg.maxParallel, softStop: false };
+            }
+            const pct = sampleOrNull();
+            const over = isOverKillLimit(pct, lp.killPercent);
+            if (over) tripSoftStop(pct as number);
+            return {
+              maxParallel: effectiveMaxParallel(agentCfg.maxParallel, {
+                enabled: true,
+                overKill: over,
+              }),
+              softStop: over,
+            };
+          },
           planTurn: () =>
             planTurn({
               model: modelForRole(agentCfg, "planner", useModel),
@@ -1031,6 +1093,9 @@ function registerIpc() {
       // classify() call that ended up choosing single-agent) so it isn't
       // dropped just because the turn didn't go multi-agent.
       await finishTurn(text, multiPromptTokens + totalPrompt, multiCompletionTokens + totalCompletion, stopped);
+      } finally {
+        monitor.stop();
+      }
     } catch (e) {
       if (activityStarted) {
         // Close an open thinking span before done so Task 5 ticker is not stuck.

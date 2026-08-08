@@ -5,6 +5,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { clampMaxParallel } from "./agents/max-parallel";
 import { env } from "./env";
+import { clampKillPercent } from "./load-guard/clamp";
 
 const DEFAULTS: AppSettings = {
   theme: "system",
@@ -51,6 +52,10 @@ const DEFAULTS: AppSettings = {
       toolExecutor: null,
       synthesize: null,
     },
+    loadProtection: {
+      enabled: true,
+      killPercent: 90,
+    },
   },
 };
 
@@ -61,7 +66,20 @@ function filePath(): string {
 function read(): AppSettings {
   try {
     const saved = JSON.parse(fs.readFileSync(filePath(), "utf8")) as Partial<AppSettings>;
-    return { ...DEFAULTS, ...saved };
+    const merged: AppSettings = { ...DEFAULTS, ...saved };
+    // Deep-merge agents so older settings files still get loadProtection defaults.
+    if (saved.agents) {
+      merged.agents = {
+        ...DEFAULTS.agents,
+        ...saved.agents,
+        models: { ...DEFAULTS.agents.models, ...(saved.agents.models || {}) },
+        loadProtection: {
+          ...DEFAULTS.agents.loadProtection,
+          ...(saved.agents.loadProtection || {}),
+        },
+      };
+    }
+    return merged;
   } catch {
     return { ...DEFAULTS };
   }
@@ -76,6 +94,15 @@ function write(patch: Partial<AppSettings>): AppSettings {
       ...patch.agents,
       models: { ...prev.agents.models, ...(patch.agents.models || {}) },
       maxParallel: clampMaxParallel(patch.agents.maxParallel ?? prev.agents.maxParallel),
+      loadProtection: {
+        ...prev.agents.loadProtection,
+        ...(patch.agents.loadProtection || {}),
+        enabled:
+          (patch.agents.loadProtection?.enabled ?? prev.agents.loadProtection?.enabled) !== false,
+        killPercent: clampKillPercent(
+          patch.agents.loadProtection?.killPercent ?? prev.agents.loadProtection?.killPercent
+        ),
+      },
     };
   }
   fs.writeFileSync(filePath(), JSON.stringify(next, null, 2));

@@ -396,6 +396,31 @@
                 </div>
 
                 <div class="setting-row">
+                <div class="label">
+                Load protection
+                <small>Soft-stop the current turn when system memory used stays over this %.</small>
+                </div>
+                <label class="switch">
+                <input type="checkbox" id="load-protection-enabled" />
+                <span class="track"></span>
+                </label>
+                </div>
+
+                <div class="setting-row">
+                <div class="label">
+                Memory kill threshold
+                <small>Stop the turn at this system RAM used % (50–99).</small>
+                </div>
+                <input
+                type="number"
+                id="load-protection-kill"
+                class="auth-input agents-max-parallel"
+                min="50"
+                max="99"
+                />
+                </div>
+
+                <div class="setting-row">
                 <div class="label">Planner model</div>
                 <select id="agents-model-planner"><option value="">Same as chat</option></select>
                 </div>

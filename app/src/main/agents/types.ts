@@ -31,8 +31,14 @@ export interface AgentModelMap {
   synthesize: string | null;
 }
 
+export interface LoadProtectionSettings {
+  enabled: boolean;
+  killPercent: number;
+}
+
 export interface AgentSettings {
   enabled: boolean;
   maxParallel: number;
   models: AgentModelMap;
+  loadProtection: LoadProtectionSettings;
 }

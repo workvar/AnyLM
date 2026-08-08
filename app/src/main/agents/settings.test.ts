@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { clampKillPercent } from "../load-guard/clamp";
 import { modelForRole, resolveAgentSettings } from "./settings";
 import type { AgentSettings } from "./types";
 
@@ -6,6 +7,12 @@ const base: AgentSettings = {
   enabled: true,
   maxParallel: 2,
   models: { planner: null, router: "tiny", toolExecutor: null, synthesize: null },
+  loadProtection: { enabled: true, killPercent: 90 },
+};
+
+const baseWithLp: AgentSettings = {
+  ...base,
+  loadProtection: { enabled: true, killPercent: 90 },
 };
 
 describe("modelForRole", () => {
@@ -24,4 +31,37 @@ describe("resolveAgentSettings", () => {
     } as AppSettings);
     expect(r.maxParallel).toBe(1);
   });
+});
+
+describe("resolveAgentSettings loadProtection", () => {
+  test("defaults missing loadProtection to enabled + 90", () => {
+    const r = resolveAgentSettings({
+      agents: { enabled: true, maxParallel: 2, models: base.models },
+    } as AppSettings);
+    expect(r.loadProtection).toEqual({ enabled: true, killPercent: 90 });
+  });
+
+  test("clamps killPercent on resolve", () => {
+    const r = resolveAgentSettings({
+      agents: {
+        ...baseWithLp,
+        loadProtection: { enabled: true, killPercent: 10 },
+      },
+    } as AppSettings);
+    expect(r.loadProtection.killPercent).toBe(50);
+  });
+
+  test("enabled false is preserved", () => {
+    const r = resolveAgentSettings({
+      agents: {
+        ...baseWithLp,
+        loadProtection: { enabled: false, killPercent: 90 },
+      },
+    } as AppSettings);
+    expect(r.loadProtection.enabled).toBe(false);
+  });
+});
+
+test("clampKillPercent agrees with resolve for out-of-range patch", () => {
+  expect(clampKillPercent(120)).toBe(99);
 });

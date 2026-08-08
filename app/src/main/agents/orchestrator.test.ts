@@ -86,3 +86,54 @@ test("runs independent steps with maxParallel and emits events", async () => {
   expect(events).toContain("agent:merge");
   expect(r.text).toContain("a-out");
 });
+
+test("beforeWave forces maxParallel 1 for the wave", async () => {
+  const started: string[] = [];
+  await runOrchestratedTurn("do", {
+    maxParallel: 2,
+    beforeWave: () => ({ maxParallel: 1, softStop: false }),
+    planTurn: async () => ({
+      steps: [
+        { id: "a", goal: "A", dependsOn: [], kind: "memory" },
+        { id: "b", goal: "B", dependsOn: [], kind: "memory" },
+        { id: "c", goal: "C", dependsOn: ["a", "b"], kind: "synthesize" },
+      ],
+    }),
+    assignKinds: (p) => p,
+    runStep: async (step) => {
+      started.push(step.id);
+      return { id: step.id, ok: true, output: step.id };
+    },
+    synthesize: async () => "ok",
+    act: () => {},
+    isCancelled: () => false,
+  });
+  // With maxParallel 1, first wave is only one of the independent steps.
+  expect(started[0] === "a" || started[0] === "b").toBe(true);
+  expect(started.length).toBe(2);
+});
+
+test("beforeWave softStop skips remaining waves", async () => {
+  let waves = 0;
+  const r = await runOrchestratedTurn("do", {
+    maxParallel: 2,
+    beforeWave: () => {
+      waves += 1;
+      return { maxParallel: 1, softStop: waves >= 1 };
+    },
+    planTurn: async () => ({
+      steps: [
+        { id: "a", goal: "A", dependsOn: [], kind: "memory" },
+        { id: "b", goal: "B", dependsOn: ["a"], kind: "memory" },
+        { id: "c", goal: "final", dependsOn: ["b"], kind: "synthesize" },
+      ],
+    }),
+    assignKinds: (p) => p,
+    runStep: async (step) => ({ id: step.id, ok: true, output: "x" }),
+    synthesize: async () => "should not run",
+    act: () => {},
+    isCancelled: () => false,
+  });
+  expect(r.fellBack).toBe(false);
+  expect(r.text).toBe("");
+});

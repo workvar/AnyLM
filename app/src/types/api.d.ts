@@ -244,7 +244,13 @@ interface AnyLmApi {
     onChunk: (text: string) => void,
     onId?: (id: string) => void,
     onReplace?: (text: string) => void
-  ): Promise<{ full: string; usage: ChatUsage; stopped?: boolean }>;
+  ): Promise<{
+    full: string;
+    usage: ChatUsage;
+    stopped?: boolean;
+    stopReason?: "memory";
+    killPercent?: number;
+  }>;
 
   // Model management
   deleteModel(model: string): Promise<boolean>;

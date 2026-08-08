@@ -14,10 +14,16 @@ interface AgentModelMap {
   synthesize: string | null;
 }
 
+interface LoadProtectionSettings {
+  enabled: boolean;
+  killPercent: number;
+}
+
 interface AgentSettings {
   enabled: boolean;
   maxParallel: number;
   models: AgentModelMap;
+  loadProtection: LoadProtectionSettings;
 }
 
 interface AppSettings {

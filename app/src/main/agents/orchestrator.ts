@@ -3,6 +3,8 @@ import type { AgentPlan, AgentStep, StepResult } from "./types";
 
 export interface OrchestratorDeps {
   maxParallel: number;
+  /** Optional load-protection hook: re-sample before each wave. */
+  beforeWave?: () => { maxParallel: number; softStop: boolean };
   planTurn: (userText: string) => Promise<AgentPlan | null>;
   assignKinds: (plan: AgentPlan) => AgentPlan;
   runStep: (step: AgentStep) => Promise<StepResult>;
@@ -46,7 +48,16 @@ export async function runOrchestratedTurn(
       return { text: "", fellBack: false };
     }
 
-    const wave = nextWave(runnableSteps, done, deps.maxParallel);
+    let maxParallel = deps.maxParallel;
+    if (deps.beforeWave) {
+      const decision = deps.beforeWave();
+      maxParallel = decision.maxParallel;
+      if (decision.softStop || deps.isCancelled()) {
+        return { text: "", fellBack: false };
+      }
+    }
+
+    const wave = nextWave(runnableSteps, done, maxParallel);
     if (wave.length === 0) break;
 
     parallelGroup += 1;
