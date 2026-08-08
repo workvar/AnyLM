@@ -154,7 +154,16 @@ interface AskMessage {
   answer: string | null;
 }
 
-type StoredMessage = ChatMessage | FileArtifactMessage | AskMessage;
+interface ChatAttachmentMessage {
+  role: "attachment";
+  kind: "image" | "doc";
+  name: string;
+  dataUrl?: string;
+  text?: string;
+  createdAt: number;
+}
+
+type StoredMessage = ChatMessage | FileArtifactMessage | AskMessage | ChatAttachmentMessage;
 
 interface ChatUsage {
   tokens: number;

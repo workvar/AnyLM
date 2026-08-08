@@ -1,6 +1,6 @@
 // src/renderer/js/messages.test.ts
 import { describe, expect, test } from "bun:test";
-import { isLlmMessage, fileArtifact, askArtifact, llmMessages } from "./messages";
+import { chatAttachment, isLlmMessage, fileArtifact, askArtifact, llmMessages } from "./messages";
 
 describe("messages helpers", () => {
   test("fileArtifact shape", () => {
@@ -52,5 +52,37 @@ describe("messages helpers", () => {
   test("isLlmMessage", () => {
     expect(isLlmMessage({ role: "user", content: "x" })).toBe(true);
     expect(isLlmMessage(fileArtifact({ name: "a.pdf", ext: ".pdf", dir: "/d" }))).toBe(false);
+  });
+
+  test("chatAttachment doc retains text", () => {
+    const m = chatAttachment({ kind: "doc", name: "notes.md", text: "hello" });
+    expect(m.role).toBe("attachment");
+    expect(m.kind).toBe("doc");
+    expect(m.name).toBe("notes.md");
+    expect(m.text).toBe("hello");
+    expect(typeof m.createdAt).toBe("number");
+  });
+
+  test("chatAttachment image keeps dataUrl", () => {
+    const m = chatAttachment({
+      kind: "image",
+      name: "a.png",
+      dataUrl: "data:image/png;base64,aaa",
+    });
+    expect(m.kind).toBe("image");
+    expect(m.dataUrl).toBe("data:image/png;base64,aaa");
+  });
+
+  test("llmMessages filters attachment", () => {
+    const out = llmMessages([
+      chatAttachment({ kind: "doc", name: "a.txt", text: "x" }),
+      { role: "user", content: "hi" },
+      { role: "assistant", content: "ok" },
+    ]);
+    expect(out.map((m) => m.role)).toEqual(["user", "assistant"]);
+  });
+
+  test("isLlmMessage false for attachment", () => {
+    expect(isLlmMessage(chatAttachment({ kind: "doc", name: "a.txt", text: "x" }))).toBe(false);
   });
 });
