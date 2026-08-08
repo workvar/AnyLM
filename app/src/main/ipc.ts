@@ -812,13 +812,14 @@ function registerIpc() {
             thinkingOpen = true;
             act({ kind: "thinking", phase: "start" });
             let wroteStatus = false;
-            const onPiece = (piece: string) => {
+            const onPiece = (piece: { content?: string; thinking?: string }) => {
+              if (!piece.content) return;
               if (!wroteStatus) {
                 wroteStatus = true;
                 endThinking();
                 act({ kind: "status", text: "Writing reply…" });
               }
-              send("chat:chunk", { id, text: piece });
+              send("chat:chunk", { id, text: piece.content });
             };
             const synthModel = modelForRole(agentCfg, "synthesize", useModel);
             const r = await ollama.chatStream(synthModel, synthMessages, onPiece);
