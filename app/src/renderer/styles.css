@@ -116,8 +116,10 @@ body {
 /* Sidebar */
 #sidebar {
   width: 250px;
-  background: var(--panel);
-  border-right: 1px solid var(--border);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  border-right: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   display: flex;
   flex-direction: column;
   padding: 14px;
@@ -133,9 +135,9 @@ body {
   align-items: center;
   gap: 8px;
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 19px;
-  letter-spacing: 0.4px;
+  letter-spacing: -0.02em;
 }
 .status-dots {
   display: flex;
@@ -212,8 +214,8 @@ body {
   background: var(--panel-2);
 }
 .nav-list li.active {
-  background: var(--accent-grad);
-  color: var(--accent-contrast);
+  background: color-mix(in srgb, var(--accent) 22%, var(--panel-2));
+  color: var(--text);
   border-radius: 10px;
 }
 .nav-list .meta {
@@ -223,7 +225,7 @@ body {
   flex-shrink: 0;
 }
 .nav-list li.active .meta {
-  color: color-mix(in srgb, var(--accent-contrast) 72%, transparent);
+  color: var(--muted);
 }
 
 /* Sidebar collapse */
@@ -1356,19 +1358,33 @@ select {
   justify-content: center;
   padding: 28px 16px;
   overflow: auto;
-  background: var(--bg);
+  background-color: var(--bg);
+}
+#auth-screen.nebula {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 20%, rgba(125, 249, 166, 0.14), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 15% 70%, rgba(80, 120, 100, 0.18), transparent 65%),
+    radial-gradient(ellipse 45% 40% at 85% 60%, rgba(60, 90, 80, 0.16), transparent 60%),
+    var(--bg);
+}
+@media (prefers-reduced-motion: reduce) {
+  #auth-screen.nebula {
+    background: var(--bg);
+  }
 }
 .auth-card {
   width: 100%;
   max-width: 360px;
   max-height: calc(100vh - 56px);
   overflow: auto;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
   padding: 32px 28px 24px;
   text-align: center;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
 .auth-brand {
   display: flex;
@@ -1399,8 +1415,8 @@ select {
 button.oauth {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--border);
-  background: var(--panel-2);
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
   border-radius: 10px;
   color: var(--text);
   font: inherit;
@@ -1408,7 +1424,8 @@ button.oauth {
   cursor: pointer;
 }
 button.oauth:hover {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--glass));
 }
 .divider {
   position: relative;
@@ -1427,7 +1444,7 @@ button.oauth:hover {
 }
 .divider span {
   position: relative;
-  background: var(--panel);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
   padding: 0 10px;
 }
 #auth-form {
@@ -1452,6 +1469,14 @@ button.oauth:hover {
 button.full {
   width: 100%;
   padding: 11px 12px;
+}
+#auth-screen button.primary {
+  background: #fff;
+  color: #05060a;
+}
+#auth-screen button.primary:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 .auth-error {
   color: var(--danger);
@@ -1871,8 +1896,8 @@ button.full {
   backdrop-filter: blur(20px) saturate(1.6);
 }
 .platform-darwin #auth-screen {
-  /* Keep an opaque screen so the main app chrome never bleeds through. */
-  background: var(--bg);
+  /* Keep an opaque base so the main app chrome never bleeds through. */
+  background-color: var(--bg);
 }
 
 /* Inputs read as recessed glass. */
