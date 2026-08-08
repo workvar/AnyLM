@@ -3,7 +3,7 @@
 **Date:** 2026-08-08  
 **Status:** Approved (design)  
 **Approach:** Separate display attachment messages (approach 2)  
-**Surfaces:** composer (`attach.ts`, `#chat-form`), transcript (`views.ts`, `convo.ts`), message types (`domain.d.ts`, `messages.ts`), model picker (`index.html`)
+**Surfaces:** composer (`attach.ts`, `#chat-form`), transcript (`views.ts`, `convo.ts`), message types (`domain.d.ts`, `messages.ts`), chat IPC injection (`ipc.ts`), model picker (`index.html`)
 
 ## Problem
 
@@ -135,6 +135,10 @@ Replace the chat IPC `attachments?: { docs, images }` path with derivation from 
 Walk backward from the latest `role: "user"` message and collect contiguous preceding `role: "attachment"` messages. Stop at the first non-attachment. That group is the **current turn** only. Older attachment messages further back remain for UI history and are **not** re-injected.
 
 ### Apply (same effects as today)
+
+1. Derive the current-turn attachment group from the IPC `messages` array (which **includes** `role: "attachment"` entries from the renderer).
+2. Build the Ollama chat array from LLM roles only (skip `attachment` / `artifact` / `ask`).
+3. Then apply:
 
 | Kind | Behavior |
 |------|----------|
