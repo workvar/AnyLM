@@ -1781,6 +1781,10 @@ button.full {
   gap: 8px;
   margin-top: 18px;
 }
+.tools-scope-foot {
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .embed-actions {
   display: flex;
   gap: 8px;
