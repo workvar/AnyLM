@@ -225,7 +225,10 @@
                       <button type="button" data-attach="camera">Camera…</button>
                     </div>
                   </div>
-                  <button type="button" id="tools-toggle" class="icon-btn tools-toggle" title="Let the model use tools">⚒</button>
+                  <button type="button" id="tools-toggle" class="icon-btn tools-toggle" title="Enable tools" aria-label="Enable tools">
+                    <span class="tools-toggle-icon" aria-hidden="true">⚒</span>
+                    <span class="tools-toggle-label">Tools</span>
+                  </button>
                   <button type="button" id="workspace-btn" class="icon-btn tools-toggle" title="Choose a working folder for file tools">📁</button>
                   <span id="workspace-label" class="chip hidden"></span>
                   <div id="model-dropdown" class="dropdown composer-model">
@@ -241,6 +244,9 @@
                         <path d="M2.5 9.5 5 12l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
                       </svg>
                     </button>
+                    <div id="model-lock-popover" class="model-lock-popover hidden" role="tooltip">
+                      Models cannot be changed after conversation has started.
+                    </div>
                     <div id="model-menu" class="dropdown-menu hidden" role="listbox">
                       <div id="model-search-wrap" class="dropdown-search hidden">
                         <input id="model-search" type="text" placeholder="Search models" autocomplete="off" spellcheck="false" />
@@ -743,6 +749,19 @@
         <div class="modal-foot">
           <button id="prompt-cancel" class="ghost">Cancel</button>
           <button id="prompt-ok" class="primary">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools scope: all new general chats vs this chat only -->
+    <div id="tools-scope-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 id="tools-scope-title">Keep tools enabled for…?</h2>
+        <p id="tools-scope-sub" class="modal-sub"></p>
+        <div class="modal-foot tools-scope-foot">
+          <button id="tools-scope-cancel" class="ghost" type="button">Cancel</button>
+          <button id="tools-scope-this" class="ghost" type="button">Only this chat</button>
+          <button id="tools-scope-all" class="primary" type="button">All new non-project chats</button>
         </div>
       </div>
     </div>

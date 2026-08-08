@@ -11,7 +11,19 @@ let query = "";
 let open = false;
 let highlight = -1;
 let enabled = true;
+let lockMessage: string | null = null;
 let onChange: (value: string) => void = () => {};
+
+function showLockPopover() {
+  const tip = el("model-lock-popover");
+  if (!tip || !lockMessage) return;
+  tip.textContent = lockMessage;
+  tip.classList.remove("hidden");
+}
+
+function hideLockPopover() {
+  el("model-lock-popover")?.classList.add("hidden");
+}
 
 function filtered() {
   const q = query.trim().toLowerCase();
@@ -96,11 +108,20 @@ function move(delta) {
 
 export function initModelDropdown(onChangeCb) {
   onChange = onChangeCb || (() => {});
-  el("model-trigger").onclick = (e) => {
+  const trigger = el("model-trigger");
+  trigger.onclick = (e) => {
     e.stopPropagation();
     if (!enabled) return;
     open ? close() : openMenu();
   };
+  trigger.addEventListener("mouseenter", () => {
+    if (!enabled && lockMessage) showLockPopover();
+  });
+  trigger.addEventListener("mouseleave", hideLockPopover);
+  trigger.addEventListener("focus", () => {
+    if (!enabled && lockMessage) showLockPopover();
+  });
+  trigger.addEventListener("blur", hideLockPopover);
   el("model-menu").onclick = (e) => e.stopPropagation();
   el("model-search").oninput = (e) => {
     query = (e.target as UiElement).value;
@@ -129,11 +150,18 @@ export function getSelectedModel() {
   return selected;
 }
 
-// Disable the picker (used when a project locks its model).
-export function setModelDropdownEnabled(value) {
+// Disable the picker (used when a project locks its model or chat has started).
+export function setModelDropdownEnabled(value: boolean, reasonMessage: string | null = null) {
   enabled = value;
+  lockMessage = value ? null : reasonMessage;
   const trigger = el("model-trigger");
   trigger.classList.toggle("disabled", !value);
   trigger.setAttribute("aria-disabled", String(!value));
+  if (value) {
+    trigger.removeAttribute("aria-describedby");
+    hideLockPopover();
+  } else if (lockMessage) {
+    trigger.setAttribute("aria-describedby", "model-lock-popover");
+  }
   if (!value && open) close();
 }

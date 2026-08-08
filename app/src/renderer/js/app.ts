@@ -26,6 +26,7 @@ import { createProjectThread, scheduleThreadName } from "./threads.js";
 import { loadRecents } from "./recents.js";
 import { showView } from "./nav.js";
 import { initPrompt } from "./prompt.js";
+import { initToolsScopePrompt } from "./tools-scope-prompt.js";
 import { sendMessage, initToolUse } from "./chat.js";
 import { initTools } from "./tools-view.js";
 import { initSkills } from "./skills-view.js";
@@ -224,6 +225,7 @@ async function startApp(settings) {
   initArtifacts();
   initNewProjectModal();
   initPrompt();
+  initToolsScopePrompt();
   initOrg();
   initTools();
   initSkills();
