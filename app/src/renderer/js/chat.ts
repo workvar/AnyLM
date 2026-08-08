@@ -6,9 +6,9 @@ import { updateModelLock } from "./convo.js";
 import { getSelectedModel } from "./dropdown.js";
 import { persistCurrentChat } from "./chats.js";
 import { persistProjectThread } from "./threads.js";
-import { getAttachments, getImageThumbs, hasAttachments, clearAttachments } from "./attach.js";
+import { snapshotPending, hasAttachments, clearAttachments } from "./attach.js";
 import { showDocConfirm } from "./file-cards.js";
-import { llmMessages } from "./messages.js";
+import { chatAttachment } from "./messages.js";
 import { activeKey } from "./activity.js";
 import {
   runTurn,
@@ -86,13 +86,29 @@ export async function sendMessage() {
   }
 
   // Snapshot attachments for this turn, then clear the tray.
-  const attachments = getAttachments();
-  const thumbs = getImageThumbs();
+  const pending = snapshotPending();
   clearAttachments();
 
   input.value = "";
   void syncWebResearchHint();
-  addUserMessage(text, thumbs);
+
+  for (const p of pending) {
+    const msg = chatAttachment({
+      kind: p.kind,
+      name: p.name,
+      text: p.kind === "doc" ? p.text : undefined,
+      dataUrl: p.kind === "image" ? p.dataUrl : undefined,
+    });
+    state.chat.push(msg);
+  }
+  // Interim: thumbs-only until Task 5 groups attachment cards with the user bubble.
+  addUserMessage(
+    text,
+    pending
+      .filter((p) => p.kind === "image")
+      .map((p) => p.dataUrl)
+      .filter(Boolean)
+  );
   state.chat.push({ role: "user", content: text });
   updateModelLock(); // model is fixed once the conversation has started
 
@@ -104,8 +120,7 @@ export async function sendMessage() {
     key,
     mode: state.mode,
     model,
-    messages: llmMessages(state.chat),
-    attachments,
+    messages: state.chat,
     useTools: getUseTools(),
     skillOverrides:
       (state.mode === "chat" ? state.current?.skillOverrides : state.thread?.skillOverrides) || [],

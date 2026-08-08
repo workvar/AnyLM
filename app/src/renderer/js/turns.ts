@@ -13,7 +13,7 @@ import { renderAsk, clearAsk } from "./ask-card.js";
 import { attachTokenStats } from "./tokenstats.js";
 import { setContextUsage } from "./contextmeter.js";
 import { maybeTitle } from "./titler.js";
-import { askArtifact, fileArtifact, llmMessages } from "./messages.js";
+import { askArtifact, fileArtifact } from "./messages.js";
 import { renderFileCard, showDocConfirm, settleDocConfirm, expireDocConfirms } from "./file-cards.js";
 import { applyActivity, buildSummary, toolCountOf, thoughtMsOf, formatThought } from "./activity-store.js";
 import { createTrailHost, paintTrail, paintCollapsed } from "./activity-trail.js";
@@ -470,8 +470,7 @@ export async function runTurn(ctx): Promise<void> {
         projectId: ctx.projectId,
         threadId: ctx.threadId,
         model: ctx.model,
-        messages: llmMessages(ctx.messages),
-        attachments: ctx.attachments,
+        messages: ctx.messages,
         useTools: ctx.useTools,
         skillOverrides: ctx.skillOverrides || [],
       },
