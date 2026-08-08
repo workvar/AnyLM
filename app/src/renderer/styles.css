@@ -34,7 +34,7 @@
   --accent: #2fbf6d;
   --accent-2: #249a57;
   --accent-grad: linear-gradient(135deg, #3ddc84, #2fbf6d);
-  --accent-contrast: #ffffff;
+  --accent-contrast: #05060a;
   --danger: #c04a3a;
   --ok: #2fbf6d;
   --warn: #b07314;
@@ -3647,4 +3647,129 @@ button.full {
   .is-working .conv-dot {
     animation: none;
   }
+}
+
+/* ===== Site-theme main chrome ========================================== */
+button.primary {
+  background: #fff;
+  color: #05060a;
+  border: none;
+}
+button.primary:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  filter: none;
+}
+:root[data-theme="light"] button.primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+:root[data-theme="light"] button.primary:hover {
+  background: var(--accent-2);
+}
+button.ghost {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+button.ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+:root[data-theme="light"] button.ghost {
+  background: color-mix(in srgb, var(--panel) 88%, var(--accent) 4%);
+  border-color: var(--border);
+}
+:root[data-theme="light"] button.ghost:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+button:focus-visible,
+a:focus-visible,
+[role="tab"]:focus-visible,
+.tab:focus-visible,
+.nav-list li:focus-visible,
+.card:focus-visible,
+.dropdown-option:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 80%, transparent);
+  outline-offset: 2px;
+}
+
+#main {
+  background: var(--bg);
+}
+#convo-header,
+.convo-toolbar,
+.view-toolbar {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--panel) 88%, transparent), color-mix(in srgb, var(--panel-2) 62%, transparent));
+  border-color: var(--glass-border);
+}
+.view-toolbar {
+  margin: 10px 12px 0;
+  padding: 14px 18px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+}
+#projects-view .card-grid,
+#project-detail .folders-wrap,
+.settings-panel-body,
+.org-body {
+  padding-top: 16px;
+}
+
+#chat-form {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--panel) 92%, transparent), color-mix(in srgb, var(--panel-2) 72%, transparent));
+  border-color: var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.card,
+.org-card,
+.org-table,
+.org-audit,
+.models-list,
+.model-card,
+.doc-card,
+.ask-card,
+.ctx-item {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--panel) 94%, transparent), color-mix(in srgb, var(--panel-2) 72%, transparent));
+  border-color: var(--glass-border);
+  border-radius: 14px;
+}
+.card:hover {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--panel-2) 94%, transparent), color-mix(in srgb, var(--panel) 72%, transparent));
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--glass-border));
+}
+
+.modal-overlay {
+  background: color-mix(in srgb, var(--overlay-bg) 88%, #030405);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+.modal {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--panel) 96%, transparent), color-mix(in srgb, var(--panel-2) 82%, transparent));
+  border-color: var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+#settings-nav {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--panel) 92%, transparent), color-mix(in srgb, var(--panel-2) 66%, transparent));
+  border-color: var(--glass-border);
+}
+#settings-nav button[data-settings].active,
+.seg button.active {
+  background: color-mix(in srgb, var(--accent) 24%, var(--panel-2));
+  color: var(--text);
+}
+:root[data-theme="light"] #settings-nav button[data-settings].active,
+:root[data-theme="light"] .seg button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
