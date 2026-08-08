@@ -28,6 +28,8 @@ import * as webSearch from "./tools/web-search";
 import * as documentIntent from "./documents/intent";
 import * as proxy from "./proxy/server";
 import * as projectFiles from "./project-files";
+import * as artifacts from "./artifacts";
+import { fallbackDir } from "./documents/dest";
 import * as openWith from "./open-with";
 import * as userContext from "./user-context";
 import * as graph from "./graph";
@@ -288,9 +290,9 @@ function registerIpc() {
   ipcMain.handle("projects:get", (_e, id) => store.getPublic(id));
   ipcMain.handle("projects:create", (_e, data) => {
     const project = store.create(data || {});
-    // Associate a folder on disk (Documents/AnyLM/Projects/<name> by default;
-    // a custom base directory can be chosen at creation).
-    const custom = data && data.folderBase ? projectFiles.childPath(data.folderBase, project.name) : null;
+    let custom: string | null = null;
+    if (data?.folderPath) custom = String(data.folderPath);
+    else if (data?.folderBase) custom = projectFiles.childPath(data.folderBase, project.name);
     projectFiles.ensureFolder(project, custom);
     return store.get(project.id);
   });
@@ -334,6 +336,34 @@ function registerIpc() {
   ipcMain.handle("pfiles:set-location", (_e, { projectId, dir }) =>
     projectFiles.ensureFolder(store.get(projectId), dir)
   );
+
+  // Artifacts: list roots/files and gated delete (open/reveal via pfiles:open/show)
+  ipcMain.handle("artifacts:list-roots", () => {
+    const generatedDir = fallbackDir();
+    const projects = store.list().map((s) => {
+      const p = store.get(s.id);
+      return { id: s.id, name: s.name, folderPath: p?.folderPath ?? "" };
+    });
+    return artifacts.listArtifactRoots(projects, generatedDir);
+  });
+  ipcMain.handle("artifacts:list-files", (_e, dir: string) => {
+    const generatedDir = fallbackDir();
+    const projects = store.list().map((s) => {
+      const p = store.get(s.id);
+      return { id: s.id, name: s.name, folderPath: p?.folderPath ?? "" };
+    });
+    const roots = artifacts.artifactAllowedRoots(projects, generatedDir);
+    return artifacts.listArtifactFiles(dir, roots);
+  });
+  ipcMain.handle("artifacts:delete", (_e, { dir, name }: { dir: string; name: string }) => {
+    const generatedDir = fallbackDir();
+    const projects = store.list().map((s) => {
+      const p = store.get(s.id);
+      return { id: s.id, name: s.name, folderPath: p?.folderPath ?? "" };
+    });
+    const roots = artifacts.artifactAllowedRoots(projects, generatedDir);
+    return artifacts.deleteArtifact(dir, name, roots);
+  });
 
   // Per-project chat threads
   ipcMain.handle("threads:list", (_e, projectId) => store.listThreads(projectId));
@@ -854,14 +884,21 @@ function registerIpc() {
             thinkingOpen = true;
             act({ kind: "thinking", phase: "start" });
             let wroteStatus = false;
+            let sawReasoning = false;
             const onPiece = (piece: { content?: string; thinking?: string }) => {
-              if (!piece.content) return;
-              if (!wroteStatus) {
-                wroteStatus = true;
+              if (piece.thinking && !sawReasoning) {
+                sawReasoning = true;
                 endThinking();
-                act({ kind: "status", text: "Writing reply…" });
+                act({ kind: "status", text: "Reasoning…" });
               }
-              send("chat:chunk", { id, text: piece.content });
+              if (piece.content) {
+                if (!wroteStatus) {
+                  wroteStatus = true;
+                  endThinking();
+                  act({ kind: "status", text: "Writing reply…" });
+                }
+                send("chat:chunk", { id, text: piece.content });
+              }
             };
             const synthModel = modelForRole(agentCfg, "synthesize", useModel);
             const r = await ollama.chatStream(synthModel, synthMessages, onPiece);
@@ -907,6 +944,7 @@ function registerIpc() {
         const onPiece = (piece: { content?: string; thinking?: string }) => {
           if (piece.thinking && !sawReasoning) {
             sawReasoning = true;
+            endThinking();
             act({ kind: "status", text: "Reasoning…" });
           }
           if (piece.content) {

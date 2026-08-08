@@ -31,7 +31,15 @@ export function paintTrail(
   const trail = node("div", "activity-trail");
   host.appendChild(trail);
 
-  for (const ev of events) {
+  const lastStatusIdx = (() => {
+    for (let i = events.length - 1; i >= 0; i--) {
+      if (events[i].kind === "status") return i;
+    }
+    return -1;
+  })();
+
+  for (let i = 0; i < events.length; i++) {
+    const ev = events[i];
     if (ev.kind === "thinking") {
       const live = opts.live && ev.phase === "start";
       const ms = live ? opts.thoughtTickMs ?? 0 : ev.ms ?? 0;
@@ -44,8 +52,9 @@ export function paintTrail(
       continue;
     }
     if (ev.kind === "status") {
+      const running = opts.live && i === lastStatusIdx;
       const row = node("div", "act-row act-status");
-      row.appendChild(bullet(false, opts.live));
+      row.appendChild(bullet(false, running));
       row.appendChild(node("span", "act-text", ev.text));
       trail.appendChild(row);
       continue;

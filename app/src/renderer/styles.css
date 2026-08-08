@@ -108,6 +108,48 @@ body {
   display: none !important;
 }
 
+/* Sidebar artifact explorer */
+#side-chats-pane,
+#artifacts-pane {
+  min-height: 0;
+  height: 100%;
+}
+#artifacts-pane {
+  display: flex;
+  flex-direction: column;
+}
+.artifacts-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+#artifacts-list {
+  margin-top: 4px;
+}
+.artifact-icon {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+.artifact-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.artifact-ext {
+  text-transform: uppercase;
+}
+.artifacts-empty {
+  color: var(--muted);
+  cursor: default !important;
+}
+
 #app {
   display: flex;
   height: 100vh;

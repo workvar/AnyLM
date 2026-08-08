@@ -9,6 +9,7 @@ import * as registry from "./registry";
 import * as fsTools from "./fs-tools";
 import * as webSearch from "./web-search";
 import * as documents from "../documents";
+import { generateDocumentToolMessage } from "../documents/messages";
 
 const MAX_OUTPUT = 20_000; // chars returned to the model
 const SHELL_TIMEOUT = 15_000;
@@ -78,12 +79,11 @@ async function execBuiltin(tool, args, context) {
       return `The user answered: ${answer}`;
     }
     case "generate_document": {
-      if (!context || !context.projectId)
-        return "Error: documents can only be generated inside a project chat. Ask the user to open a project first.";
       try {
-        const file = await documents.generate(context.projectId, args);
-        if (context.onFile) context.onFile(file);
-        return `Created "${file.name}" in the project folder. Tell the user it is ready; do not repeat the document content in your reply.`;
+        const projectId = context?.projectId || null;
+        const file = await documents.generate(projectId, args);
+        if (context?.onFile) context.onFile(file);
+        return generateDocumentToolMessage(file.name, !!projectId);
       } catch (e) {
         return `Error: ${e.message}`;
       }

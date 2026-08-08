@@ -452,6 +452,13 @@ interface ProjectFileEntry {
   mtime: string;
 }
 
+interface ArtifactRoot {
+  id: string;
+  label: string;
+  dir: string;
+  kind: "generated" | "project";
+}
+
 /** pfiles:read — inline content for text, a file:// url for PDFs, neither for
  *  docx/pptx (the viewer calls pfiles:preview for those). */
 interface ProjectFileRead {
