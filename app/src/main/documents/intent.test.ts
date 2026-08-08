@@ -12,4 +12,13 @@ describe("document intent", () => {
     expect(block.toLowerCase()).toMatch(/declin|denied|fail|error/);
     expect(block).not.toMatch(/After the tool returns, tell the user the file is ready/);
   });
+
+  test("prompt requires research then dense generate_document content", () => {
+    const block = promptBlock("pdf");
+    expect(block).toContain("web_search");
+    expect(block).toContain("http_fetch");
+    expect(block).toContain("generate_document");
+    expect(block.toLowerCase()).toMatch(/paragraph|dense|complete|substantive|empty/);
+    expect(block.toLowerCase()).toMatch(/declin|denied|fail|error/);
+  });
 });

@@ -9,6 +9,7 @@ import { buildDocx } from "./docx";
 import { buildPptx } from "./pptx";
 import { buildXlsx } from "./xlsx";
 import { buildPdf } from "./pdf";
+import { assertDocumentContentOrThrow } from "./content-quality";
 
 const FORMATS = new Set(["pdf", "docx", "pptx", "xlsx", "md"]);
 
@@ -28,6 +29,7 @@ async function generate(
     throw new Error(`unsupported format "${format}" — use pdf, docx, pptx, xlsx, or md`);
   }
   const text = String(content || "");
+  assertDocumentContentOrThrow(fmt, text);
   const fp = dest.reserve(projectId, title || "document", `.${fmt}`);
 
   if (fmt === "md") fs.writeFileSync(fp, text);

@@ -170,7 +170,9 @@ const BUILTINS = [
       "Create a document file (pdf, docx, pptx, or md) in the current project's folder. " +
       "ONLY call this when the user's latest message explicitly asks for a document, PDF, Word file, " +
       "presentation, or similar file. NEVER call it unprompted or as a side effect of answering. " +
-      "Content is markdown; for pptx each '#' or '##' heading starts a new slide.",
+      "When the user asked you to research or use current online info, call web_search and http_fetch " +
+      "before this tool. Content is markdown with substantive sections (paragraphs under headings — " +
+      "not an empty outline); for pptx each '#' or '##' heading starts a new slide.",
     params: [
       { name: "format", description: "File format: pdf, docx, pptx, or md", required: true },
       { name: "title", description: "Document title, also used as the filename", required: true },

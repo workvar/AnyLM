@@ -34,8 +34,12 @@ function detect(text: unknown): string | null {
 // tool instead of pasting the document into the reply.
 function promptBlock(format: string): string {
   return (
-    `The user is asking for a ${format.toUpperCase()} file. Call generate_document ` +
-    `with format "${format}", a short title, and the full content in markdown. ` +
+    `The user is asking for a ${format.toUpperCase()} file. ` +
+    `Always call generate_document with format "${format}", a short title, and full markdown content. ` +
+    `When the topic needs current or researched facts, call web_search, then http_fetch on 1–2 solid URLs before generate_document. ` +
+    `Every heading must have real paragraphs or detailed steps (commands/examples where relevant) — ` +
+    `no empty sections and no outline of step titles alone. ` +
+    `If search or fetch fails, say so briefly and still write dense content from your best knowledge. ` +
     `Write the complete content in the tool call — do not repeat it in your reply. ` +
     (format === "xlsx"
       ? "For xlsx, format the content as a markdown table with a header row. "
