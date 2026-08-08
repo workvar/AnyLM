@@ -51,6 +51,7 @@ export function initToolUse() {
 
   // Document generation keeps the inline file-card permission UI. Other risky
   // tools confirm via the activity trail + Working strip (no modal).
+  // generate_document also gets Working-strip Allow/Deny (see doc-confirm-policy).
   window.api.onToolConfirm(({ id, token, tool, args }) => {
     if (tool.name === "generate_document") {
       showDocConfirm({ token, args }, (t, approved) => {

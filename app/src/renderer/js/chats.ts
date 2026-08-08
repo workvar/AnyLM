@@ -12,6 +12,7 @@ import { detachAll, attachTurn } from "./turns.js";
 import { resetRail } from "./rail/index.js";
 import { setUseTools } from "./tools-toggle.js";
 import { resetWebResearchHintDismiss } from "./web-research-hint.js";
+import { syncMenuContext } from "./menu-context.js";
 
 export async function selectChat(id) {
   detachAll();
@@ -31,6 +32,7 @@ export async function selectChat(id) {
   updateModelLock();
   setUseTools(!!state.current.useTools, { persist: false });
   resetWebResearchHintDismiss();
+  syncMenuContext();
   await loadRecents();
 }
 

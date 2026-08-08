@@ -11,6 +11,7 @@ import { fetchThreads, openThread, archiveThread } from "./threads.js";
 import { loadRecents } from "./recents.js";
 import { resetDetailTabs } from "./project-files.js";
 import { slugFolderName } from "./folder-slug.js";
+import { syncMenuContext } from "./menu-context.js";
 
 // --- Grid ---
 export async function loadProjects() {
@@ -64,6 +65,7 @@ export async function openProject(id) {
   renderDetail();
   resetDetailTabs();
   showView("project");
+  syncMenuContext();
   await loadRecents(); // clear any stale conversation highlight in the sidebar
 }
 
@@ -262,6 +264,7 @@ async function saveProjectName() {
     state.viewProject.name = name;
     el("detail-title").textContent = name;
   }
+  syncMenuContext();
   await loadProjects();
 }
 

@@ -1,6 +1,7 @@
 // Tools manager: list built-in and custom tools, toggle them, and edit
 // custom tools (shell commands or HTTP requests the model can call).
 import { el, node } from "./dom.js";
+import { createSwitch } from "./switch.js";
 
 let editing = null; // tool being edited, or null for new
 
@@ -53,22 +54,11 @@ function toolRow(t) {
     actions.append(edit, del);
   }
 
-  // Native checkbox + label — custom .switch knobs were not painting on the
-  // right edge of this view under Electron Liquid Glass (pixel-verified).
-  const enabled = t.enabled !== false;
-  const enable = node("label", `tool-enable${enabled ? "" : " is-off"}`);
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  input.checked = enabled;
-  const caption = node("span", null, enabled ? "On" : "Off");
-  input.onchange = () => {
-    const on = !!input.checked;
-    caption.textContent = on ? "On" : "Off";
-    enable.classList.toggle("is-off", !on);
-    window.api.toolsToggle(t.id, on);
-  };
-  enable.append(input, caption);
-  actions.appendChild(enable);
+  actions.appendChild(
+    createSwitch(t.enabled !== false, (on) => {
+      window.api.toolsToggle(t.id, on);
+    })
+  );
   row.appendChild(actions);
   return row;
 }

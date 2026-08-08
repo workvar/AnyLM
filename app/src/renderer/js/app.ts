@@ -48,6 +48,7 @@ import { initSidebar } from "./sidebar/index.js";
 import { initCustomize } from "./customize.js";
 import { initSettingsHub } from "./settings-hub.js";
 import { initWebResearchHint } from "./web-research-hint.js";
+import { initAppMenu, syncMenuContext } from "./app-menu.js";
 import { initOllamaSetup, runOllamaLaunchFlow } from "./ollama-setup.js";
 import { closeArtifactsPane, initArtifacts, openArtifactsPane } from "./artifacts.js";
 
@@ -111,6 +112,7 @@ function openProjectsGrid() {
   closeArtifactsPane();
   showView("projects");
   loadProjects();
+  syncMenuContext();
 }
 
 function bindClick(id: string, handler: (this: UiElement, ev: MouseEvent) => void) {
@@ -234,6 +236,7 @@ async function startApp(settings) {
   initSidebar();
   initSettingsHub();
   initCustomize();
+  initAppMenu();
   bindModelEvents();
   state.lastModel = settings.lastModel || "";
   if (settings.sidebarCollapsed) el("app").classList.add("sidebar-collapsed");

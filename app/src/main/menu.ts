@@ -1,19 +1,28 @@
-// Application menu. Without an explicit menu the dev build shows "Electron"
-// as the first menu title, because macOS takes that name from the running
-// bundle rather than from app.setName().
+// Application menu. Without patching Electron.app's Info.plist the macOS
+// menu bar still shows "Electron" in unpackaged runs (see
+// scripts/fix-electron-bundle.js); app.setName() alone is not enough.
 import { app, Menu, shell, BrowserWindow } from "electron";
 import { PRODUCT_NAME, productDisplayName } from "./product";
 
 const isMac = process.platform === "darwin";
 
-function send(channel: string): void {
+type MenuContext = {
+  projectId?: string | null;
+  projectName?: string | null;
+};
+
+let context: MenuContext = {};
+
+function send(action: string, payload: Record<string, unknown> = {}): void {
   const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-  if (win && !win.isDestroyed()) win.webContents.send(channel, {});
+  if (win && !win.isDestroyed()) win.webContents.send("menu:action", { action, ...payload });
 }
 
 function build(): Menu {
   const name = productDisplayName(app.isPackaged);
   const packaged = app.isPackaged;
+  const projectName = (context.projectName || "").trim();
+  const hasProject = !!(context.projectId && projectName);
   const template: Electron.MenuItemConstructorOptions[] = [];
 
   if (isMac) {
@@ -24,12 +33,28 @@ function build(): Menu {
         { type: "separator" },
         {
           label: "Settings…",
-          accelerator: "Cmd+,",
-          click: () => send("menu:settings"),
+          accelerator: "CmdOrCtrl+,",
+          click: () => send("settings"),
+        },
+        {
+          label: "Models",
+          click: () => send("settings-section", { section: "models" }),
+        },
+        {
+          label: "Organization",
+          click: () => send("settings-section", { section: "org" }),
+        },
+        {
+          label: "Tools",
+          click: () => send("settings-section", { section: "tools" }),
+        },
+        {
+          label: "Skills",
+          click: () => send("settings-section", { section: "skills" }),
         },
         {
           label: "Customize…",
-          click: () => send("menu:customize"),
+          click: () => send("settings-section", { section: "customize" }),
         },
         { type: "separator" },
         { role: "services" },
@@ -43,17 +68,44 @@ function build(): Menu {
     });
   }
 
-  template.push({
-    label: "File",
-    submenu: [
-      { label: "New Chat", accelerator: "CmdOrCtrl+N", click: () => send("menu:new-chat") },
-      { label: "New Project", accelerator: "CmdOrCtrl+Shift+N", click: () => send("menu:new-project") },
+  const fileSubmenu: Electron.MenuItemConstructorOptions[] = [
+    { label: "New Chat", accelerator: "CmdOrCtrl+N", click: () => send("new-chat") },
+    {
+      label: hasProject ? `New Chat in ${projectName}` : "New Chat in Project",
+      accelerator: "CmdOrCtrl+Shift+T",
+      enabled: hasProject,
+      click: () => send("new-project-chat"),
+    },
+    {
+      label: "New Project",
+      accelerator: "CmdOrCtrl+Shift+N",
+      click: () => send("new-project"),
+    },
+    { type: "separator" },
+    {
+      label: "Search Chats…",
+      accelerator: "CmdOrCtrl+F",
+      click: () => send("search"),
+    },
+  ];
+
+  if (!isMac) {
+    fileSubmenu.push(
       { type: "separator" },
-      { label: "Search", accelerator: "CmdOrCtrl+F", click: () => send("menu:search") },
-      { type: "separator" },
-      isMac ? { role: "close" } : { role: "quit" },
-    ],
-  });
+      {
+        label: "Settings…",
+        accelerator: "CmdOrCtrl+,",
+        click: () => send("settings"),
+      },
+      {
+        label: "Customize…",
+        click: () => send("settings-section", { section: "customize" }),
+      }
+    );
+  }
+
+  fileSubmenu.push({ type: "separator" }, isMac ? { role: "close" } : { role: "quit" });
+  template.push({ label: "File", submenu: fileSubmenu });
 
   template.push({
     label: "Edit",
@@ -69,8 +121,12 @@ function build(): Menu {
   });
 
   const viewSubmenu: Electron.MenuItemConstructorOptions[] = [
-    { label: "Toggle Sidebar", accelerator: "CmdOrCtrl+B", click: () => send("menu:sidebar") },
-    { label: "Toggle Context Panel", accelerator: "CmdOrCtrl+Shift+B", click: () => send("menu:rail") },
+    { label: "Toggle Sidebar", accelerator: "CmdOrCtrl+B", click: () => send("sidebar") },
+    {
+      label: "Toggle Context Panel",
+      accelerator: "CmdOrCtrl+Shift+B",
+      click: () => send("rail"),
+    },
     { type: "separator" },
     { role: "resetZoom" },
     { role: "zoomIn" },
@@ -97,7 +153,7 @@ function build(): Menu {
     },
   ];
   if (packaged) {
-    helpSubmenu.push({ label: "Check for Updates…", click: () => send("menu:check-updates") });
+    helpSubmenu.push({ label: "Check for Updates…", click: () => send("check-updates") });
   }
   template.push({ role: "help", submenu: helpSubmenu });
 
@@ -108,4 +164,12 @@ function install(): void {
   Menu.setApplicationMenu(build());
 }
 
-export { install };
+function setContext(next: MenuContext = {}): void {
+  context = {
+    projectId: next.projectId || null,
+    projectName: next.projectName || null,
+  };
+  install();
+}
+
+export { install, setContext };

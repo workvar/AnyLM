@@ -42,7 +42,9 @@ function promptBlock(format: string): string {
       : format === "pptx"
       ? "For pptx, start each slide with a '#' or '##' heading. "
       : "") +
-    "After the tool returns, tell the user the file is ready and where it was saved."
+    "Only tell the user the file is ready if the tool result confirms it was created. " +
+    "If the tool says the user declined, denied, or returned an error, say so clearly " +
+    "and do not claim the file exists."
   );
 }
 

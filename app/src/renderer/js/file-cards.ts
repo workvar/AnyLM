@@ -17,6 +17,13 @@ const TYPE_LINE = {
 
 let openMenuBound = false;
 
+type DocConfirmReply = (token: string, approved: boolean) => void;
+
+const liveDocConfirms = new Map<
+  string,
+  { card: HTMLElement; reply: DocConfirmReply; settled: boolean }
+>();
+
 function closeOpenMenus(except?: Element | null) {
   for (const m of document.querySelectorAll(".doc-open-menu")) {
     if (except && m === except) continue;
@@ -33,13 +40,56 @@ function currentProjectId() {
   return (state.viewProject && state.viewProject.id) || (state.current && state.current.id) || null;
 }
 
-export function showDocConfirm({ token, args }, reply) {
+function markDocConfirmDenied(card: HTMLElement, detail: string) {
+  const actions = card.querySelector(".perm-actions");
+  if (actions) actions.remove();
+  card.classList.add("denied");
+  if (!card.querySelector(".perm-result")) {
+    card.appendChild(node("div", "perm-result", detail));
+  }
+}
+
+/** Settle a live permission card (Allow/Deny/timeout/strip). Returns false if unknown/already settled. */
+export function settleDocConfirm(token: string, approved: boolean, opts?: { notify?: boolean }): boolean {
+  const entry = liveDocConfirms.get(String(token));
+  if (!entry || entry.settled) return false;
+  entry.settled = true;
+  liveDocConfirms.delete(String(token));
+  if (approved) {
+    entry.card.remove();
+  } else {
+    markDocConfirmDenied(entry.card, "Denied");
+  }
+  if (opts?.notify !== false) entry.reply(String(token), approved);
+  return true;
+}
+
+/** Expire cards whose confirm was auto-denied or cancelled without a click. */
+export function expireDocConfirms(detail = "Timed out — not created"): void {
+  for (const [token, entry] of [...liveDocConfirms]) {
+    if (entry.settled) continue;
+    entry.settled = true;
+    liveDocConfirms.delete(token);
+    markDocConfirmDenied(entry.card, detail);
+  }
+}
+
+export function showDocConfirm({ token, args }, reply: DocConfirmReply) {
   const wrap = messagesEl();
+  const key = String(token);
+  // Replace a leftover card for the same token (e.g. re-attach after nav).
+  const prior = liveDocConfirms.get(key);
+  if (prior) {
+    prior.settled = true;
+    liveDocConfirms.delete(key);
+    prior.card.remove();
+  }
+
   const fmt = String(args.format || "").toLowerCase().replace(/^\./, "");
   const fname = `${args.title || "document"}.${fmt || "pdf"}`;
 
   const card = node("div", "perm-card");
-  card.dataset.permToken = String(token);
+  card.dataset.permToken = key;
 
   card.appendChild(node("div", "perm-ask", "Create a file in your folder?"));
 
@@ -59,28 +109,17 @@ export function showDocConfirm({ token, args }, reply) {
 
   const actions = node("div", "perm-actions");
   const deny = node("button", "ghost small", "Deny");
+  deny.type = "button";
   const allow = node("button", "primary small", "Allow");
+  allow.type = "button";
 
-  deny.onclick = () => {
-    if (card.classList.contains("denied")) return;
-    deny.disabled = true;
-    allow.disabled = true;
-    reply(token, false);
-    actions.remove();
-    card.classList.add("denied");
-    card.appendChild(node("div", "perm-result", "Denied"));
-  };
-
-  allow.onclick = () => {
-    deny.disabled = true;
-    allow.disabled = true;
-    card.remove();
-    reply(token, true);
-  };
+  deny.onclick = () => settleDocConfirm(key, false);
+  allow.onclick = () => settleDocConfirm(key, true);
 
   actions.append(deny, allow);
   card.appendChild(actions);
 
+  liveDocConfirms.set(key, { card, reply, settled: false });
   wrap.appendChild(card);
   wrap.scrollTop = wrap.scrollHeight;
 }
@@ -106,94 +145,103 @@ export async function renderFileCard(
     );
   }
   card.appendChild(body);
+  // Mount the shell first so the row keeps proper height while apps resolve.
+  wrap.appendChild(card);
+  wrap.scrollTop = wrap.scrollHeight;
 
-  if (!opts.missing) {
-    const { defaultApp, apps } = await window.api.pfilesAppsFor(dir, name).catch(() => ({
-      defaultApp: null,
-      apps: [],
-    }));
-    const defaultLabel = defaultApp?.name
-      ? `Open with ${defaultApp.name}`
-      : "Open with Default app";
+  if (opts.missing) return;
 
-    const actions = node("div", "doc-card-actions");
-    const split = node("div", "doc-open");
-    const main = node("button", "doc-open-main", defaultLabel);
-    const chevron = node("button", "doc-open-chevron", "▾");
-    chevron.setAttribute("aria-label", "More open options");
-    const menu = node("div", "doc-open-menu hidden");
+  const { defaultApp, apps } = await window.api.pfilesAppsFor(dir, name).catch(() => ({
+    defaultApp: null,
+    apps: [],
+  }));
+  // Drop actions if this card was removed while we awaited (nav away / re-paint).
+  if (!card.isConnected) return;
 
-    const openDefault = () => {
-      closeOpenMenus();
-      if (!dir) return;
-      if (defaultApp) window.api.pfilesOpenWith(dir, name, defaultApp.id);
-      else window.api.pfilesOpen(dir, name);
-    };
-    const preview = () => {
-      closeOpenMenus();
-      if (projectId) openFileViewer(projectId, name);
-    };
-    const showFolder = () => {
-      closeOpenMenus();
-      if (dir) window.api.pfilesShow(dir, name);
-    };
+  const defaultLabel = defaultApp?.name
+    ? `Open with ${defaultApp.name}`
+    : "Open with Default app";
 
-    if (!apps.length) {
-      const itemDefault = node("button", "doc-open-item", defaultLabel);
-      itemDefault.onclick = (e) => {
-        e.stopPropagation();
-        openDefault();
-      };
-      menu.appendChild(itemDefault);
-    }
+  const actions = node("div", "doc-card-actions");
+  const split = node("div", "doc-open");
+  const main = node("button", "doc-open-main");
+  main.title = defaultLabel;
+  main.setAttribute("aria-label", defaultLabel);
+  main.appendChild(node("span", "doc-open-label-full", defaultLabel));
+  main.appendChild(node("span", "doc-open-label-short", "Open"));
+  const chevron = node("button", "doc-open-chevron", "▾");
+  chevron.setAttribute("aria-label", "More open options");
+  const menu = node("div", "doc-open-menu hidden");
 
-    for (const app of apps) {
-      const item = node("button", "doc-open-item", `Open with ${app.name}`);
-      item.onclick = (e) => {
-        e.stopPropagation();
-        window.api.pfilesOpenWith(dir, name, app.id);
-      };
-      menu.appendChild(item);
-    }
+  const openDefault = () => {
+    closeOpenMenus();
+    if (!dir) return;
+    if (defaultApp) window.api.pfilesOpenWith(dir, name, defaultApp.id);
+    else window.api.pfilesOpen(dir, name);
+  };
+  const preview = () => {
+    closeOpenMenus();
+    if (projectId) openFileViewer(projectId, name);
+  };
+  const showFolder = () => {
+    closeOpenMenus();
+    if (dir) window.api.pfilesShow(dir, name);
+  };
 
-    if (projectId) {
-      const itemPreview = node("button", "doc-open-item", "Preview in AnyLM");
-      itemPreview.onclick = (e) => {
-        e.stopPropagation();
-        preview();
-      };
-      menu.appendChild(itemPreview);
-    }
-
-    const itemFolder = node("button", "doc-open-item", "Show in folder");
-    itemFolder.onclick = (e) => {
-      e.stopPropagation();
-      showFolder();
-    };
-    menu.appendChild(itemFolder);
-
-    main.onclick = (e) => {
+  if (!apps.length) {
+    const itemDefault = node("button", "doc-open-item", defaultLabel);
+    itemDefault.onclick = (e) => {
       e.stopPropagation();
       openDefault();
     };
-    chevron.onclick = (e) => {
-      e.stopPropagation();
-      const opening = menu.classList.contains("hidden");
-      closeOpenMenus();
-      if (opening) menu.classList.remove("hidden");
-    };
-
-    split.append(main, chevron);
-    actions.append(split, menu);
-    card.appendChild(actions);
-
-    if (!openMenuBound) {
-      openMenuBound = true;
-      document.addEventListener("click", () => closeOpenMenus());
-    }
+    menu.appendChild(itemDefault);
   }
 
-  wrap.appendChild(card);
+  for (const app of apps) {
+    const item = node("button", "doc-open-item", `Open with ${app.name}`);
+    item.onclick = (e) => {
+      e.stopPropagation();
+      window.api.pfilesOpenWith(dir, name, app.id);
+    };
+    menu.appendChild(item);
+  }
+
+  if (projectId) {
+    const itemPreview = node("button", "doc-open-item", "Preview in AnyLM");
+    itemPreview.onclick = (e) => {
+      e.stopPropagation();
+      preview();
+    };
+    menu.appendChild(itemPreview);
+  }
+
+  const itemFolder = node("button", "doc-open-item", "Show in folder");
+  itemFolder.onclick = (e) => {
+    e.stopPropagation();
+    showFolder();
+  };
+  menu.appendChild(itemFolder);
+
+  main.onclick = (e) => {
+    e.stopPropagation();
+    openDefault();
+  };
+  chevron.onclick = (e) => {
+    e.stopPropagation();
+    const opening = menu.classList.contains("hidden");
+    closeOpenMenus();
+    if (opening) menu.classList.remove("hidden");
+  };
+
+  split.append(main, chevron);
+  actions.append(split, menu);
+  card.appendChild(actions);
+
+  if (!openMenuBound) {
+    openMenuBound = true;
+    document.addEventListener("click", () => closeOpenMenus());
+  }
+
   wrap.scrollTop = wrap.scrollHeight;
 }
 

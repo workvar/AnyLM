@@ -98,6 +98,7 @@ When Artifacts is selected, the side-scroll / list region shows the explorer (ch
 
 - Shared `safeName` / folder-segment helper: strip illegal path chars, replace whitespace with `-`, collapse repeats, trim, lowercase, max length ~80, fallback `project`.
 - Auto-created paths never use spaces in the folder segment.
+- Do not migrate or rename existing project folders on disk; slug rules apply to newly auto-derived paths only.
 
 ### Editable location
 

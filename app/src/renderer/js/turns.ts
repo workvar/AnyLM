@@ -14,12 +14,14 @@ import { attachTokenStats } from "./tokenstats.js";
 import { setContextUsage } from "./contextmeter.js";
 import { maybeTitle } from "./titler.js";
 import { askArtifact, fileArtifact, llmMessages } from "./messages.js";
-import { renderFileCard } from "./file-cards.js";
+import { renderFileCard, showDocConfirm, settleDocConfirm, expireDocConfirms } from "./file-cards.js";
 import { applyActivity, buildSummary, toolCountOf, thoughtMsOf, formatThought } from "./activity-store.js";
 import { createTrailHost, paintTrail, paintCollapsed } from "./activity-trail.js";
 import { paintAgentTrail } from "./agent-trail.js";
 import { paintWorkingStrip, setWorkingStripActions } from "./working-strip.js";
 import { resolveWorkingStrip } from "./working-strip-mode.js";
+import { shouldClearPendingOnToolDone } from "./pending-confirm.js";
+import { openConfirmToken, waitingConfirmLabel } from "./doc-confirm-policy.js";
 
 const turns = new Map<string, any>();
 const byRequest = new Map<string, any>();
@@ -84,6 +86,9 @@ export function clearPendingConfirm(requestId?: string): void {
 
 function replyConfirm(turn, token: string, approved: boolean): void {
   if (turn.pendingConfirm?.token === token) dropPendingConfirm(turn);
+  // File-card path also calls this via settleDocConfirm → reply; strip Allow
+  // settles the card without notifying twice.
+  settleDocConfirm(token, approved, { notify: false });
   window.api.replyToolConfirm(token, approved);
   repaintTrail(turn);
 }
@@ -100,10 +105,7 @@ function stripLabel(turn): string {
   for (let i = events.length - 1; i >= 0; i--) {
     const ev = events[i];
     if (ev.kind === "status") return ev.text;
-    if (ev.kind === "confirm") {
-      if (ev.tool?.name === "generate_document") continue;
-      return ev.label || "Waiting for approval…";
-    }
+    if (ev.kind === "confirm") return waitingConfirmLabel(ev);
     if (ev.kind === "tool" && ev.status === "running") return ev.label;
     if (ev.kind === "ask") return "Waiting for your answer…";
     if (ev.kind === "thinking" && ev.phase === "start") {
@@ -121,13 +123,11 @@ function syncWorkingStrip(): void {
   const turn = activeTurn();
   const openBusy = !!(turn && turn.status !== "done");
   const pending = openBusy ? turn.pendingConfirm : null;
-  const confirmToken =
-    pending && pending.tool?.name !== "generate_document" ? pending.token : undefined;
   paintWorkingStrip(
     resolveWorkingStrip({
       openBusy,
       openLabel: openBusy ? stripLabel(turn) : undefined,
-      openConfirmToken: confirmToken,
+      openConfirmToken: openConfirmToken(pending),
       others: openBusy
         ? []
         : listActivity().map((e) => ({ status: e.status, title: e.title })),
@@ -188,15 +188,12 @@ function onActivity(payload: ActivityIpcEvent): void {
       tool: ev.tool,
       args: ev.args,
     };
-  } else if (turn.pendingConfirm) {
-    // Timeout / tool finished / loop continued without trail/strip click.
-    if (
-      (ev.kind === "tool" && ev.status === "done") ||
-      ev.kind === "thinking" ||
-      ev.kind === "status"
-    ) {
-      dropPendingConfirm(turn);
-    }
+  } else if (shouldClearPendingOnToolDone(turn.pendingConfirm, ev)) {
+    // Only clear on deny/timeout (declined output). A parallel same-name
+    // success must not wipe Allow/Deny for a newer outstanding confirm.
+    const wasDoc = turn.pendingConfirm.tool?.name === "generate_document";
+    dropPendingConfirm(turn);
+    if (wasDoc) expireDocConfirms("Not created");
   }
 
   if (ev.kind === "done") {
@@ -316,6 +313,15 @@ export function attachTurn(key: string): void {
   turn.renderer = createStreamRenderer(turn.bubble);
   if (turn.acc) turn.renderer.push(turn.acc);
   if (turn.pendingAsk) showAsk(turn);
+  if (turn.pendingConfirm?.tool?.name === "generate_document") {
+    showDocConfirm(
+      { token: turn.pendingConfirm.token, args: turn.pendingConfirm.args || {} },
+      (t, approved) => {
+        clearPendingConfirm(turn.id);
+        window.api.replyToolConfirm(t, approved);
+      }
+    );
+  }
   repaintTrail(turn);
   wrap.scrollTop = wrap.scrollHeight;
 }
@@ -485,7 +491,17 @@ export async function runTurn(ctx): Promise<void> {
     const text = turn.acc;
     if (turn.bubble) {
       setBubbleMarkdown(turn.bubble, text || "_(stopped before any reply)_");
-      if (result.stopped) turn.bubble.appendChild(node("div", "msg-stopped", "Stopped"));
+      if (result.stopped) {
+        turn.bubble.appendChild(
+          node(
+            "div",
+            "msg-stopped",
+            result.stopReason === "memory"
+              ? `Stopped: system memory over ${result.killPercent ?? "?"}%`
+              : "Stopped"
+          )
+        );
+      }
       if (result.usage) {
         setContextUsage(result.usage);
         attachTokenStats(turn.bubble, result.usage);

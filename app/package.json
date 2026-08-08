@@ -1,6 +1,6 @@
 {
   "name": "anylm-app",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "AnyLM desktop app: projects with context, served by local Ollama models.",
   "main": "dist/main.js",
   "scripts": {
@@ -9,12 +9,14 @@
     "build:renderer": "tsc -p tsconfig.renderer.json",
     "build:assets": "node scripts/copy-assets.js",
     "build": "bun run build:env && bun run build:main && bun run build:renderer && bun run build:assets",
+    "fix:electron-bundle": "node scripts/fix-electron-bundle.js",
+    "postinstall": "node scripts/fix-electron-bundle.js",
     "watch": "bun run build:env && tsc -p tsconfig.main.json --watch",
     "typecheck": "bun run build:env && tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "check": "bun run typecheck",
     "test": "bun test",
     "clean": "rm -rf dist src/main/env.generated.ts",
-    "start": "bun run build && electron .",
+    "start": "bun run fix:electron-bundle && bun run build && electron .",
     "fetch-chroma": "node scripts/fetch-chroma.js",
     "pack": "bun run build && electron-builder --dir",
     "dist": "bun run build && electron-builder"

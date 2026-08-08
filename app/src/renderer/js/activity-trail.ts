@@ -95,14 +95,15 @@ export function paintTrail(
         !!opts.pendingConfirmToken &&
         opts.pendingConfirmToken === ev.token;
       if (showActions) {
+        const actions = node("div", "act-confirm-actions");
         const allow = node("button", "act-allow", "Allow");
         allow.type = "button";
         allow.onclick = () => opts.onAllow?.(ev.token);
         const deny = node("button", "act-deny", "Deny");
         deny.type = "button";
         deny.onclick = () => opts.onDeny?.(ev.token);
-        row.appendChild(allow);
-        row.appendChild(deny);
+        actions.append(allow, deny);
+        row.appendChild(actions);
       }
       trail.appendChild(row);
       continue;

@@ -12,6 +12,7 @@ import { detachAll, attachTurn } from "./turns.js";
 import { resetRail } from "./rail/index.js";
 import { setUseTools } from "./tools-toggle.js";
 import { resetWebResearchHintDismiss } from "./web-research-hint.js";
+import { syncMenuContext } from "./menu-context.js";
 
 // Fetch (or initialise) the active project's threads without opening one.
 export async function fetchThreads() {
@@ -42,6 +43,7 @@ export async function openThread(threadId) {
   updateModelLock();
   setUseTools(!!state.thread.useTools, { persist: false });
   resetWebResearchHintDismiss();
+  syncMenuContext();
   // Repaint recents so this thread shows as the selected item in the sidebar.
   await loadRecents();
 }
