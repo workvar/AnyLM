@@ -7,7 +7,7 @@
   --color-slime: #7df9a6;
   --color-slime-deep: #2fbf6d;
   --color-bile: #ffd166;
-  --color-mist: #9aa3b8;
+  --color-mist: #b4bcd0;
   --color-glass: rgba(255, 255, 255, 0.04);
   --color-glass-border: rgba(255, 255, 255, 0.1);
 
@@ -71,6 +71,11 @@ body {
     radial-gradient(ellipse 60% 45% at 50% 20%, rgba(125, 249, 166, 0.14), transparent 70%),
     radial-gradient(ellipse 40% 35% at 15% 70%, rgba(80, 120, 100, 0.18), transparent 65%),
     radial-gradient(ellipse 45% 40% at 85% 60%, rgba(60, 90, 80, 0.16), transparent 60%);
+}
+
+.hero-scrim {
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 42%, rgba(3, 4, 5, 0.88), rgba(3, 4, 5, 0.55) 45%, transparent 72%);
 }
 
 .btn-primary {

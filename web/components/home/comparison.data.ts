@@ -74,4 +74,28 @@ export const COMPARISON_ROWS: ComparisonRow[] = [
     jan: "yes",
     gpt4all: "yes",
   },
+  {
+    axis: "Multi-agent orchestration",
+    anylm: "yes",
+    ollama: "no",
+    lmStudio: "no",
+    jan: "no",
+    gpt4all: "no",
+  },
+  {
+    axis: "Project-first coding / file writes",
+    anylm: "yes",
+    ollama: "no",
+    lmStudio: "partial",
+    jan: "partial",
+    gpt4all: "no",
+  },
+  {
+    axis: "Load protection (RAM soft-stop)",
+    anylm: "yes",
+    ollama: "no",
+    lmStudio: "no",
+    jan: "no",
+    gpt4all: "no",
+  },
 ];

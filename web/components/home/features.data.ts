@@ -35,4 +35,14 @@ export const FEATURES: Feature[] = [
     title: "Updates that arrive on their own",
     body: "Signed builds published straight from CI. The app checks for new versions and updates itself in place.",
   },
+  {
+    glyph: "◈",
+    title: "Multi-agent when it matters",
+    body: "Simple chats stay single-agent and fast. Complex turns plan, route, and run parallel Phase 1 roles, then return one synthesized answer with an agent trail.",
+  },
+  {
+    glyph: "⌘",
+    title: "Project-first coding",
+    body: "Coding requests create or update files in a real folder — CLI scaffolds when available — and finish with a file/command summary instead of pasting the whole program into chat.",
+  },
 ];
