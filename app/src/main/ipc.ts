@@ -307,6 +307,9 @@ function registerIpc() {
     return store.get(project.id);
   });
   ipcMain.handle("projects:update", (_e, { id, patch }) => store.update(id, patch));
+  ipcMain.handle("projects:setDefaultUseTools", (_e, { id, enabled }) =>
+    store.setDefaultUseTools(id, !!enabled)
+  );
   ipcMain.handle("projects:delete", (_e, id) => {
     // Drop the project's context chunks and shared memory from Chroma.
     context.removeProject(id).catch(() => {});

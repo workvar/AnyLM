@@ -2,6 +2,7 @@
 import { app } from "electron";
 import * as fs from "fs";
 import * as path from "path";
+import { applyProjectDefaultUseTools } from "./project-tools";
 
 function filePath() {
   return path.join(app.getPath("userData"), "llmeter-projects.json");
@@ -210,17 +211,34 @@ function getThread(pid: string, tid: string): ProjectThread | null {
 
 function createThread(
   pid: string,
-  { title, folderId }: Partial<ProjectThread> = {}
+  { title, folderId, useTools }: Partial<ProjectThread> = {}
 ): ProjectThread | null {
   const projects = readAll();
   const p = projects.find((x) => x.id === pid);
   if (!p) return null;
   const now = new Date().toISOString();
-  const thread = { id: id(), title: title || "New chat", folderId: folderId || null, messages: [], createdAt: now, updatedAt: now };
+  const thread: ProjectThread = {
+    id: id(),
+    title: title || "New chat",
+    folderId: folderId || null,
+    messages: [],
+    createdAt: now,
+    updatedAt: now,
+    useTools: useTools != null ? !!useTools : !!p.defaultUseTools,
+  };
   p.threads = p.threads || [];
   p.threads.push(thread);
   writeAll(projects);
   return thread;
+}
+
+function setDefaultUseTools(pid: string, enabled: boolean): PublicProject | null {
+  const projects = readAll();
+  const p = projects.find((x) => x.id === pid);
+  if (!p) return null;
+  applyProjectDefaultUseTools(p, enabled);
+  writeAll(projects);
+  return getPublic(pid);
 }
 
 function updateThread(pid: string, tid: string, patch: Partial<ProjectThread>): ProjectThread | null {
@@ -243,5 +261,5 @@ function deleteThread(pid: string, tid: string): boolean {
   return true;
 }
 
-export { list, recentThreads, listFolders, addFolder, renameFolder, removeFolder, get, getPublic, create, update, remove, addContext, removeContext, listThreads, getThread, createThread, updateThread, deleteThread, id as newId };
+export { list, recentThreads, listFolders, addFolder, renameFolder, removeFolder, get, getPublic, create, update, remove, addContext, removeContext, listThreads, getThread, createThread, updateThread, deleteThread, setDefaultUseTools, id as newId };
 
