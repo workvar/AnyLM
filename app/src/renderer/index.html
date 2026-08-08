@@ -108,10 +108,20 @@
           <input id="sidebar-search" type="search" placeholder="Search chats…" autocomplete="off" />
         </div>
         <button id="projects-nav" class="side-nav">▦ Projects</button>
+        <button id="artifacts-nav" class="side-nav" type="button">▭ Artifacts</button>
 
         <div class="side-scroll">
-          <div class="side-section-label"><span id="side-chats-label">Chats</span></div>
-          <ul id="recents-list" class="nav-list"></ul>
+          <div id="side-chats-pane">
+            <div class="side-section-label"><span id="side-chats-label">Chats</span></div>
+            <ul id="recents-list" class="nav-list"></ul>
+          </div>
+          <div id="artifacts-pane" class="hidden">
+            <div class="artifacts-head">
+              <button type="button" id="artifacts-back" class="ghost small hidden">← Back</button>
+              <span id="artifacts-title">Artifacts</span>
+            </div>
+            <ul id="artifacts-list" class="nav-list"></ul>
+          </div>
         </div>
         <div class="sidebar-foot">
           <div id="ollama-info">checking Ollama…</div>
@@ -629,7 +639,7 @@
                 <small>Where this project's generated files (PDF, Word, slides, spreadsheets, notes) are saved.</small>
               </div>
               <div class="pol-row">
-                <input id="project-location" class="auth-input" readonly placeholder="No folder set" />
+                <input id="project-location" class="auth-input" placeholder="No folder set" />
                 <button id="project-location-change" class="ghost small">Change…</button>
                 <button id="project-location-reveal" class="ghost small">Show</button>
               </div>
@@ -698,7 +708,7 @@
         <input id="np-name" class="auth-input" placeholder="Project name" autocomplete="off" />
         <label class="field-label">Storage location</label>
         <div class="pol-row">
-          <input id="np-location" class="auth-input" readonly />
+          <input id="np-location" class="auth-input" />
           <button id="np-browse" class="ghost small">Change…</button>
         </div>
         <div class="modal-foot">

@@ -7,14 +7,14 @@ import * as fs from "fs";
 import * as path from "path";
 import * as store from "./store";
 import * as chroma from "./chroma";
+import { pathSlug } from "./path-slug";
 
 function defaultBase() {
   return path.join(app.getPath("documents"), "AnyLM", "Projects");
 }
 
 function safeName(name) {
-  const clean = String(name || "").replace(/[\\/:*?"<>|]/g, "-").trim().slice(0, 80);
-  return clean || "project";
+  return pathSlug(name, "project");
 }
 
 // Join a custom base directory with a project name (used at creation time).
@@ -216,7 +216,8 @@ function reveal(projectId) {
 function allowedGeneratedRoots(): string[] {
   return [
     path.resolve(defaultBase()),
-    path.resolve(app.getPath("documents"), "AnyLM", "Documents"),
+    path.resolve(app.getPath("documents"), "AnyLM", "generated"),
+    path.resolve(app.getPath("documents"), "AnyLM", "Documents"), // legacy standalone
     ...store
       .list()
       .map((p) => folderOf(p.id))

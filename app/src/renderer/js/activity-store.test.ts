@@ -40,9 +40,23 @@ describe("thoughtMsOf", () => {
 });
 
 describe("applyActivity", () => {
-  test("appends status", () => {
-    const next = applyActivity([], { kind: "status", text: "Generating…" });
-    expect(next).toEqual([{ kind: "status", text: "Generating…" }]);
+  test("status supersedes prior status and appends at the latest event position", () => {
+    let evs = applyActivity([], { kind: "status", text: "Reasoning…" });
+    evs = applyActivity(evs, { kind: "tool", name: "web_search", status: "running", label: "Searching" });
+    evs = applyActivity(evs, { kind: "status", text: "Writing reply…" });
+    expect(evs).toEqual([
+      { kind: "tool", name: "web_search", status: "running", label: "Searching" },
+      { kind: "status", text: "Writing reply…" },
+    ]);
+  });
+
+  test("status after thinking keeps thought row", () => {
+    let evs = applyActivity([], { kind: "thinking", phase: "end", ms: 21000 });
+    evs = applyActivity(evs, { kind: "status", text: "Reasoning…" });
+    expect(evs).toEqual([
+      { kind: "thinking", phase: "end", ms: 21000 },
+      { kind: "status", text: "Reasoning…" },
+    ]);
   });
 
   test("thinking start then end updates same row", () => {

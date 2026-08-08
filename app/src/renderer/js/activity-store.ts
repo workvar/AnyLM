@@ -44,6 +44,9 @@ export function applyActivity(events: ActivityEvent[], ev: ActivityEvent): Activ
     }
     return [...next, ev];
   }
+  if (ev.kind === "status") {
+    return [...events.filter((event) => event.kind !== "status"), ev];
+  }
   if (ev.kind === "done") {
     // Keep prior events for the trail; done is metadata for consumers — do not append.
     return events;

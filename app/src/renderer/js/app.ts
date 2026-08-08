@@ -17,6 +17,7 @@ import {
   newFolder,
   initNewProjectModal,
   changeProjectLocation,
+  saveProjectLocation,
   revealProjectFolder,
 } from "./projects.js";
 import { initDetailTabs, initFileViewer } from "./project-files.js";
@@ -48,6 +49,7 @@ import { initCustomize } from "./customize.js";
 import { initSettingsHub } from "./settings-hub.js";
 import { initWebResearchHint } from "./web-research-hint.js";
 import { initOllamaSetup, runOllamaLaunchFlow } from "./ollama-setup.js";
+import { closeArtifactsPane, initArtifacts, openArtifactsPane } from "./artifacts.js";
 
 async function refreshStatus() {
   const s = await window.api.ollamaStatus();
@@ -106,6 +108,7 @@ function convoBack() {
 }
 
 function openProjectsGrid() {
+  closeArtifactsPane();
   showView("projects");
   loadProjects();
 }
@@ -117,8 +120,12 @@ function bindClick(id: string, handler: (this: UiElement, ev: MouseEvent) => voi
 
 function bindEvents() {
   // Sidebar
-  bindClick("new-chat-btn", createChat);
+  bindClick("new-chat-btn", () => {
+    closeArtifactsPane();
+    void createChat();
+  });
   bindClick("projects-nav", openProjectsGrid);
+  bindClick("artifacts-nav", openArtifactsPane);
   bindClick("sidebar-toggle", toggleSidebar);
   bindClick("sidebar-toggle-projects", toggleSidebar);
   bindClick("sidebar-toggle-detail", toggleSidebar);
@@ -182,6 +189,13 @@ function bindEvents() {
   }
   el("project-location-change").onclick = changeProjectLocation;
   el("project-location-reveal").onclick = revealProjectFolder;
+  el("project-location").onchange = saveProjectLocation;
+  el("project-location").onkeydown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveProjectLocation();
+    }
+  };
   el("add-context").onclick = () => el("file-input").click();
   el("file-input").onchange = (e) => {
     if ((e.target as UiElement).files[0]) addContextFile((e.target as UiElement).files[0]);
@@ -206,6 +220,7 @@ function bindEvents() {
 // Runs once the user is authenticated.
 async function startApp(settings) {
   bindEvents();
+  initArtifacts();
   initNewProjectModal();
   initPrompt();
   initOrg();

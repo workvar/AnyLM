@@ -16,6 +16,7 @@ export const state = {
   projectSort: "updated", // "updated" | "name"
   projectQuery: "", // projects grid search text
   sidebarQuery: "", // left rail search text (projects + chats)
+  sidebarPane: "chats", // sidebar content: "chats" | "artifacts"
   modelsQuery: "",  // models view search text
   modelsFilter: "all", // "all" | "installed"
   modelsLayout: "list", // "list" | "grid"

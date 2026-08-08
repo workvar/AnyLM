@@ -1,5 +1,5 @@
 // Document generation entry point for the generate_document tool.
-// Output lands in the project's storage folder, or in Documents/AnyLM/Documents
+// Output lands in the project's storage folder, or in the generated-files folder
 // for chats outside a project, and is indexed so it stays retrievable.
 import * as fs from "fs";
 import * as path from "path";

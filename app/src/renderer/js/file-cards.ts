@@ -52,7 +52,7 @@ export function showDocConfirm({ token, args }, reply) {
       "perm-where",
       currentProjectId()
         ? "· Writes to this project's storage folder"
-        : "· Writes to your Documents/AnyLM folder"
+        : "· Writes to Documents/AnyLM/generated"
     )
   );
   card.appendChild(desc);

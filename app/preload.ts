@@ -180,6 +180,11 @@ const api: AnyLmApi = {
   pfilesSetLocation: (projectId, dir) =>
     ipcRenderer.invoke("pfiles:set-location", { projectId, dir }),
 
+  // Artifacts (standalone docs + project folders)
+  artifactsListRoots: () => ipcRenderer.invoke("artifacts:list-roots"),
+  artifactsListFiles: (dir) => ipcRenderer.invoke("artifacts:list-files", dir),
+  artifactsDelete: (dir, name) => ipcRenderer.invoke("artifacts:delete", { dir, name }),
+
   // Global recents (standalone chats + project threads)
   recentsList: (limit) => ipcRenderer.invoke("recents:list", limit),
 

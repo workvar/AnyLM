@@ -1,6 +1,6 @@
 // Where a generated document is written, and how it is indexed afterwards.
 // Project chats write into the project's storage folder; standalone chats fall
-// back to Documents/AnyLM/Documents so "make me a PDF" works outside a project.
+// back to Documents/AnyLM/generated so "make me a PDF" works outside a project.
 import { app } from "electron";
 import * as fs from "fs";
 import * as path from "path";
@@ -8,14 +8,18 @@ import * as store from "../store";
 import * as chroma from "../chroma";
 import * as vectorstore from "../vectorstore";
 import { ensureFolder } from "../project-files";
+import { pathSlug } from "../path-slug";
+
+export function standaloneGeneratedDir(documentsPath: string): string {
+  return path.join(documentsPath, "AnyLM", "generated");
+}
 
 function fallbackDir(): string {
-  return path.join(app.getPath("documents"), "AnyLM", "Documents");
+  return standaloneGeneratedDir(app.getPath("documents"));
 }
 
 function safeName(name: unknown): string {
-  const clean = String(name || "").replace(/[\\/:*?"<>|]/g, "-").trim().slice(0, 80);
-  return clean || "document";
+  return pathSlug(name, "document");
 }
 
 // First free path for "<title><ext>" ("<title> (2)<ext>", …).

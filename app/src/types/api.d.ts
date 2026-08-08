@@ -173,7 +173,7 @@ interface AnyLmApi {
   // Projects
   listProjects(): Promise<ProjectSummary[]>;
   getProject(id: string): Promise<PublicProject | null>;
-  createProject(data: Partial<Project> & { folderBase?: string }): Promise<Project | null>;
+  createProject(data: Partial<Project> & { folderBase?: string; folderPath?: string }): Promise<Project | null>;
   updateProject(id: string, patch: Partial<Project>): Promise<Project | null>;
   deleteProject(id: string): Promise<boolean>;
 
@@ -196,6 +196,11 @@ interface AnyLmApi {
   pfilesOpenWith(dir: string, name: string, appId: string): Promise<boolean>;
   pfilesExists(dir: string, name: string): Promise<boolean>;
   pfilesSetLocation(projectId: string, dir: string): Promise<string | null>;
+
+  // Artifacts (standalone docs + project folders)
+  artifactsListRoots(): Promise<ArtifactRoot[]>;
+  artifactsListFiles(dir: string): Promise<ProjectFileEntry[]>;
+  artifactsDelete(dir: string, name: string): Promise<boolean>;
 
   // Recents
   recentsList(limit?: number): Promise<RecentEntry[]>;

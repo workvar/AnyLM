@@ -4,11 +4,13 @@ import { state } from "./state.js";
 import { renderProjectCards, renderProjectChats, renderContextList, addPendingContext } from "./views.js";
 import { getSelectedModel, setModelDropdownEnabled } from "./dropdown.js";
 import { showView } from "./nav.js";
+import { closeArtifactsPane } from "./artifacts.js";
 import { showMenu, type MenuItem } from "./menu.js";
 import { promptText } from "./prompt.js";
 import { fetchThreads, openThread, archiveThread } from "./threads.js";
 import { loadRecents } from "./recents.js";
 import { resetDetailTabs } from "./project-files.js";
+import { slugFolderName } from "./folder-slug.js";
 
 // --- Grid ---
 export async function loadProjects() {
@@ -53,6 +55,7 @@ function renderDetail() {
 }
 
 export async function openProject(id) {
+  closeArtifactsPane();
   state.current = await window.api.getProject(id);
   state.viewProject = state.current;
   state.mode = null;
@@ -151,31 +154,41 @@ export async function openRecentThread(projectId, threadId) {
 
 // --- CRUD ---
 // Creation dialog: name + storage location (defaults to Documents/AnyLM/Projects).
-let npBase = ""; // chosen base directory; "" = default
 let npDefault = "";
+let npLocationManual = false;
+
+function updateNpLocation() {
+  if (npLocationManual) return;
+  const name = el("np-name").value.trim() || "Untitled project";
+  el("np-location").value = npDefault ? `${npDefault}/${slugFolderName(name)}` : "";
+}
 
 export async function initNewProjectModal() {
   el("np-browse").onclick = async () => {
     const dir = await window.api.pfilesPickFolder();
     if (!dir) return;
-    npBase = dir;
-    updateNpLocation();
+    npLocationManual = true;
+    el("np-location").value = dir;
   };
   el("np-cancel").onclick = () => el("new-project-modal").classList.add("hidden");
   el("new-project-modal").onclick = (e) => {
     if ((e.target as UiElement).id === "new-project-modal") el("new-project-modal").classList.add("hidden");
   };
   el("np-name").oninput = updateNpLocation;
+  el("np-location").oninput = () => {
+    npLocationManual = true;
+  };
   el("np-name").onkeydown = (e) => {
     if (e.key === "Enter") el("np-create").click();
   };
   el("np-create").onclick = async () => {
     const name = el("np-name").value.trim() || "Untitled project";
     el("new-project-modal").classList.add("hidden");
+    const folderPath = el("np-location").value.trim() || null;
     const p = await window.api.createProject({
       name,
       model: state.models[0] || "",
-      folderBase: npBase || null,
+      folderPath,
     });
     await loadProjects();
     await openProject(p.id);
@@ -183,14 +196,8 @@ export async function initNewProjectModal() {
   };
 }
 
-function updateNpLocation() {
-  const name = el("np-name").value.trim() || "Untitled project";
-  const base = npBase || npDefault;
-  el("np-location").value = base ? `${base}/${name}` : "";
-}
-
 export async function createProject() {
-  npBase = "";
+  npLocationManual = false;
   if (!npDefault) npDefault = await window.api.pfilesDefaultBase();
   el("np-name").value = "";
   updateNpLocation();
@@ -206,6 +213,21 @@ export async function changeProjectLocation() {
   if (set) {
     state.current = { ...state.current, folderPath: set };
     el("project-location").value = set;
+  } else {
+    alert("Unable to create or use that project folder. Check the path and its permissions.");
+  }
+}
+
+export async function saveProjectLocation() {
+  if (!state.current) return;
+  const dir = el("project-location").value.trim();
+  if (!dir) return;
+  const set = await window.api.pfilesSetLocation(state.current.id, dir);
+  if (set) {
+    state.current = { ...state.current, folderPath: set };
+    el("project-location").value = set;
+  } else {
+    alert("Unable to create or use that project folder. Check the path and its permissions.");
   }
 }
 
