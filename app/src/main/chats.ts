@@ -3,6 +3,8 @@
 import { app } from "electron";
 import * as fs from "fs";
 import * as path from "path";
+import * as settings from "./settings";
+import { resolveNewChatUseTools } from "./chat-tools-seed";
 
 function filePath() {
   return path.join(app.getPath("userData"), "llmeter-chats.json");
@@ -43,16 +45,17 @@ function get(cid: string): StandaloneChat | null {
   return readAll().find((c) => c.id === cid) || null;
 }
 
-function create({ title, model }: Partial<StandaloneChat> = {}): StandaloneChat {
+function create({ title, model, useTools }: Partial<StandaloneChat> = {}): StandaloneChat {
   const all = readAll();
   const now = new Date().toISOString();
-  const chat = {
+  const chat: StandaloneChat = {
     id: id(),
     title: title || "New chat",
     model: model || "",
     messages: [],
     createdAt: now,
     updatedAt: now,
+    useTools: resolveNewChatUseTools(useTools, settings.read().defaultUseToolsForChats),
   };
   all.push(chat);
   writeAll(all);
