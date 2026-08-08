@@ -35,7 +35,10 @@ unauthenticated rate limit while developing.
 | `/`         | Glass hero with constellation, insights, comparison, capabilities catalog, features |
 | `/download` | Every asset in the latest release, grouped by platform and arch      |
 | `/releases` | Full version history, so older builds stay reachable                 |
+| `/privacy`  | Local-first privacy summary (accounts vs on-device data)             |
 | `/api/releases`, `/api/releases/latest` | JSON, same data, for anything else that needs it |
+
+Open Graph image and icons live in `public/` (`og.png`, favicons). Regenerate from repo root with `node scripts/generate-press-kit.js` (requires `@resvg/resvg-js`).
 
 ## Visual language
 
