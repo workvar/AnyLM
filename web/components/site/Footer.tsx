@@ -6,7 +6,7 @@ export default function Footer() {
     <footer className="border-t border-white/5 py-12">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 text-sm text-[var(--color-mist)] sm:flex-row sm:items-center sm:justify-between">
         <p>
-          © {new Date().getFullYear()} {PRODUCT_NAME}. Runs entirely on your machine.
+          © {new Date().getFullYear()} {PRODUCT_NAME}. Local-first — inference on your machine.
         </p>
         <div className="flex flex-wrap items-center gap-6">
           <Link href="/download" className="transition hover:text-white">
@@ -14,6 +14,9 @@ export default function Footer() {
           </Link>
           <Link href="/releases" className="transition hover:text-white">
             Releases
+          </Link>
+          <Link href="/privacy" className="transition hover:text-white">
+            Privacy
           </Link>
           <a href={REPO_URL} target="_blank" rel="noreferrer" className="transition hover:text-white">
             Source
@@ -34,3 +37,4 @@ export default function Footer() {
     </footer>
   );
 }
+
