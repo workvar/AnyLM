@@ -2,6 +2,7 @@
 // as the first menu title, because macOS takes that name from the running
 // bundle rather than from app.setName().
 import { app, Menu, shell, BrowserWindow } from "electron";
+import { PRODUCT_NAME, productDisplayName } from "./product";
 
 const isMac = process.platform === "darwin";
 
@@ -11,7 +12,8 @@ function send(channel: string): void {
 }
 
 function build(): Menu {
-  const name = app.getName();
+  const name = productDisplayName(app.isPackaged);
+  const packaged = app.isPackaged;
   const template: Electron.MenuItemConstructorOptions[] = [];
 
   if (isMac) {
@@ -66,20 +68,20 @@ function build(): Menu {
     ],
   });
 
-  template.push({
-    label: "View",
-    submenu: [
-      { label: "Toggle Sidebar", accelerator: "CmdOrCtrl+B", click: () => send("menu:sidebar") },
-      { label: "Toggle Context Panel", accelerator: "CmdOrCtrl+Shift+B", click: () => send("menu:rail") },
-      { type: "separator" },
-      { role: "resetZoom" },
-      { role: "zoomIn" },
-      { role: "zoomOut" },
-      { type: "separator" },
-      { role: "togglefullscreen" },
-      { role: "toggleDevTools" },
-    ],
-  });
+  const viewSubmenu: Electron.MenuItemConstructorOptions[] = [
+    { label: "Toggle Sidebar", accelerator: "CmdOrCtrl+B", click: () => send("menu:sidebar") },
+    { label: "Toggle Context Panel", accelerator: "CmdOrCtrl+Shift+B", click: () => send("menu:rail") },
+    { type: "separator" },
+    { role: "resetZoom" },
+    { role: "zoomIn" },
+    { role: "zoomOut" },
+    { type: "separator" },
+    { role: "togglefullscreen" },
+  ];
+  if (!packaged) {
+    viewSubmenu.push({ role: "toggleDevTools" });
+  }
+  template.push({ label: "View", submenu: viewSubmenu });
 
   template.push({
     role: "window",
@@ -88,16 +90,16 @@ function build(): Menu {
       : [{ role: "minimize" }, { role: "close" }],
   });
 
-  template.push({
-    role: "help",
-    submenu: [
-      {
-        label: `${name} on GitHub`,
-        click: () => shell.openExternal("https://github.com/workvar/AnyLM"),
-      },
-      { label: "Check for Updates…", click: () => send("menu:check-updates") },
-    ],
-  });
+  const helpSubmenu: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: `${PRODUCT_NAME} on GitHub`,
+      click: () => shell.openExternal("https://github.com/workvar/AnyLM"),
+    },
+  ];
+  if (packaged) {
+    helpSubmenu.push({ label: "Check for Updates…", click: () => send("menu:check-updates") });
+  }
+  template.push({ role: "help", submenu: helpSubmenu });
 
   return Menu.buildFromTemplate(template);
 }

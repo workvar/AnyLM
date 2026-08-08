@@ -8,10 +8,12 @@ import * as chromaServer from "./src/main/chroma-server";
 import * as proxy from "./src/main/proxy/server";
 import * as settings from "./src/main/settings";
 import * as appMenu from "./src/main/menu";
+import { productDisplayName } from "./src/main/product";
 
 // Force the app name everywhere (menu bar, dock, About) — without this the dev
 // build shows "Electron". Packaged builds also pick this up via productName.
-app.setName("AnyLM");
+const displayName = productDisplayName(app.isPackaged);
+app.setName(displayName);
 
 // This file is compiled to dist/main.js, so __dirname is <app>/dist. The icon
 // is not compiled and stays at <app>/build; the renderer is emitted next to
@@ -30,7 +32,7 @@ function createWindow(): void {
     height: 780,
     minWidth: 900,
     minHeight: 600,
-    title: "AnyLM",
+    title: displayName,
     icon: APP_ICON,
     webPreferences: {
       preload: PRELOAD,
@@ -60,7 +62,7 @@ app.whenReady().then(() => {
   // Name + icon in the About panel, and an app menu titled "AnyLM" rather
   // than "Electron" (the default menu takes its title from the bundle).
   app.setAboutPanelOptions({
-    applicationName: "AnyLM",
+    applicationName: displayName,
     applicationVersion: app.getVersion(),
     iconPath: APP_ICON,
     credits: "A local-first LLM workspace.",
