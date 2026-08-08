@@ -3628,9 +3628,6 @@ button.full {
   background: var(--accent);
   animation: conv-pulse 1.4s ease-in-out infinite;
 }
-.nav-list li.active.is-working .conv-dot {
-  background: var(--accent-contrast);
-}
 .is-waiting .conv-dot {
   background: var(--warn);
   animation: none;
