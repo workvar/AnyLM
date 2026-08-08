@@ -17,7 +17,7 @@ import {
   handleFileGenerated,
   clearPendingConfirm,
 } from "./turns.js";
-import { getUseTools, setUseTools } from "./tools-toggle.js";
+import { getUseTools, toggleUseTools } from "./tools-toggle.js";
 import { syncWebResearchHint } from "./web-research-hint.js";
 
 // Governance policy warnings (redactions, near-limit notices) surfaced inline.
@@ -47,7 +47,9 @@ export function initToolUse() {
   toolsBound = true;
 
   const toggle = el("tools-toggle");
-  toggle.onclick = () => setUseTools(!getUseTools());
+  toggle.onclick = () => {
+    void toggleUseTools();
+  };
 
   // Document generation keeps the inline file-card permission UI. Other risky
   // tools confirm via the activity trail + Working strip (no modal).

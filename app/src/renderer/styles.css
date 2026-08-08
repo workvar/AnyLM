@@ -3410,9 +3410,22 @@ button.full {
 
 /* ===== Tools ===== */
 .tools-toggle {
-  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
   border: 1px solid transparent;
   color: var(--muted);
+  width: auto;
+  padding: 0 10px;
+}
+.tools-toggle-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+.tools-toggle-label {
+  font-size: 12.5px;
+  font-weight: 600;
 }
 .tools-toggle.active {
   background: var(--accent-grad);

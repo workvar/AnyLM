@@ -219,7 +219,10 @@
                       <button type="button" data-attach="camera">Camera…</button>
                     </div>
                   </div>
-                  <button type="button" id="tools-toggle" class="icon-btn tools-toggle" title="Let the model use tools">⚒</button>
+                  <button type="button" id="tools-toggle" class="icon-btn tools-toggle" title="Enable tools" aria-label="Enable tools">
+                    <span class="tools-toggle-icon" aria-hidden="true">⚒</span>
+                    <span class="tools-toggle-label">Tools</span>
+                  </button>
                   <button type="button" id="workspace-btn" class="icon-btn tools-toggle" title="Choose a working folder for file tools">📁</button>
                   <span id="workspace-label" class="chip hidden"></span>
                   <div id="model-dropdown" class="dropdown composer-model">
