@@ -51,7 +51,7 @@ describe("resolveAgentSettings loadProtection", () => {
     expect(r.loadProtection.killPercent).toBe(50);
   });
 
-  test("enabled false is preserved", () => {
+  test("enabled false is preserved (Load cutoff off)", () => {
     const r = resolveAgentSettings({
       agents: {
         ...baseWithLp,
@@ -59,6 +59,17 @@ describe("resolveAgentSettings loadProtection", () => {
       },
     } as AppSettings);
     expect(r.loadProtection.enabled).toBe(false);
+  });
+
+  test("load cutoff defaults on when loadProtection.enabled omitted", () => {
+    const r = resolveAgentSettings({
+      agents: {
+        ...baseWithLp,
+        loadProtection: { killPercent: 85 } as LoadProtectionSettings,
+      },
+    } as AppSettings);
+    expect(r.loadProtection.enabled).toBe(true);
+    expect(r.loadProtection.killPercent).toBe(85);
   });
 });
 

@@ -376,6 +376,8 @@
                 </select>
                 </div>
 
+                <p class="settings-panel-sub">Agents</p>
+
                 <div class="setting-row">
                 <div class="label">
                 Multi-agent
@@ -383,7 +385,7 @@
                 </div>
                 <label class="switch">
                 <input type="checkbox" id="agents-enabled" />
-                <span class="track"></span>
+                <span class="track"><span class="knob"></span></span>
                 </label>
                 </div>
 
@@ -397,19 +399,19 @@
 
                 <div class="setting-row">
                 <div class="label">
-                Load protection
-                <small>Soft-stop the current turn when system memory used stays over this %.</small>
+                Load cutoff
+                <small>Stop turns when system memory is high. Off skips all memory sampling.</small>
                 </div>
                 <label class="switch">
                 <input type="checkbox" id="load-protection-enabled" />
-                <span class="track"></span>
+                <span class="track"><span class="knob"></span></span>
                 </label>
                 </div>
 
                 <div class="setting-row">
                 <div class="label">
                 Memory kill threshold
-                <small>Stop the turn at this system RAM used % (50–99).</small>
+                <small>When Load cutoff is on, stop the turn at this system RAM used % (50–99).</small>
                 </div>
                 <input
                 type="number"
