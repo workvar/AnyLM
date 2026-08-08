@@ -47,6 +47,7 @@ import { initSidebar } from "./sidebar/index.js";
 import { initCustomize } from "./customize.js";
 import { initSettingsHub } from "./settings-hub.js";
 import { initWebResearchHint } from "./web-research-hint.js";
+import { initOllamaSetup, runOllamaLaunchFlow } from "./ollama-setup.js";
 
 async function refreshStatus() {
   const s = await window.api.ollamaStatus();
@@ -232,13 +233,17 @@ async function init() {
   const settings = await initSettings();
   initUpdates();
   initEmbedModel();
+  initOllamaSetup(() => {
+    refreshStatus();
+  });
 
   initAuth(async () => {
     if (started) return;
     started = true;
     await startApp(settings);
-    runLaunchUpdateFlow(settings);
-    runEmbedLaunchFlow(settings);
+    await runLaunchUpdateFlow(settings);
+    await runEmbedLaunchFlow(settings);
+    await runOllamaLaunchFlow(settings);
   });
 }
 

@@ -108,6 +108,126 @@ body {
   display: none !important;
 }
 
+#app:has(> .ollama-setup-banner:not(.hidden)) {
+  padding-top: 45px;
+}
+
+.ollama-setup-banner {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 20;
+  min-height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 14px;
+  color: var(--muted);
+  font-size: 12.5px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.ollama-setup-banner-actions {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 7px;
+}
+
+.ollama-setup-banner-message {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.ollama-setup-banner-error {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--danger);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#ollama-setup-modal button:disabled,
+.ollama-setup-banner button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+#boot-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg);
+}
+
+#boot-splash.nebula {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 20%, rgba(125, 249, 166, 0.14), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 15% 70%, rgba(80, 120, 100, 0.18), transparent 65%),
+    radial-gradient(ellipse 45% 40% at 85% 60%, rgba(60, 90, 80, 0.16), transparent 60%),
+    var(--bg);
+}
+
+.boot-splash-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.boot-splash-logo {
+  animation: boot-pulse 1.2s ease-in-out infinite;
+}
+
+.boot-splash-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+@keyframes boot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-splash-logo {
+    animation: none;
+  }
+  #boot-splash.nebula {
+    background: var(--bg);
+  }
+}
+
+.platform-darwin .ollama-setup-banner {
+  padding-left: 84px;
+  -webkit-app-region: drag;
+}
+
+.platform-darwin .ollama-setup-banner button,
+.platform-darwin .ollama-setup-banner .ollama-setup-banner-actions {
+  -webkit-app-region: no-drag;
+}
+
+
 #app {
   display: flex;
   height: 100vh;

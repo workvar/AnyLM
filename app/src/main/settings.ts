@@ -21,6 +21,7 @@ const DEFAULTS: AppSettings = {
   chromaHost: "localhost",
   chromaPort: 8000,
   chromaSsl: false,
+  ollamaSetupDeclined: null, // null = not declined; true = Later forever
   // null = not yet asked; true = user declined the embed-model install prompt.
   embedInstallDeclined: null,
   // System notifications (managed in Settings).

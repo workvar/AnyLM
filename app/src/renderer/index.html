@@ -21,7 +21,20 @@
     </script>
   </head>
   <body>
-    <div id="auth-screen" class="nebula">
+    <div id="boot-splash" class="nebula" aria-busy="true" aria-label="Loading AnyLM">
+      <div class="boot-splash-inner">
+        <span class="brand-badge lg boot-splash-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="brand-badge-icon" fill="none">
+            <circle cx="12" cy="12" r="3" fill="currentColor" />
+            <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
+                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </span>
+        <span class="boot-splash-name">AnyLM</span>
+      </div>
+    </div>
+
+    <div id="auth-screen" class="nebula hidden">
       <div class="auth-card">
         <div class="auth-brand">
           <span class="brand-badge lg" aria-hidden="true">
@@ -62,6 +75,17 @@
     </div>
 
     <div id="app" class="hidden">
+      <div id="ollama-setup-banner" class="ollama-setup-banner hidden" role="status">
+        <div class="ollama-setup-banner-message">
+          <span id="ollama-setup-banner-text"></span>
+          <span id="ollama-setup-banner-error" class="ollama-setup-banner-error hidden" role="alert"></span>
+        </div>
+        <div class="ollama-setup-banner-actions">
+          <button type="button" id="ollama-setup-banner-later" class="ghost small">I'll do it later</button>
+          <button type="button" id="ollama-setup-banner-primary" class="primary small">Install Ollama</button>
+        </div>
+      </div>
+
       <aside id="sidebar">
         <div class="brand">
           <span class="logo">
@@ -522,6 +546,20 @@
           </div>
         </section>
       </main>
+    </div>
+
+    <div id="ollama-setup-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 id="ollama-setup-title">Ollama is not installed</h2>
+        <p class="modal-sub" id="ollama-setup-body">
+          Ollama is required to run models locally.
+        </p>
+        <div class="auth-error hidden" id="ollama-setup-error"></div>
+        <div class="modal-foot">
+          <button type="button" id="ollama-setup-later" class="ghost">I'll do it later</button>
+          <button type="button" id="ollama-setup-primary" class="primary">Install Ollama</button>
+        </div>
+      </div>
     </div>
 
     <!-- Project settings -->

@@ -31,6 +31,7 @@ interface AppSettings {
   chromaHost: string;
   chromaPort: number;
   chromaSsl: boolean;
+  ollamaSetupDeclined: boolean | null;
   embedInstallDeclined: boolean | null;
   notifyUsage: boolean;
   notifyRenewals: boolean;

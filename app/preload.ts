@@ -140,6 +140,9 @@ const api: AnyLmApi = {
 
   // Ollama
   ollamaStatus: () => ipcRenderer.invoke("ollama:status"),
+  ollamaProbe: () => ipcRenderer.invoke("ollama:probe"),
+  ollamaStart: () => ipcRenderer.invoke("ollama:start"),
+  ollamaOpenDownload: () => ipcRenderer.invoke("ollama:openDownload"),
   // Memory backend (Chroma) status
   chromaStatus: () => ipcRenderer.invoke("chroma:status"),
   listModels: () => ipcRenderer.invoke("models:list"),

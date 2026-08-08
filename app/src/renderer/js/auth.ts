@@ -3,16 +3,37 @@ import { el, qsa } from "./dom.js";
 
 let mode = "login"; // login | register
 let onAuthed: (user: AuthUser) => void = () => {};
+const MIN_SPLASH_MS = 1000;
+const AUTH_TIMEOUT_MS = 10_000;
 
-export function initAuth(onAuthedCallback) {
-  onAuthed = onAuthedCallback;
-  bind();
-  return checkSession();
+async function getSessionWithTimeout(): Promise<AuthUser | null> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      window.api.authMe(),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("Authentication check timed out.")), AUTH_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
 }
 
-// Returns true if a valid session was restored.
-async function checkSession() {
-  const user = await window.api.authMe();
+export async function initAuth(onAuthedCallback) {
+  onAuthed = onAuthedCallback;
+  bind();
+  const splash = el("boot-splash");
+  const started = Date.now();
+  let user: AuthUser | null = null;
+  try {
+    user = await getSessionWithTimeout();
+  } catch {
+    // Treat an unavailable or slow auth service as signed out.
+  }
+  const wait = Math.max(0, MIN_SPLASH_MS - (Date.now() - started));
+  if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+  splash.classList.add("hidden");
   if (user) {
     enterApp(user);
     return true;

@@ -134,19 +134,23 @@ export function initUpdates() {
 }
 
 // First launch: ask once. Otherwise honor the saved preference.
-export function runLaunchUpdateFlow(settings) {
+export function runLaunchUpdateFlow(settings: AppSettings): Promise<void> {
   if (settings.checkUpdatesOnLaunch === null) {
-    el("first-run").classList.remove("hidden");
-    el("fr-no").onclick = async () => {
-      el("first-run").classList.add("hidden");
-      await window.api.setSettings({ checkUpdatesOnLaunch: false });
-    };
-    el("fr-yes").onclick = async () => {
-      el("first-run").classList.add("hidden");
-      await window.api.setSettings({ checkUpdatesOnLaunch: true });
-      window.api.checkForUpdate();
-    };
-    return;
+    return new Promise((resolve) => {
+      el("first-run").classList.remove("hidden");
+      el("fr-no").onclick = async () => {
+        el("first-run").classList.add("hidden");
+        await window.api.setSettings({ checkUpdatesOnLaunch: false });
+        resolve();
+      };
+      el("fr-yes").onclick = async () => {
+        el("first-run").classList.add("hidden");
+        await window.api.setSettings({ checkUpdatesOnLaunch: true });
+        window.api.checkForUpdate();
+        resolve();
+      };
+    });
   }
   if (settings.checkUpdatesOnLaunch === true) window.api.checkForUpdate();
+  return Promise.resolve();
 }

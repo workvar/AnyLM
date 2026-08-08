@@ -6,6 +6,7 @@
 
 /** Every on*() subscriber returns its own unsubscribe function. */
 type Unsubscribe = () => void;
+type OllamaSetupState = "running" | "installed" | "missing";
 
 type ActivityIpcEvent = ActivityEvent & { id: string };
 
@@ -154,6 +155,13 @@ interface AnyLmApi {
 
   // Ollama + Chroma
   ollamaStatus(): Promise<{ ok: boolean; host: string; error?: string }>;
+  ollamaProbe(): Promise<{
+    state: OllamaSetupState;
+    host: string;
+    installPath: string | null;
+  }>;
+  ollamaStart(): Promise<{ ok: boolean; error?: string }>;
+  ollamaOpenDownload(): Promise<void>;
   chromaStatus(): Promise<{ ok: boolean; host: string }>;
   listModels(): Promise<string[]>;
   modelInfo(model: string): Promise<number>;

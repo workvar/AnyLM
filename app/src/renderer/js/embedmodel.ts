@@ -5,6 +5,13 @@ import { el } from "./dom.js";
 
 let installed = false;
 let downloading = false;
+let resolveLaunchFlow: (() => void) | null = null;
+
+function finishLaunchFlow() {
+  const resolve = resolveLaunchFlow;
+  resolveLaunchFlow = null;
+  resolve?.();
+}
 
 function setStatus(text) {
   el("embed-status").textContent = text;
@@ -96,6 +103,7 @@ async function openConfirm() {
 
 function closeConfirm() {
   el("embed-confirm").classList.add("hidden");
+  finishLaunchFlow();
 }
 
 function bind() {
@@ -125,18 +133,22 @@ export async function initEmbedModel() {
 }
 
 // On launch: if the model is missing and the user hasn't declined, offer to install.
-export async function runEmbedLaunchFlow(settings) {
+export async function runEmbedLaunchFlow(settings: AppSettings): Promise<void> {
   const ok = await refresh();
   if (ok || settings.embedInstallDeclined === true) return;
 
-  el("embed-prompt").classList.remove("hidden");
-  el("embed-prompt-no").onclick = async () => {
-    el("embed-prompt").classList.add("hidden");
-    await window.api.setSettings({ embedInstallDeclined: true });
-  };
-  el("embed-prompt-yes").onclick = async () => {
-    el("embed-prompt").classList.add("hidden");
-    await window.api.setSettings({ embedInstallDeclined: false });
-    await openConfirm();
-  };
+  return new Promise<void>((resolve) => {
+    resolveLaunchFlow = resolve;
+    el("embed-prompt").classList.remove("hidden");
+    el("embed-prompt-no").onclick = async () => {
+      el("embed-prompt").classList.add("hidden");
+      await window.api.setSettings({ embedInstallDeclined: true });
+      finishLaunchFlow();
+    };
+    el("embed-prompt-yes").onclick = async () => {
+      el("embed-prompt").classList.add("hidden");
+      await window.api.setSettings({ embedInstallDeclined: false });
+      await openConfirm();
+    };
+  });
 }

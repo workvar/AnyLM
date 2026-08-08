@@ -43,6 +43,13 @@ import { resolveAgentSettings, modelForRole } from "./agents/settings";
 import { makeWorkers } from "./agents/workers";
 import { modelSupportsThink } from "./think";
 import * as appMenu from "./menu";
+import * as ollamaSetup from "./ollama-setup/runtime";
+import { systemRamUsedPercent } from "./load-guard/system-memory";
+import {
+  createInFlightMonitor,
+  effectiveMaxParallel,
+  isOverKillLimit,
+} from "./load-guard/guard";
 
 // Pending risky-tool confirmations, keyed by a one-time token → { resolve, id }.
 const pendingConfirms = new Map();
@@ -249,6 +256,9 @@ function registerIpc() {
 
   // Ollama
   ipcMain.handle("ollama:status", () => ollama.status());
+  ipcMain.handle("ollama:probe", () => ollamaSetup.probeRuntime());
+  ipcMain.handle("ollama:start", () => ollamaSetup.startRuntime());
+  ipcMain.handle("ollama:openDownload", () => ollamaSetup.openDownload());
   // Chat-eligible models, filtered through model-allowlist policies.
   ipcMain.handle("models:list", async () => {
     const models = await ollama.listModels();
