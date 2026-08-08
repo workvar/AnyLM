@@ -3,15 +3,15 @@
 import { useReducedMotion } from "framer-motion";
 
 const NODES = [
-  { id: "a", x: 12, y: 28, label: "llama3.2", sub: "Ollama" },
-  { id: "b", x: 22, y: 68, label: "nomic-embed", sub: "RAG" },
-  { id: "c", x: 78, y: 24, label: "Cursor", sub: "Editor" },
-  { id: "d", x: 86, y: 62, label: "Scripts", sub: "OpenAI SDK" },
-  { id: "e", x: 50, y: 18, label: "Notes", sub: "App" },
+  { id: "a", x: 18, y: 58, label: "llama3.2", sub: "Ollama" },
+  { id: "b", x: 28, y: 86, label: "nomic-embed", sub: "RAG" },
+  { id: "c", x: 82, y: 56, label: "Cursor", sub: "Editor" },
+  { id: "d", x: 72, y: 88, label: "Scripts", sub: "OpenAI SDK" },
+  { id: "e", x: 50, y: 48, label: "Notes", sub: "App" },
 ];
 
 const CX = 50;
-const CY = 52;
+const CY = 72;
 
 export default function Constellation() {
   const reduced = useReducedMotion();
@@ -19,11 +19,11 @@ export default function Constellation() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       <div className="nebula absolute inset-0" />
-      <div className="absolute left-1/2 top-[18%] h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-[var(--color-slime)]/10 blur-[110px]" />
+      <div className="absolute left-1/2 top-[58%] h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-[var(--color-slime)]/10 blur-[110px]" />
 
       <svg
         viewBox="0 0 100 100"
-        preserveAspectRatio="xMidYMid slice"
+        preserveAspectRatio="xMidYMid meet"
         className="absolute inset-0 h-full w-full opacity-70"
       >
         <defs>
@@ -79,9 +79,7 @@ export default function Constellation() {
         </div>
       ))}
 
-      <div
-        className="absolute left-1/2 top-[52%] hidden -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--color-slime)]/35 bg-black/50 px-3 py-1.5 text-xs font-medium text-[var(--color-slime)] backdrop-blur sm:block"
-      >
+      <div className="absolute left-1/2 top-[72%] hidden -translate-x-1/2 translate-y-6 rounded-full border border-[var(--color-slime)]/35 bg-black/50 px-3 py-1.5 text-xs font-medium text-[var(--color-slime)] backdrop-blur sm:block">
         AnyLM · :3227
       </div>
     </div>

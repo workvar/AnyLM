@@ -19,6 +19,18 @@ const POINTS = [
     title: "Connectors that act",
     body: "Optional Google Calendar and Outlook skills let the model schedule and mail. Risky writes always ask before they run.",
   },
+  {
+    title: "Multi-agent on complex turns",
+    body: "Heuristics detect hard requests. An orchestrator plans, routes independent work in parallel, and synthesizes one reply — with a collapsed agent trail you can expand.",
+  },
+  {
+    title: "Project-first coding",
+    body: "Scaffold with official CLIs when they exist, write app code with file tools, look up current docs online when possible, and keep the chat bubble to a short summary.",
+  },
+  {
+    title: "Guided Ollama setup",
+    body: "If Ollama is missing or stopped, AnyLM offers Install or Start — plus a boot splash so you never flash login before the dashboard.",
+  },
 ];
 
 export default function EnhanceModels() {
