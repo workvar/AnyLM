@@ -1,0 +1,21 @@
+{
+  "name": "AnyLM",
+  "short_name": "AnyLM",
+  "description": "Local-first LLM workspace for Ollama — projects, RAG, and one OpenAI-compatible endpoint.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030405",
+  "theme_color": "#0a0c10",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

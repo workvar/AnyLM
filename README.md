@@ -1,106 +1,97 @@
-# LLMeter
+# AnyLM
 
-A local-first LLM workspace: create projects, attach reference docs that are chunked and embedded for retrieval, and chat with local Ollama models, all behind one account. Built as two parts:
+**Local-first LLM workspace for [Ollama](https://ollama.com).**  
+Projects with RAG, streaming multi-agent chat, and one OpenAI-compatible endpoint every local app can share — inference stays on your machine.
 
-- `app/` — Electron desktop app in TypeScript. Projects, RAG context, streaming chat, login UI, the local OpenAI-compatible proxy, and the governance API itself. Compiled with `tsc` into `app/dist/`.
-- `firebase/` — Firebase Auth + Firestore on the free Spark plan, plus security rules and a single hosted sign-in page. See `firebase/README.md`.
+[Download](https://anylm.app/download) · [Website](https://anylm.app) · [Releases](https://anylm.app/releases) · [Launch kit](docs/launch/README.md)
 
-There is no server. Cloud Functions requires the paid Blaze plan, so the
-service logic runs inside the app and talks to Firestore directly under the
-signed-in user's ID token. `firebase/firestore.rules` is the authorization
-layer, and it is worth reading before changing anything in `app/src/main/api/`.
+![AnyLM](press-kit/social-1200x630.png)
 
-`auth-backend/` is the retired NestJS service. It is kept only as a reference
-for the migration and is no longer started or shipped.
+## Why AnyLM
 
-The original architecture write-up is in `LLMeter_Project_Plan.docx`.
+Most local tooling either gives you a runtime (Ollama) or a chat window. AnyLM adds the missing workspace layer:
 
-## Prerequisites
+- **Projects** with instructions and attached reference docs  
+- **RAG** — docs are chunked, embedded, and retrieved into chat  
+- **Multi-agent** orchestration with a visible agent trail  
+- **One local API** (`http://127.0.0.1:3227/v1`) so Cursor, Continue, and scripts share a resident runtime  
+- **Desktop installers** for macOS, Windows, and Linux  
 
-- [Bun](https://bun.sh) 1.1+ (package manager + script runner)
-- [Ollama](https://ollama.com) running locally, with models pulled:
-  ```
-  ollama pull llama3.2          # chat
-  ollama pull nomic-embed-text  # embeddings (RAG)
-  ```
+Works with the models you already pulled. No cloud inference required.
 
-## Quick start
+## Download
 
-First-time setup (installs both projects, creates the DB):
+| Platform | Get it |
+| --- | --- |
+| macOS (Apple Silicon / Intel) | [anylm.app/download](https://anylm.app/download) |
+| Windows | [anylm.app/download](https://anylm.app/download) |
+| Linux (AppImage) | [anylm.app/download](https://anylm.app/download) |
 
+Or grab assets from [GitHub Releases](https://github.com/workvar/AnyLM/releases). Prerequisites: [Ollama](https://ollama.com) running locally, with a chat model and (for RAG) `nomic-embed-text`.
+
+```bash
+ollama pull llama3.2
+ollama pull nomic-embed-text
 ```
+
+## Repository layout
+
+| Path | Role |
+| --- | --- |
+| [`app/`](app/) | Electron desktop app (TypeScript, Bun) |
+| [`web/`](web/) | Marketing + download site (Next.js) — reads GitHub Releases |
+| [`firebase/`](firebase/) | Auth, Firestore rules, hosted sign-in page |
+| [`docs/`](docs/) | Release notes, specs, [launch kit](docs/launch/README.md) |
+| [`press-kit/`](press-kit/) | Logos and social images for Product Hunt / press |
+| `auth-backend/` | Retired NestJS service (reference only — not shipped) |
+
+There is no inference server of yours to operate. Governance logic runs inside the app against Firestore under the signed-in user’s token; `firebase/firestore.rules` is the authorization layer.
+
+## Develop from source
+
+Prerequisites: [Bun](https://bun.sh) 1.1+, Ollama as above.
+
+```bash
 ./scripts/setup.sh
-```
-
-Then run the app:
-
-```
 ./scripts/dev.sh
 ```
 
-Nothing to start first. The OpenAI-compatible endpoint runs inside the app on
-`http://127.0.0.1:3227/v1`.
+Firebase emulators:
 
-To work against the Firebase emulators instead of a live project:
-
-```
+```bash
 ./scripts/dev.sh --emulator
 ```
 
-## Manual steps
+Manual app setup is in [`app/README.md`](app/README.md); Firebase deploy notes in [`firebase/README.md`](firebase/README.md).
 
-See `firebase/README.md` for project setup, and `app/README.md` for the app.
-In short:
-
-```
-cd firebase && firebase deploy    # rules, indexes, sign-in page
-
-cd ../app
-cp .env.example .env              # Firebase project id + web API key
-bun install
-bun start
-```
+The OpenAI-compatible endpoint runs inside the app on `http://127.0.0.1:3227/v1`.
 
 ## Configuration and secrets
 
 | File | Contents | Ships in the app? |
 | --- | --- | --- |
 | `app/.env` | Firebase project id, web API key, public OAuth client ids, local service hosts | **Yes** — treat as public |
-| `.env.example` (repo root) | Code-signing + GitHub release credentials | No — CI environment only |
+| `.env.example` (repo root) | Code-signing + GitHub release credentials | No — CI only |
 
-There is no third file any more. The provider client secrets for Google and
-GitHub sign-in live inside the Firebase project, where its hosted OAuth handler
-uses them; the Outlook connector uses a public client with PKCE and has no
-secret at all.
+Provider client secrets for Google/GitHub live in the Firebase project. Outlook uses a public client with PKCE. User tokens are stored via the OS keystore (`app/src/main/token-store.ts`).
 
-`app/scripts/build-env.js` compiles `app/.env` into the bundle and refuses to run
-if a key matching `SECRET` / `PASSWORD` / `PRIVATE` / `*_TOKEN` / `CSC_*` /
-`APPLE_*` appears there. The signed-in user's own tokens are never written in
-plaintext: `app/src/main/token-store.ts` encrypts them through the OS keystore
-(Keychain / DPAPI / libsecret), falling back to a 0600 file only where no
-keyring exists.
+`app/scripts/build-env.js` refuses to bake keys matching `SECRET` / `PASSWORD` / `PRIVATE` / `*_TOKEN` / `CSC_*` / `APPLE_*` into the bundle.
 
 ## What enforcement does and does not guarantee
 
-Firestore rules stop a user raising their own token limit, editing org policy
-without the role for it, reading a colleague's prompts, or rewriting usage
-history. They cannot compel a client to report its usage at all, so limits are
-cooperative rather than adversarial-proof.
+Firestore rules stop a user raising their own token limit, editing org policy without the role for it, reading a colleague’s prompts, or rewriting usage history. They cannot compel a client to report usage, so limits are cooperative rather than adversarial-proof.
 
-That trade is deliberate and bounded: anyone who can patch the app can also run
-Ollama directly and bypass AnyLM entirely. `app/src/main/api/index.ts` keeps
-REST-shaped paths precisely so a server can be reintroduced behind the same
-seam if enforcement ever has to survive a hostile client. `firebase/README.md`
-has the details.
+That trade is deliberate: anyone who can patch the app can also run Ollama directly. REST-shaped paths in `app/src/main/api/` keep a seam if a server must return later.
 
-## Verification status
+## Launch & community
 
-The desktop app typechecks clean under both `tsconfig.main.json` and
-`tsconfig.renderer.json` (`bun run typecheck` in `app/`). The governance logic
-is a direct port of the NestJS services that were previously exercised end to
-end, but the Firestore paths and the security rules have not yet been run
-against a live project. Treat the first deploy as the real test, and exercise
-the rules with the emulator's rules-testing harness before trusting them.
+Shipping on Product Hunt, HN, and community channels? Start here:
 
-The RAG layer keeps its unit tests for chunking, cosine similarity, ranked
-retrieval, and the summary fallback.
+- [Launch kit](docs/launch/README.md) — PH fields, social drafts, checklist  
+- [Messaging](docs/launch/messaging.md) — taglines and FAQ  
+- [Brand / press kit](docs/brand/README.md)  
+- [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License (MIT)](LICENSE)
+
+## License
+
+[MIT](LICENSE) © 2026 Yash Aryan and contributors.

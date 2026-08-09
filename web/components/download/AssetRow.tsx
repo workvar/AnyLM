@@ -1,21 +1,39 @@
 import { formatSize, type ReleaseAsset } from "@/lib/releases";
 
+function DownloadIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden>
+      <path
+        d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function AssetRow({ asset }: { asset: ReleaseAsset }) {
   return (
     <a
       href={asset.downloadUrl}
-      className="group flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/30 px-4 py-3 transition hover:border-[var(--color-slime)]/50 hover:bg-black/45"
+      className="group flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-4 py-3 transition hover:border-[var(--color-slime)]/50 hover:bg-black/45"
     >
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-white">{asset.label}</p>
-        <p className="truncate font-mono text-xs text-[var(--color-mist)]">{asset.name}</p>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-white">{asset.label}</p>
+        <p className="mt-0.5 break-all font-mono text-[11px] leading-snug text-[var(--color-mist)]">
+          {asset.name}
+        </p>
+        <p className="mt-1 text-[11px] text-[var(--color-mist)]">{formatSize(asset.size)}</p>
       </div>
-      <div className="flex shrink-0 items-center gap-3 text-xs text-[var(--color-mist)]">
-        <span>{formatSize(asset.size)}</span>
-        <span className="rounded-full border border-white/10 px-2 py-0.5 group-hover:border-[var(--color-slime)]/50 group-hover:text-[var(--color-slime)]">
-          {asset.format}
-        </span>
-      </div>
+      <span
+        className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--color-mist)] transition group-hover:text-[var(--color-slime)]"
+        aria-hidden
+      >
+        <DownloadIcon className="h-4 w-4" />
+      </span>
+      <span className="sr-only">Download {asset.format}</span>
     </a>
   );
 }
