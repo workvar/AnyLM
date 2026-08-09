@@ -60,10 +60,10 @@ test("assignKinds does not route a bare 'document' mention to retrieve", () => {
   expect(p.steps[0].kind).toBe("tool");
 });
 
-test("assignKinds does not route document generation to retrieve", () => {
+test("assignKinds routes document generation goals to document not retrieve", () => {
   const p = assignKinds({
     steps: [{ id: "a", goal: "Generate a PDF document from the findings", dependsOn: [], kind: "tool" }],
   });
   expect(p.steps[0].kind).not.toBe("retrieve");
-  expect(p.steps[0].kind).toBe("tool");
+  expect(p.steps[0].kind).toBe("document");
 });

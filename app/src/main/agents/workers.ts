@@ -19,6 +19,20 @@ import type { AgentStep, AgentStepKind, StepResult } from "./types";
 const RETRIEVE_CHAR_CAP = 6000;
 const MAX_TOOL_ROUNDS = 3;
 
+function formatPriorOutputs(prior: StepResult[]): string {
+  if (!prior.length) return "";
+  const lines = prior.map((r) => {
+    const body = r.ok ? r.output : r.error || "(error)";
+    return `[step ${r.id}]: ${body}`;
+  });
+  return `Prior step outputs:\n${lines.join("\n")}\n\n`;
+}
+
+function userContentForStep(step: AgentStep, prior: StepResult[]): string {
+  const prefix = formatPriorOutputs(prior);
+  return prefix ? prefix + step.goal : step.goal;
+}
+
 const GENERIC_WORKER_SYSTEM =
   "You are a worker agent completing one step of a larger task on behalf of another " +
   "assistant. Use tools when they help, then report your findings concisely.";
@@ -111,6 +125,7 @@ async function runTool(
     model: string;
     toolDefs: OllamaToolDef[] | null;
     specialistSystem: string;
+    prior?: StepResult[];
   }
 ): Promise<ToolRunOutput> {
   const chat = deps.chat || ollama.chatStream;
@@ -130,7 +145,10 @@ async function runTool(
     role: "system",
     content: opts.specialistSystem,
   });
-  messages.push({ role: "user", content: step.goal });
+  messages.push({
+    role: "user",
+    content: userContentForStep(step, opts.prior || []),
+  });
 
   let lastText = "";
   let promptTokens = 0;
@@ -199,7 +217,7 @@ async function runTool(
  *  the user at a time — others queue on the same lock instead of firing a
  *  second confirm/ask the renderer (which tracks one pending prompt) can't
  *  surface. Non-interactive tool execution still runs fully in parallel. */
-export function makeWorkers(deps: WorkersDeps): (step: AgentStep) => Promise<StepResult> {
+export function makeWorkers(deps: WorkersDeps): (step: AgentStep, prior?: StepResult[]) => Promise<StepResult> {
   const modelForKind = deps.modelForKind ?? ((k: AgentStepKind) => deps.toolModel);
   const lock = createMutex();
   // Re-check isCancelled() after acquiring the lock, not just before queuing:
@@ -212,7 +230,7 @@ export function makeWorkers(deps: WorkersDeps): (step: AgentStep) => Promise<Ste
   const serialAsk: AskFn = (payload) =>
     lock(() => (deps.isCancelled() ? Promise.resolve(null) : deps.ask(payload)));
 
-  return async function runStep(step: AgentStep): Promise<StepResult> {
+  return async function runStep(step: AgentStep, prior: StepResult[] = []): Promise<StepResult> {
     try {
       let output = "";
       let promptTokens = 0;
@@ -230,10 +248,16 @@ export function makeWorkers(deps: WorkersDeps): (step: AgentStep) => Promise<Ste
         case "document": {
           const allow = allowlistFor(step.kind);
           const toolDefs = filterToolDefs(deps.toolDefs, allow);
+          const usePrior =
+            prior.length > 0 &&
+            (step.kind === "fact_check" ||
+              step.kind === "summarize" ||
+              ((step.kind === "document" || step.kind === "research") && step.dependsOn.length > 0));
           const r = await runTool(step, deps, serialConfirm, serialAsk, {
             model: modelForKind(step.kind),
             toolDefs,
             specialistSystem: specialistPrompt(step.kind),
+            prior: usePrior ? prior : undefined,
           });
           output = r.text;
           promptTokens = r.promptTokens;

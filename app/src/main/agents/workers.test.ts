@@ -370,6 +370,48 @@ describe("makeWorkers: confirm/ask serialization", () => {
 });
 
 describe("makeWorkers: knowledge specialists", () => {
+  test("fact_check prepends prior dependency outputs to the user message", async () => {
+    const seenMessages: ChatMessage[][] = [];
+    const runStep = makeWorkers(
+      baseDeps({
+        chat: async (_model, messages) => {
+          seenMessages.push(messages as ChatMessage[]);
+          return { text: "verified", promptTokens: 1, completionTokens: 1, toolCalls: [] };
+        },
+      })
+    );
+    await runStep(
+      { id: "fc", goal: "Fact check claims from step research", dependsOn: ["research"], kind: "fact_check" },
+      [{ id: "research", ok: true, output: "Vite uses Rollup under the hood." }]
+    );
+    const userMsg = seenMessages[0].find((m) => m.role === "user");
+    expect(userMsg?.content).toContain("Prior step outputs:");
+    expect(userMsg?.content).toContain("[step research]: Vite uses Rollup under the hood.");
+    expect(userMsg?.content).toContain("Fact check claims from step research");
+  });
+
+  test("summarize prepends prior dependency outputs to the user message", async () => {
+    const seenMessages: ChatMessage[][] = [];
+    const runStep = makeWorkers(
+      baseDeps({
+        chat: async (_model, messages) => {
+          seenMessages.push(messages as ChatMessage[]);
+          return { text: "summary", promptTokens: 1, completionTokens: 1, toolCalls: [] };
+        },
+      })
+    );
+    await runStep(
+      { id: "sum", goal: "Summarize findings", dependsOn: ["a", "b"], kind: "summarize" },
+      [
+        { id: "a", ok: true, output: "finding one" },
+        { id: "b", ok: false, output: "", error: "timeout" },
+      ]
+    );
+    const userMsg = seenMessages[0].find((m) => m.role === "user");
+    expect(userMsg?.content).toContain("[step a]: finding one");
+    expect(userMsg?.content).toContain("[step b]: timeout");
+  });
+
   test("summarize uses modelForKind, null tools, and specialist system prompt", async () => {
     let seenModel = "";
     let seenTools: OllamaToolDef[] | null | undefined;

@@ -1,10 +1,10 @@
 import type { AgentPlan, AgentStepKind } from "./types";
 
-const RESEARCH_PATTERN = /\bresearch\b|look up|find sources|web search|official docs/i;
+const RESEARCH_PATTERN = /\bresearch\b|find sources|web search|official docs/i;
 const FACT_CHECK_PATTERN = /\bfact[- ]?check\b|\bverify (the )?claims?\b|\bcross[- ]?check\b/i;
 const SUMMARIZE_PATTERN = /\bsummarize\b|\btl;?dr\b|\bcondense\b|\bbrief (me )?on\b/i;
 const DOCUMENT_PATTERN =
-  /\bgenerate_document\b|\b(pdf|docx)\b.*\b(brief|report|memo)\b|\bwrite (a )?(pdf|docx|report|brief|memo)\b/i;
+  /\bgenerate_document\b|\b(write|generate|draft)\b.*\b(pdf|docx|report|brief|memo|document)\b|\b(pdf|docx)\b.*\b(brief|report|memo)\b/i;
 // Deliberately does NOT match a bare "document" — that word alone shows up
 // in plenty of tool goals ("email the signed document", "generate a PDF
 // document") that have nothing to do with retrieval. Require a stronger,

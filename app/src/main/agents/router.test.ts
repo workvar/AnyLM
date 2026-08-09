@@ -36,6 +36,20 @@ test("keeps planned research when patterns miss", () => {
   expect(p.steps[0].kind).toBe("research");
 });
 
+test("look up in project documents routes to retrieve not research", () => {
+  const p = assignKinds({
+    steps: [{ id: "1", goal: "Look up budget in project documents", dependsOn: [], kind: "tool" }],
+  });
+  expect(p.steps[0].kind).toBe("retrieve");
+});
+
+test("generate pdf document from findings routes to document", () => {
+  const p = assignKinds({
+    steps: [{ id: "1", goal: "Generate a PDF document from the findings", dependsOn: [], kind: "tool" }],
+  });
+  expect(p.steps[0].kind).toBe("document");
+});
+
 test("retrieve still works", () => {
   const p = assignKinds({
     steps: [{ id: "1", goal: "Search the project documents for auth", dependsOn: [], kind: "tool" }],

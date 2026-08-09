@@ -8,7 +8,7 @@ export interface OrchestratorDeps {
   beforeWave?: () => { maxParallel: number; softStop: boolean };
   planTurn: (userText: string) => Promise<AgentPlan | null>;
   assignKinds: (plan: AgentPlan) => AgentPlan;
-  runStep: (step: AgentStep) => Promise<StepResult>;
+  runStep: (step: AgentStep, prior: StepResult[]) => Promise<StepResult>;
   synthesize: (ctx: { userText: string }, results: StepResult[]) => Promise<string>;
   act: (event: ActivityEvent) => void;
   isCancelled: () => boolean;
@@ -76,8 +76,9 @@ export async function runOrchestratedTurn(
 
     const waveResults = await Promise.all(
       wave.map(async (step) => {
+        const prior = results.filter((r) => step.dependsOn.includes(r.id));
         try {
-          return await deps.runStep(step);
+          return await deps.runStep(step, prior);
         } catch (err) {
           return {
             id: step.id,
