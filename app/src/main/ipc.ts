@@ -598,19 +598,6 @@ function registerIpc() {
       if (!useModel) throw new Error("No model selected");
 
       const lastUser = [...messages].reverse().find((m) => m.role === "user");
-      if (lastUser) {
-        try {
-          analytics.trackMessage({
-            direction: "sent",
-            role: "user",
-            model: useModel,
-            text: lastUser.content,
-            title: project?.name,
-          });
-        } catch {
-          // never throw into chat flow
-        }
-      }
       const extras = Array.isArray(skillOverrides) ? skillOverrides.filter(Boolean) : [];
 
       // --- Governance: pre-flight limits/budget/rate/model, then content. ---
@@ -620,6 +607,18 @@ function registerIpc() {
       if (!pre.allowed) throw new Error(pre.reason || "Blocked by organization policy.");
       if (lastUser) {
         const verdict = await governance.evaluatePrompt(lastUser.content);
+        // Track after governance so text is redacted; omit text on blocked path.
+        try {
+          analytics.trackMessage({
+            direction: "sent",
+            role: "user",
+            model: useModel,
+            ...(verdict.blocked ? {} : { text: verdict.text }),
+            title: project?.name,
+          });
+        } catch {
+          // never throw into chat flow
+        }
         if (verdict.blocked) throw new Error(verdict.reason);
         warnings.push(...verdict.warnings);
         lastUser.content = verdict.text; // may be redacted

@@ -66,6 +66,7 @@ export function getDistinctId(): string {
 export function identify(uid: string): void {
   try {
     if (!client || !uid) return;
+    if (identifiedUid === uid) return;
     if (readSettings().analyticsConsent !== true) return;
 
     const anon = getAnonymousDistinctId();

@@ -66,7 +66,8 @@ function wire() {
 
     onDownloaded: (info) => {
       cancelToken = null;
-      trackUpdater("updater_install");
+      // Download already tracked at download() start. updater_install is only
+      // emitted from install() / quitAndInstall — not on download-complete.
       emit("ready", {
         version: info.version,
         notes: notes.normalize(info.releaseNotes),

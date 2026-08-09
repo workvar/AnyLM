@@ -103,14 +103,30 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-// Shut the bundled Chroma server and the local proxy down with the app.
-app.on("will-quit", () => {
-  try {
-    analytics.capture({ event: "app_quit", category: "productUsage" });
-  } catch {
-    // best-effort
-  }
-  void analytics.shutdown();
-  chromaServer.stop();
-  proxy.stop();
+// Flush analytics on quit: preventDefault once, await shutdown (≤2s), then exit.
+// Flag avoids infinite will-quit ↔ preventDefault loops when app.exit() re-enters.
+let analyticsQuitHandled = false;
+app.on("will-quit", (event) => {
+  if (analyticsQuitHandled) return;
+  analyticsQuitHandled = true;
+  event.preventDefault();
+
+  void (async () => {
+    try {
+      analytics.capture({ event: "app_quit", category: "productUsage" });
+    } catch {
+      // best-effort
+    }
+    try {
+      await Promise.race([
+        analytics.shutdown(),
+        new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+      ]);
+    } catch {
+      // best-effort
+    }
+    chromaServer.stop();
+    proxy.stop();
+    app.exit(0);
+  })();
 });
