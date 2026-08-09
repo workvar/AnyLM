@@ -59,8 +59,8 @@ export function filterEvent(
     properties.text_preview = String(properties.text_preview).slice(0, analytics.truncateChars);
   }
 
-  if (draft.event === "chat_failed" && !analytics.reliability) {
-    delete properties.error_code;
+  if (draft.event === "ai_request_failed" && !analytics.reliability) {
+    delete properties.error_type;
   }
 
   return { event: draft.event, properties };

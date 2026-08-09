@@ -77,8 +77,9 @@ jobs:
           ANYLM_SITE_URL: ${{ vars.ANYLM_SITE_URL || secrets.ANYLM_SITE_URL }}
           ANYLM_MS_CLIENT_ID: ${{ vars.ANYLM_MS_CLIENT_ID || secrets.ANYLM_MS_CLIENT_ID }}
           ANYLM_PROXY_PORT: ${{ vars.ANYLM_PROXY_PORT || secrets.ANYLM_PROXY_PORT }}
-          ANYLM_POSTHOG_KEY: ${{ vars.ANYLM_POSTHOG_KEY || secrets.ANYLM_POSTHOG_KEY }}
-          ANYLM_POSTHOG_HOST: ${{ vars.ANYLM_POSTHOG_HOST || secrets.ANYLM_POSTHOG_HOST }}
+          ANYLM_GA_MEASUREMENT_ID: ${{ vars.ANYLM_GA_MEASUREMENT_ID || secrets.ANYLM_GA_MEASUREMENT_ID }}
+          ANYLM_GA_API_SECRET: ${{ vars.ANYLM_GA_API_SECRET || secrets.ANYLM_GA_API_SECRET }}
+          ANYLM_CLARITY_ID: ${{ vars.ANYLM_CLARITY_ID || secrets.ANYLM_CLARITY_ID }}
           # Optional code signing. Leave unset for unsigned builds.
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PRODUCT_NAME, REPO_URL } from "@/lib/config";
+import NavDownloadCta from "./NavDownloadCta";
 
 const LINKS = [
   { href: "/#features", label: "Features" },
@@ -51,12 +52,7 @@ export default function Nav() {
           </a>
         </nav>
 
-        <Link
-          href="/download"
-          className="shrink-0 rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-[var(--color-slime)]"
-        >
-          Download
-        </Link>
+        <NavDownloadCta />
       </div>
     </header>
   );

@@ -31,6 +31,7 @@
           </svg>
         </span>
         <span class="boot-splash-name">AnyLM</span>
+        <span id="boot-splash-status" class="boot-splash-status"></span>
       </div>
     </div>
 
@@ -104,8 +105,24 @@
           </span>
         </div>
         <button id="new-chat-btn" class="primary">＋ New chat</button>
-        <button id="projects-nav" class="side-nav">▦ Projects</button>
-        <button id="artifacts-nav" class="side-nav" type="button">▭ Artifacts</button>
+        <button id="projects-nav" class="side-nav" type="button">
+          <svg class="side-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75" />
+            <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75" />
+            <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75" />
+            <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75" />
+          </svg>
+          Projects
+        </button>
+        <button id="artifacts-nav" class="side-nav" type="button">
+          <svg class="side-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M14 3H7.5A2.5 2.5 0 0 0 5 5.5v13A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V9l-5-6Z"
+                  stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" />
+            <path d="M14 3v5.5H19" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M9 13h6M9 17h4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
+          </svg>
+          Artifacts
+        </button>
         <div class="side-search">
           <input id="sidebar-search" type="search" placeholder="Search chats…" autocomplete="off" />
         </div>
@@ -871,7 +888,7 @@
       </div>
     </div>
 
-    <!-- First-launch update opt-in -->
+    <!-- First-launch update opt-in (legacy; first-run wizard handles this now) -->
     <div id="first-run" class="modal-overlay hidden">
       <div class="modal">
         <h2>Stay up to date?</h2>
@@ -898,6 +915,88 @@
           <button id="analytics-consent-configure" class="ghost">Configure…</button>
           <button id="analytics-consent-decline" class="ghost">Decline</button>
           <button id="analytics-consent-accept" class="primary">Accept</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- First-run setup wizard -->
+    <div id="setup-wizard" class="modal-overlay hidden">
+      <div class="modal setup-wizard-modal">
+        <p id="setup-wizard-progress" class="setup-wizard-progress">Step 1 of 5</p>
+
+        <div id="setup-step-welcome" class="setup-step">
+          <h2>Welcome to AnyLM</h2>
+          <p class="modal-sub">
+            AnyLM bundles project memory and a knowledge graph — no extra installs needed.
+            Let's finish setup so you can start chatting.
+          </p>
+          <ul id="setup-deps-list" class="setup-checklist"></ul>
+          <button type="button" id="setup-bundled-retry" class="ghost small hidden">Retry memory setup</button>
+          <div class="modal-foot">
+            <button type="button" id="setup-welcome-next" class="primary">Continue</button>
+          </div>
+        </div>
+
+        <div id="setup-step-ollama" class="setup-step hidden">
+          <div id="setup-ollama-running" class="setup-callout ok hidden">
+            <strong>Ollama is running.</strong>
+            <p>You're ready to use local models.</p>
+          </div>
+          <div id="setup-ollama-action">
+            <h2 id="setup-ollama-title">Install Ollama</h2>
+            <p id="setup-ollama-body" class="modal-sub"></p>
+            <div id="setup-ollama-error" class="auth-error hidden" role="alert"></div>
+            <div class="modal-foot">
+              <button type="button" id="setup-ollama-skip" class="ghost">Skip for now</button>
+              <button type="button" id="setup-ollama-primary" class="primary">Open download page</button>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button type="button" id="setup-ollama-next" class="primary hidden">Continue</button>
+          </div>
+        </div>
+
+        <div id="setup-step-embed" class="setup-step hidden">
+          <div id="setup-embed-installed" class="setup-callout ok hidden">
+            <strong>Embedding model installed.</strong>
+            <p>Document search and knowledge-base features are ready.</p>
+          </div>
+          <div id="setup-embed-offer">
+            <h2>Install the embedding model?</h2>
+            <p class="modal-sub">
+              Optional: enables semantic search across your documents and project memory.
+              You can install it later from Settings.
+            </p>
+            <div class="modal-foot">
+              <button type="button" id="setup-embed-skip" class="ghost">Skip</button>
+              <button type="button" id="setup-embed-yes" class="primary">Install now</button>
+            </div>
+          </div>
+          <div id="setup-embed-progress" class="setup-embed-progress hidden">
+            <p id="setup-embed-status" class="modal-sub">Starting download…</p>
+          </div>
+          <div class="modal-foot">
+            <button type="button" id="setup-embed-next" class="primary">Continue</button>
+          </div>
+        </div>
+
+        <div id="setup-step-prefs" class="setup-step hidden">
+          <h2>Stay up to date?</h2>
+          <p class="modal-sub">
+            AnyLM can check for new versions each time it launches. You can change this anytime in Settings.
+          </p>
+          <div class="modal-foot">
+            <button type="button" id="setup-prefs-no" class="ghost">Not now</button>
+            <button type="button" id="setup-prefs-yes" class="primary">Check on every launch</button>
+          </div>
+        </div>
+
+        <div id="setup-step-done" class="setup-step hidden">
+          <h2>You're all set</h2>
+          <p class="modal-sub">Your workspace is ready. Create a project and start chatting.</p>
+          <div class="modal-foot">
+            <button type="button" id="setup-done-start" class="primary">Get started</button>
+          </div>
         </div>
       </div>
     </div>

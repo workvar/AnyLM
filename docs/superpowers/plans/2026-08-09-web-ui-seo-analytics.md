@@ -176,7 +176,7 @@ NEXT_PUBLIC_SITE_URL=https://anylm.app
 
 # Analytics — leave empty to disable scripts locally
 NEXT_PUBLIC_GA_MEASUREMENT_ID=
-NEXT_PUBLIC_CLARITY_PROJECT_ID=
+NEXT_PUBLIC_CLARITY_ID=
 
 # Search Console / Bing Webmaster meta verification
 NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
@@ -796,7 +796,7 @@ EOF
 - Modify: `app/layout.tsx` (mount `<Analytics />` in `<body>`)
 
 **Interfaces:**
-- Reads `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_CLARITY_PROJECT_ID`
+- Reads `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_CLARITY_ID`
 - Renders `null` when both empty
 
 - [ ] **Step 1: Implement client Analytics**
@@ -807,7 +807,7 @@ EOF
 import Script from "next/script";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
-const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim();
+const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID?.trim();
 
 export default function Analytics() {
   if (!GA_ID && !CLARITY_ID) return null;

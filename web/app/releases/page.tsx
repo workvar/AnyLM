@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ReleaseCard from "@/components/releases/ReleaseCard";
+import ReleasesAnalytics from "@/components/releases/ReleasesAnalytics";
 import { getAllReleases } from "@/lib/github";
 import { RELEASES_URL } from "@/lib/config";
 
@@ -12,9 +13,11 @@ export const metadata: Metadata = {
 
 export default async function ReleasesPage() {
   const releases = await getAllReleases();
+  const latestVersion = releases[0]?.version ?? null;
 
   return (
     <div className="relative overflow-hidden">
+      <ReleasesAnalytics version={latestVersion} />
       <div className="nebula pointer-events-none absolute inset-0 opacity-50" aria-hidden />
       <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-28">
         <header className="mb-12 max-w-2xl">

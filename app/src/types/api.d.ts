@@ -15,6 +15,20 @@ interface AnalyticsCaptureDraft {
   properties?: Record<string, unknown>;
 }
 
+type StartupDepKind = "bundled" | "external";
+
+interface StartupDepStatus {
+  id: "chroma" | "graph" | "ollama";
+  kind: StartupDepKind;
+  ok: boolean;
+  message: string;
+}
+
+interface StartupDepsReport {
+  ready: boolean;
+  deps: StartupDepStatus[];
+}
+
 type ActivityIpcEvent = ActivityEvent & { id: string };
 
 interface ToolConfirmRequest {
@@ -78,6 +92,7 @@ interface ChatPayload {
 
 interface AnyLmApi {
   platform: NodeJS.Platform;
+  isPackaged: boolean;
 
   // Auth
   authMe(): Promise<AuthUser | null>;
@@ -131,6 +146,7 @@ interface AnyLmApi {
 
   // Analytics
   analyticsAvailable(): Promise<boolean>;
+  analyticsClarityConfig(): Promise<{ id: string | null; enabled: boolean }>;
   analyticsCapture(draft: AnalyticsCaptureDraft): Promise<void>;
 
   // Local OpenAI-compatible endpoint
@@ -174,6 +190,8 @@ interface AnyLmApi {
   ollamaStart(): Promise<{ ok: boolean; error?: string }>;
   ollamaOpenDownload(): Promise<void>;
   chromaStatus(): Promise<{ ok: boolean; host: string }>;
+  startupDeps(): Promise<StartupDepsReport>;
+  startupRetry(): Promise<StartupDepsReport>;
   listModels(): Promise<string[]>;
   modelInfo(model: string): Promise<number>;
   modelsSystem(): Promise<{ totalRamGB: number }>;

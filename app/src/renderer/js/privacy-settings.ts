@@ -1,5 +1,6 @@
 // Privacy settings panel: analytics consent master + field-group toggles.
 import { el } from "./dom.js";
+import { syncClarity } from "./clarity.js";
 
 type AnalyticsBoolKey = Exclude<keyof AnalyticsSettings, "truncateChars">;
 
@@ -58,6 +59,7 @@ export function initPrivacySettings() {
     const checked = (e.target as UiElement).checked;
     const next = await save({ analyticsConsent: checked });
     paintMaster(next.analyticsConsent);
+    await syncClarity();
   };
 
   for (const { id, key } of FIELD_TOGGLES) {

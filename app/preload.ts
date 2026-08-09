@@ -3,11 +3,12 @@
 // The object below is annotated with AnyLmApi (src/types/api.d.ts), which is
 // the same type the renderer sees on `window.api`. Renaming or re-signing a
 // method on either side is now a compile error rather than a runtime undefined.
-import { contextBridge, ipcRenderer } from "electron";
+import { app, contextBridge, ipcRenderer } from "electron";
 
 const api: AnyLmApi = {
   // Platform ("darwin" | "win32" | "linux"), for native-feel styling.
   platform: process.platform,
+  isPackaged: app.isPackaged,
 
   // Auth
   authMe: () => ipcRenderer.invoke("auth:me"),
@@ -92,8 +93,9 @@ const api: AnyLmApi = {
   setSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
   getVersion: () => ipcRenderer.invoke("app:version"),
 
-  // Analytics (main-process PostHog; policy-gated)
+  // Analytics (main-process GA4 MP; policy-gated)
   analyticsAvailable: () => ipcRenderer.invoke("analytics:available"),
+  analyticsClarityConfig: () => ipcRenderer.invoke("analytics:clarity-config"),
   analyticsCapture: (draft) => ipcRenderer.invoke("analytics:capture", draft),
 
   // Local OpenAI-compatible endpoint
@@ -149,6 +151,8 @@ const api: AnyLmApi = {
   ollamaOpenDownload: () => ipcRenderer.invoke("ollama:openDownload"),
   // Memory backend (Chroma) status
   chromaStatus: () => ipcRenderer.invoke("chroma:status"),
+  startupDeps: () => ipcRenderer.invoke("startup:deps"),
+  startupRetry: () => ipcRenderer.invoke("startup:retry"),
   listModels: () => ipcRenderer.invoke("models:list"),
   modelInfo: (model) => ipcRenderer.invoke("models:info", model),
   modelsSystem: () => ipcRenderer.invoke("models:system"),

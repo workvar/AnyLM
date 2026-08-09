@@ -11,6 +11,7 @@
 // API key, which is verified in the cloud, so a local listener is not a way
 // around governance.
 import * as http from "http";
+import * as analytics from "../analytics";
 import * as handlers from "./handlers";
 import * as cloud from "./cloud";
 
@@ -37,7 +38,36 @@ function readJson<T = any>(req): Promise<T> {
   });
 }
 
-function fail(res, status, message) {
+function proxyOperation(req: http.IncomingMessage): string {
+  const url = new URL(req.url || "/", "http://127.0.0.1");
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  if (path === "/v1/models") return "proxy_models";
+  if (path === "/v1/chat/completions") return "proxy_chat_completions";
+  return "proxy_request";
+}
+
+function coarseProxyErrorType(status: number): string {
+  if (status === 401) return "auth_failed";
+  if (status === 403) return "policy_blocked";
+  if (status === 400) return "bad_request";
+  if (status === 404) return "not_found";
+  return "proxy_error";
+}
+
+function trackProxyFailure(req: http.IncomingMessage, status: number): void {
+  try {
+    analytics.trackApiRequestFailed({
+      operation: proxyOperation(req),
+      error_type: coarseProxyErrorType(status),
+      http_status: status,
+    });
+  } catch {
+    // never throw into proxy flow
+  }
+}
+
+function fail(res, status, message, req?: http.IncomingMessage) {
+  if (req) trackProxyFailure(req, status);
   if (res.headersSent) {
     res.end();
     return;
@@ -62,7 +92,7 @@ async function route(req, res) {
 
   const bearer = bearerOf(req);
   if (!bearer.startsWith("anylm_")) {
-    fail(res, 401, "Invalid API key. Create one in AnyLM under Settings > API keys.");
+    fail(res, 401, "Invalid API key. Create one in AnyLM under Settings > API keys.", req);
     return;
   }
   // Resolve the key to its owner once, and confirm it is the account signed
@@ -78,14 +108,16 @@ async function route(req, res) {
     await handlers.chatCompletions(userId, await readJson(req), res);
     return;
   }
-  fail(res, 404, `No route for ${req.method} ${path}`);
+  fail(res, 404, `No route for ${req.method} ${path}`, req);
 }
 
 function start(port = DEFAULT_PORT) {
   if (server) return Promise.resolve(activePort);
   return new Promise((resolve) => {
     server = http.createServer((req, res) => {
-      route(req, res).catch((e) => fail(res, e.status || 500, e.message || "Proxy error"));
+      route(req, res).catch((e) =>
+        fail(res, e.status || 500, e.message || "Proxy error", req),
+      );
     });
     // A busy port means another AnyLM is already serving; report rather than
     // silently binding somewhere clients are not looking.

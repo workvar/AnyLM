@@ -1,5 +1,6 @@
 // Soft-ask analytics consent modal (Accept / Decline / Configure…).
 import { el } from "./dom.js";
+import { syncClarity } from "./clarity.js";
 
 export type AnalyticsConsentFlowDeps = {
   openPrivacy?: () => void;
@@ -23,10 +24,12 @@ export async function runAnalyticsConsentFlow(
 
     el("analytics-consent-accept").onclick = async () => {
       await window.api.setSettings({ analyticsConsent: true });
+      await syncClarity();
       finish();
     };
     el("analytics-consent-decline").onclick = async () => {
       await window.api.setSettings({ analyticsConsent: false });
+      await syncClarity();
       finish();
     };
     el("analytics-consent-configure").onclick = () => {

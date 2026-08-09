@@ -1,4 +1,8 @@
+"use client";
+
 import { formatSize, type ReleaseAsset } from "@/lib/releases";
+import { track } from "@/lib/analytics";
+import { WebEvents } from "@/lib/analytics.events";
 
 function DownloadIcon({ className }: { className?: string }) {
   return (
@@ -14,11 +18,23 @@ function DownloadIcon({ className }: { className?: string }) {
   );
 }
 
-export default function AssetRow({ asset }: { asset: ReleaseAsset }) {
+export default function AssetRow({
+  asset,
+  source,
+}: {
+  asset: ReleaseAsset;
+  source: "download" | "releases";
+}) {
   return (
     <a
       href={asset.downloadUrl}
       className="group flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-4 py-3 transition hover:border-[var(--color-slime)]/50 hover:bg-black/45"
+      onClick={() =>
+        track(WebEvents.downloadClicked, {
+          source,
+          platform: asset.platform ?? "unknown",
+        })
+      }
     >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-white">{asset.label}</p>

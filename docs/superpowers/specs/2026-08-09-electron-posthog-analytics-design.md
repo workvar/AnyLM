@@ -1,3 +1,5 @@
+> **Superseded (2026-08-09):** Do not implement. Replaced by `docs/superpowers/specs/2026-08-09-ga4-clarity-analytics-design.md` and `docs/superpowers/plans/2026-08-09-ga4-clarity-analytics.md`.
+
 # Electron PostHog analytics
 
 **Date:** 2026-08-09  

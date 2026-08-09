@@ -59,9 +59,9 @@ export default function ActivityStrip() {
                 transform="rotate(-90 60 60)"
               />
             </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <div className="absolute inset-8 flex flex-col items-center justify-center text-center">
               <p className="text-[10px] uppercase tracking-wide text-[var(--color-mist)]">Step 01</p>
-              <p className="mt-1 text-lg font-semibold">Single endpoint</p>
+              <p className="mt-1 text-base font-semibold leading-snug">Single endpoint</p>
             </div>
           </div>
         </div>

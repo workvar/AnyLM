@@ -20,17 +20,33 @@ async function getSessionWithTimeout(): Promise<AuthUser | null> {
   }
 }
 
+async function paintBootSplashStatus() {
+  const status = el("boot-splash-status");
+  if (!status) return;
+  try {
+    const report = await window.api.startupDeps();
+    const bundled = report.deps.filter((d) => d.kind === "bundled");
+    const pending = bundled.filter((d) => !d.ok);
+    if (!pending.length) {
+      status.textContent = "Memory and graph ready";
+      return;
+    }
+    status.textContent =
+      pending[0].id === "chroma" ? "Starting project memory…" : "Preparing knowledge graph…";
+  } catch {
+    status.textContent = "Preparing workspace…";
+  }
+}
+
 export async function initAuth(onAuthedCallback) {
   onAuthed = onAuthedCallback;
   bind();
   const splash = el("boot-splash");
   const started = Date.now();
-  let user: AuthUser | null = null;
-  try {
-    user = await getSessionWithTimeout();
-  } catch {
-    // Treat an unavailable or slow auth service as signed out.
-  }
+  const [user] = await Promise.all([
+    getSessionWithTimeout().catch(() => null),
+    paintBootSplashStatus(),
+  ]);
   const wait = Math.max(0, MIN_SPLASH_MS - (Date.now() - started));
   if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
   splash.classList.add("hidden");

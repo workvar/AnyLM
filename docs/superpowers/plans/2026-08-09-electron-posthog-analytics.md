@@ -1,3 +1,5 @@
+> **Superseded (2026-08-09):** Do not implement. Replaced by `docs/superpowers/specs/2026-08-09-ga4-clarity-analytics-design.md` and `docs/superpowers/plans/2026-08-09-ga4-clarity-analytics.md`.
+
 # Electron PostHog Analytics Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

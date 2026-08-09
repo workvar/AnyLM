@@ -129,5 +129,21 @@ function forget(projectId: string): void {
   write(graph);
 }
 
-export { upsert, nodesOf, edgesOf, nameById, forget };
+// Verify userData is writable and the graph file can be created. No external DB.
+function ensureReady(): { ok: boolean; message: string } {
+  try {
+    const fp = filePath();
+    fs.mkdirSync(path.dirname(fp), { recursive: true });
+    if (!fs.existsSync(fp)) write({ nodes: {}, edges: [] });
+    else read();
+    return { ok: true, message: "Knowledge graph store is ready." };
+  } catch (e) {
+    return {
+      ok: false,
+      message: `Knowledge graph store unavailable: ${(e as Error).message}`,
+    };
+  }
+}
+
+export { upsert, nodesOf, edgesOf, nameById, forget, ensureReady };
 export type { GraphNode, GraphEdge };

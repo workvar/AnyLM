@@ -250,27 +250,27 @@ On the home page (or root layout once): `SoftwareApplication` (name, description
 
 ## 6. Analytics (env-gated)
 
+> **Analytics behavior superseded:** Event taxonomy, web modules, and full env contract live in [`2026-08-09-ga4-clarity-analytics-design.md`](./2026-08-09-ga4-clarity-analytics-design.md) (§3.7 web marketing events; §4.3–4.4 web modules/env). Implement via [`2026-08-09-ga4-clarity-analytics.md`](../plans/2026-08-09-ga4-clarity-analytics.md).
+
 ### 6.1 Env keys (`.env.example`)
 
 ```bash
 NEXT_PUBLIC_SITE_URL=https://anylm.app
 NEXT_PUBLIC_GA_MEASUREMENT_ID=
-NEXT_PUBLIC_CLARITY_PROJECT_ID=
+NEXT_PUBLIC_CLARITY_ID=
 NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 NEXT_PUBLIC_BING_SITE_VERIFICATION=
 ```
 
-Keep existing GitHub env keys. Do not put real secrets in the repo.
+Use `NEXT_PUBLIC_CLARITY_ID` (not `NEXT_PUBLIC_CLARITY_PROJECT_ID`). See GA4+Clarity spec §4.4 for Vercel setup. Keep existing GitHub env keys. Do not put real secrets in the repo.
 
 ### 6.2 Client component
 
-Add `web/components/site/Analytics.tsx` (client):
+Per GA4+Clarity spec §4.3:
 
-- If `NEXT_PUBLIC_GA_MEASUREMENT_ID` set → load GA4 (`gtag` / `G-…`) via `next/script`
-- If `NEXT_PUBLIC_CLARITY_PROJECT_ID` set → load Clarity script via `next/script`
-- If neither set → render null
-
-Mount once from `app/layout.tsx`.
+- `web/components/site/Analytics.tsx` — if `NEXT_PUBLIC_GA_MEASUREMENT_ID` set → GA4 via `next/script`; if `NEXT_PUBLIC_CLARITY_ID` set → Clarity via `next/script`; if neither set → render null
+- `web/lib/analytics.ts` — marketing `track(event, params)` → `gtag`; no-op when GA ID unset
+- Mount `Analytics` once from `app/layout.tsx`; wire conversion events at download/CTA/release call sites (spec §3.7)
 
 ### 6.3 Privacy / behavior
 

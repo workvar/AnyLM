@@ -36,7 +36,7 @@ function trackUpdater(event: string, properties?: Record<string, unknown>): void
 }
 
 function trackUpdaterError(): void {
-  trackUpdater("updater_error", { code: "updater_error" });
+  trackUpdater("updater_error", { error_type: "updater_error" });
 }
 
 function wire() {

@@ -50,9 +50,11 @@ import { initCustomize } from "./customize.js";
 import { initSettingsHub } from "./settings-hub.js";
 import { initPrivacySettings } from "./privacy-settings.js";
 import { runAnalyticsConsentFlow } from "./analytics-consent.js";
+import { syncClarity } from "./clarity.js";
 import { initWebResearchHint } from "./web-research-hint.js";
 import { initAppMenu, syncMenuContext } from "./app-menu.js";
 import { initOllamaSetup, runOllamaLaunchFlow } from "./ollama-setup.js";
+import { initSetupWizard, runSetupWizard, shouldRunSetupWizard } from "./setup-wizard.js";
 import { initArtifacts, openArtifactsPane } from "./artifacts.js";
 
 async function refreshStatus() {
@@ -245,6 +247,7 @@ async function startApp(settings) {
   bindModelEvents();
   state.lastModel = settings.lastModel || "";
   if (settings.sidebarCollapsed) el("app").classList.add("sidebar-collapsed");
+  await syncClarity();
   await refreshStatus();
   if (!(await refreshChromaStatus())) pollChromaUntilReady();
   await loadRecents();
@@ -259,11 +262,19 @@ async function init() {
   initOllamaSetup(() => {
     refreshStatus();
   });
+  initSetupWizard(() => {
+    refreshStatus();
+  });
 
   initAuth(async () => {
     if (started) return;
     started = true;
     await startApp(settings);
+    const current = await window.api.getSettings();
+    if (shouldRunSetupWizard(current)) {
+      await runSetupWizard(current);
+      return;
+    }
     await runLaunchUpdateFlow(settings);
     await runEmbedLaunchFlow(settings);
     await runOllamaLaunchFlow(settings);

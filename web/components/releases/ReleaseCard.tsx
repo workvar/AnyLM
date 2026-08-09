@@ -47,7 +47,7 @@ export default function ReleaseCard({ release, latest }: { release: Release; lat
               </p>
               <div className="space-y-2">
                 {groups[platform].map((asset) => (
-                  <AssetRow key={asset.id} asset={asset} />
+                  <AssetRow key={asset.id} asset={asset} source="releases" />
                 ))}
               </div>
             </div>

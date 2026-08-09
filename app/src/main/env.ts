@@ -42,9 +42,12 @@ export const env = {
   // Outlook connector. A public client id, not a secret: the flow is PKCE,
   // which is what makes a secretless exchange safe. Blank disables the skill.
   msClientId: value("ANYLM_MS_CLIENT_ID"),
-  posthog: {
-    key: value("ANYLM_POSTHOG_KEY"),
-    host: value("ANYLM_POSTHOG_HOST", "https://us.i.posthog.com"),
+  ga: {
+    measurementId: value("ANYLM_GA_MEASUREMENT_ID"),
+    apiSecret: value("ANYLM_GA_API_SECRET"),
+  },
+  clarity: {
+    id: value("ANYLM_CLARITY_ID"),
   },
 } as const;
 

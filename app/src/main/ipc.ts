@@ -46,6 +46,7 @@ import { makeWorkers } from "./agents/workers";
 import { modelSupportsThink } from "./think";
 import * as appMenu from "./menu";
 import * as ollamaSetup from "./ollama-setup/runtime";
+import * as startupDeps from "./startup-deps";
 import { systemRamUsedPercent } from "./load-guard/system-memory";
 import {
   createInFlightMonitor,
@@ -53,7 +54,9 @@ import {
   isOverKillLimit,
 } from "./load-guard/guard";
 import * as analytics from "./analytics";
+import { analyticsAvailable as isAnalyticsAvailable } from "./analytics/availability";
 import type { AnalyticsCategory } from "./analytics";
+import { env } from "./env";
 
 const ANALYTICS_CATEGORIES = new Set<AnalyticsCategory>([
   "productUsage",
@@ -88,6 +91,64 @@ function coarseChatErrorCode(e: unknown): string {
   if (msg === "No model selected") return "no_model";
   if (msg === "Blocked by organization policy.") return "policy_blocked";
   return "chat_error";
+}
+
+/** Coarse auth failure code — never forward raw messages (may contain credentials). */
+function coarseAuthErrorCode(e: unknown): string {
+  if (!(e instanceof Error)) return "auth_error";
+  const msg = e.message;
+  if (msg === "Invalid email or password") return "invalid_credentials";
+  if (msg === "Email already registered") return "email_exists";
+  if (msg === "Password must be at least 6 characters") return "weak_password";
+  if (msg === "Enter a valid email address") return "invalid_email";
+  if (msg.startsWith("Too many attempts")) return "rate_limited";
+  if (msg === "Sign-in did not return a session") return "oauth_failed";
+  if (msg === "Account not found") return "account_not_found";
+  if (msg === "This account has been disabled") return "account_disabled";
+  return "auth_error";
+}
+
+/** Map settings patch keys to coarse feature labels for settings_updated. */
+function coarseSettingsFeatures(patch: Record<string, unknown>): string | undefined {
+  const map: Record<string, string> = {
+    theme: "appearance",
+    checkUpdatesOnLaunch: "updates",
+    autoDownloadUpdates: "updates",
+    installUpdatesOnQuit: "updates",
+    notifyUsage: "notifications",
+    notifyRenewals: "notifications",
+    notifyInterventions: "notifications",
+    reportFrequency: "notifications",
+    analyticsConsent: "analytics",
+    analytics: "analytics",
+    proxyEnabled: "proxy",
+    proxyPort: "proxy",
+    agents: "agents",
+    sidebarCollapsed: "layout",
+    railCollapsed: "layout",
+    lastModel: "model",
+    defaultUseToolsForChats: "tools",
+    setupWizardCompleted: "onboarding",
+    ollamaSetupDeclined: "onboarding",
+    embedInstallDeclined: "onboarding",
+    chromaHost: "memory",
+    chromaPort: "memory",
+  };
+  const features = new Set<string>();
+  for (const key of Object.keys(patch)) {
+    const feature = map[key];
+    if (feature) features.add(feature);
+  }
+  if (!features.size) return undefined;
+  return [...features].sort().join(",");
+}
+
+/** Coarse Ollama setup failure — never forward raw error strings. */
+function coarseOllamaError(message?: string): string {
+  if (!message) return "start_failed";
+  if (message.includes("not installed")) return "not_installed";
+  if (message.includes("reachable")) return "timeout";
+  return "start_failed";
 }
 
 // Pending risky-tool confirmations, keyed by a one-time token → { resolve, id }.
@@ -139,11 +200,26 @@ function registerIpc() {
         }
       }
     }
+    if (patch && typeof patch === "object") {
+      const feature = coarseSettingsFeatures(patch as Record<string, unknown>);
+      if (feature) analytics.trackSettingsUpdated({ feature });
+    }
     return next;
   });
   ipcMain.handle("app:version", () => app.getVersion());
 
-  ipcMain.handle("analytics:available", () => analytics.isEnabled());
+  ipcMain.handle("analytics:available", () =>
+    isAnalyticsAvailable({
+      gaEnabled: analytics.isEnabled(),
+      clarityId: env.clarity.id,
+    }),
+  );
+
+  ipcMain.handle("analytics:clarity-config", () => {
+    const id = env.clarity.id || null;
+    const consent = settings.read().analyticsConsent;
+    return { id, enabled: Boolean(id) && consent !== false };
+  });
 
   // Renderer → main analytics (validated; invalid drafts are ignored).
   ipcMain.handle("analytics:capture", (_e, draft) => {
@@ -202,24 +278,52 @@ function registerIpc() {
 
   // Auth
   ipcMain.handle("auth:register", async (_e, { email, password, name }) => {
-    const user = await auth.register(email, password, name);
-    await identity.refresh(user);
-    maybeIdentifyAfterAuth(user);
-    return user;
+    try {
+      const user = await auth.register(email, password, name);
+      await identity.refresh(user);
+      maybeIdentifyAfterAuth(user);
+      analytics.trackUserSignedUp();
+      return user;
+    } catch (e) {
+      analytics.trackAuthenticationFailed({
+        operation: "register",
+        error_type: coarseAuthErrorCode(e),
+      });
+      throw e;
+    }
   });
   ipcMain.handle("auth:login", async (_e, { email, password }) => {
-    const user = await auth.login(email, password);
-    await identity.refresh(user);
-    maybeIdentifyAfterAuth(user);
-    return user;
+    try {
+      const user = await auth.login(email, password);
+      await identity.refresh(user);
+      maybeIdentifyAfterAuth(user);
+      analytics.trackUserLoggedIn();
+      return user;
+    } catch (e) {
+      analytics.trackAuthenticationFailed({
+        operation: "login",
+        error_type: coarseAuthErrorCode(e),
+      });
+      throw e;
+    }
   });
   ipcMain.handle("auth:oauth", async (_e, provider) => {
-    const user = await auth.oauth(provider);
-    await identity.refresh(user);
-    maybeIdentifyAfterAuth(user);
-    return user;
+    try {
+      const user = await auth.oauth(provider);
+      await identity.refresh(user);
+      maybeIdentifyAfterAuth(user);
+      analytics.trackUserLoggedIn();
+      return user;
+    } catch (e) {
+      analytics.trackAuthenticationFailed({
+        operation: "oauth",
+        error_type: coarseAuthErrorCode(e),
+      });
+      throw e;
+    }
   });
   ipcMain.handle("auth:logout", () => {
+    analytics.trackUserLoggedOut();
     maybeResetOnLogout();
     identity.clear();
     governance.invalidate();
@@ -264,6 +368,11 @@ function registerIpc() {
     });
     if (canceled || !filePath) return null;
     await scheduler.exportUsageCsv(orgId, filePath);
+    try {
+      analytics.trackFileExported({ source: "governance", feature: "usage_csv" });
+    } catch {
+      // never throw into IPC callers
+    }
     return filePath;
   });
 
@@ -282,7 +391,15 @@ function registerIpc() {
   ipcMain.handle("tools:list", () => toolsRegistry.list());
   ipcMain.handle("tools:save", (_e, tool) => toolsRegistry.save(tool));
   ipcMain.handle("tools:delete", (_e, id) => toolsRegistry.remove(id));
-  ipcMain.handle("tools:toggle", (_e, { id, enabled }) => toolsRegistry.toggle(id, enabled));
+  ipcMain.handle("tools:toggle", (_e, { id, enabled }) => {
+    const result = toolsRegistry.toggle(id, enabled);
+    try {
+      analytics.trackFeatureUsed("tools_toggled");
+    } catch {
+      // never throw into IPC callers
+    }
+    return result;
+  });
   // Skills (instruction + tool bundles, incl. Google Calendar / Outlook)
   ipcMain.handle("skills:list", () => skillsRegistry.list());
   ipcMain.handle("skills:save", (_e, skill) => skillsRegistry.save(skill));
@@ -330,10 +447,21 @@ function registerIpc() {
     };
   });
 
+  // Bundled + external dependency report from the pre-window startup check.
+  ipcMain.handle("startup:deps", async () => {
+    return startupDeps.getLastReport() ?? (await startupDeps.ensureReady());
+  });
+  ipcMain.handle("startup:retry", () => startupDeps.ensureReady());
+
   // Ollama
   ipcMain.handle("ollama:status", () => ollama.status());
   ipcMain.handle("ollama:probe", () => ollamaSetup.probeRuntime());
-  ipcMain.handle("ollama:start", () => ollamaSetup.startRuntime());
+  ipcMain.handle("ollama:start", async () => {
+    const result = await ollamaSetup.startRuntime();
+    if (result.ok) analytics.trackOllamaSetupCompleted();
+    else analytics.trackOllamaSetupFailed({ error_type: coarseOllamaError(result.error) });
+    return result;
+  });
   ipcMain.handle("ollama:openDownload", () => ollamaSetup.openDownload());
   // Chat-eligible models, filtered through model-allowlist policies.
   ipcMain.handle("models:list", async () => {
@@ -379,13 +507,23 @@ function registerIpc() {
     else if (data?.folderBase) custom = projectFiles.childPath(data.folderBase, project.name);
     projectFiles.ensureFolder(project, custom);
     try {
-      analytics.trackFeatureUsed("project_created");
+      analytics.trackProjectCreated();
     } catch {
       // never throw into IPC callers
     }
     return store.get(project.id);
   });
-  ipcMain.handle("projects:update", (_e, { id, patch }) => store.update(id, patch));
+  ipcMain.handle("projects:update", (_e, { id, patch }) => {
+    const updated = store.update(id, patch);
+    if (updated) {
+      try {
+        analytics.trackProjectUpdated({ title: updated.name });
+      } catch {
+        // never throw into IPC callers
+      }
+    }
+    return updated;
+  });
   ipcMain.handle("projects:setDefaultUseTools", (_e, { id, enabled }) =>
     store.setDefaultUseTools(id, !!enabled)
   );
@@ -393,7 +531,15 @@ function registerIpc() {
     // Drop the project's context chunks and shared memory from Chroma.
     context.removeProject(id).catch(() => {});
     memory.forget(id).catch(() => {});
-    return store.remove(id);
+    const removed = store.remove(id);
+    if (removed) {
+      try {
+        analytics.trackProjectDeleted();
+      } catch {
+        // never throw into IPC callers
+      }
+    }
+    return removed;
   });
 
   // Project folder on disk: generated files, viewer reads, exports.
@@ -419,7 +565,15 @@ function registerIpc() {
   );
   ipcMain.handle("pfiles:reveal", (_e, projectId) => projectFiles.reveal(projectId));
   ipcMain.handle("pfiles:show", (_e, { dir, name }) => projectFiles.showGenerated(dir, name));
-  ipcMain.handle("pfiles:open", (_e, { dir, name }) => projectFiles.openGenerated(dir, name));
+  ipcMain.handle("pfiles:open", async (_e, { dir, name }) => {
+    const result = await projectFiles.openGenerated(dir, name);
+    try {
+      analytics.trackFileOpened({ source: "generated", feature: "viewer" });
+    } catch {
+      // never throw into IPC callers
+    }
+    return result;
+  });
   ipcMain.handle("pfiles:apps-for", (_e, { dir, name }) => openWith.appsFor(dir, name));
   ipcMain.handle("pfiles:open-with", (_e, { dir, name, appId }) =>
     openWith.openWith(dir, name, appId)
@@ -596,6 +750,12 @@ function registerIpc() {
       const project = store.get(projectId);
       const useModel = model || (project && project.model);
       if (!useModel) throw new Error("No model selected");
+
+      try {
+        analytics.trackAiRequestStarted({ model: useModel });
+      } catch {
+        // never throw into chat flow
+      }
 
       const lastUser = [...messages].reverse().find((m) => m.role === "user");
       const extras = Array.isArray(skillOverrides) ? skillOverrides.filter(Boolean) : [];
@@ -904,7 +1064,7 @@ function registerIpc() {
             prompt_tokens: promptTokens,
             completion_tokens: completionTokens,
           });
-          analytics.trackChatCompleted({
+          analytics.trackAiRequestCompleted({
             model: useModel,
             duration_bucket: analytics.durationBucket(Date.now() - chatStartedAt),
             prompt_tokens: promptTokens,
@@ -1270,7 +1430,7 @@ function registerIpc() {
         act({ kind: "done", thoughtMs, toolCount: toolsRun, summary: summaryOf(thoughtMs, toolsRun) });
       }
       try {
-        analytics.trackChatFailed({ error_code: coarseChatErrorCode(e) });
+        analytics.trackAiRequestFailed({ error_type: coarseChatErrorCode(e) });
       } catch {
         // never throw into chat flow
       }
