@@ -1,6 +1,15 @@
 import type { AgentPlan, AgentStep, AgentStepKind } from "./types";
 
-const VALID_KINDS = new Set<AgentStepKind>(["memory", "retrieve", "tool", "synthesize"]);
+const VALID_KINDS = new Set<AgentStepKind>([
+  "memory",
+  "retrieve",
+  "tool",
+  "synthesize",
+  "research",
+  "fact_check",
+  "summarize",
+  "document",
+]);
 
 function stripMarkdownFences(raw: string): string {
   const trimmed = raw.trim();
