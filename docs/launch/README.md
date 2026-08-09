@@ -16,4 +16,4 @@ Copy and checklists for shipping AnyLM on Product Hunt, Hacker News, Reddit, and
 - Download: https://anylm.app/download
 - Releases: https://anylm.app/releases
 - Source: https://github.com/workvar/AnyLM
-- Latest notes: `docs/releases/` (current: v0.4.0)
+- Latest notes: `docs/releases/` (current: v0.5.0)
