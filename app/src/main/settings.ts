@@ -54,6 +54,10 @@ const DEFAULTS: AppSettings = {
       router: null,
       toolExecutor: null,
       synthesize: null,
+      research: null,
+      factCheck: null,
+      summarize: null,
+      document: null,
     },
     loadProtection: {
       enabled: true,
