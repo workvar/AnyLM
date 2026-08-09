@@ -28,6 +28,8 @@ const PUBLIC_KEYS = {
   // A public OAuth client id for the Outlook connector. Public clients carry
   // no secret; PKCE protects the exchange, so this is safe to ship.
   ANYLM_MS_CLIENT_ID: { required: false, description: "Microsoft public client id for the Outlook skill" },
+  ANYLM_POSTHOG_KEY: { required: false, description: "PostHog project API key (phc_…); empty disables analytics" },
+  ANYLM_POSTHOG_HOST: { required: false, description: "PostHog host; defaults to https://us.i.posthog.com" },
 };
 
 /**
