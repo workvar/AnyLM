@@ -10,6 +10,10 @@ const AGENT_MODEL_SELECTS: { id: string; key: keyof AgentModelMap }[] = [
   { id: "agents-model-router", key: "router" },
   { id: "agents-model-tool", key: "toolExecutor" },
   { id: "agents-model-synth", key: "synthesize" },
+  { id: "agents-model-research", key: "research" },
+  { id: "agents-model-factcheck", key: "factCheck" },
+  { id: "agents-model-summarize", key: "summarize" },
+  { id: "agents-model-document", key: "document" },
 ];
 
 function paintThemeSeg() {
