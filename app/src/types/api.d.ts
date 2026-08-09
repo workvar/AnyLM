@@ -130,6 +130,7 @@ interface AnyLmApi {
   getVersion(): Promise<string>;
 
   // Analytics
+  analyticsAvailable(): Promise<boolean>;
   analyticsCapture(draft: AnalyticsCaptureDraft): Promise<void>;
 
   // Local OpenAI-compatible endpoint

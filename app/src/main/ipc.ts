@@ -143,6 +143,8 @@ function registerIpc() {
   });
   ipcMain.handle("app:version", () => app.getVersion());
 
+  ipcMain.handle("analytics:available", () => analytics.isEnabled());
+
   // Renderer → main analytics (validated; invalid drafts are ignored).
   ipcMain.handle("analytics:capture", (_e, draft) => {
     if (!draft || typeof draft !== "object") return;
