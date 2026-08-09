@@ -7,6 +7,13 @@
 /** Every on*() subscriber returns its own unsubscribe function. */
 type Unsubscribe = () => void;
 type OllamaSetupState = "running" | "installed" | "missing";
+type AnalyticsCategory = "productUsage" | "reliability" | "chatEvents";
+
+interface AnalyticsCaptureDraft {
+  event: string;
+  category: AnalyticsCategory;
+  properties?: Record<string, unknown>;
+}
 
 type ActivityIpcEvent = ActivityEvent & { id: string };
 
@@ -121,6 +128,9 @@ interface AnyLmApi {
   getSettings(): Promise<AppSettings>;
   setSettings(patch: Partial<AppSettings>): Promise<AppSettings>;
   getVersion(): Promise<string>;
+
+  // Analytics
+  analyticsCapture(draft: AnalyticsCaptureDraft): Promise<void>;
 
   // Local OpenAI-compatible endpoint
   proxyStatus(): Promise<ProxyStatus>;

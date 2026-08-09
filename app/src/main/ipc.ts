@@ -52,6 +52,14 @@ import {
   effectiveMaxParallel,
   isOverKillLimit,
 } from "./load-guard/guard";
+import * as analytics from "./analytics";
+import type { AnalyticsCategory } from "./analytics";
+
+const ANALYTICS_CATEGORIES = new Set<AnalyticsCategory>([
+  "productUsage",
+  "reliability",
+  "chatEvents",
+]);
 
 // Pending risky-tool confirmations, keyed by a one-time token → { resolve, id }.
 const pendingConfirms = new Map();
@@ -92,9 +100,39 @@ function registerIpc() {
       proxy.stop();
       if (next.proxyEnabled) proxy.start(next.proxyPort);
     }
+    if (patch && typeof patch === "object" && "analyticsConsent" in patch) {
+      const consent = next.analyticsConsent;
+      if (typeof consent === "boolean") {
+        analytics.trackConsentSet(consent);
+        if (consent === true) {
+          const uid = identity.get().userId;
+          if (uid) analytics.identify(uid);
+        }
+      }
+    }
     return next;
   });
   ipcMain.handle("app:version", () => app.getVersion());
+
+  // Renderer → main analytics (validated; invalid drafts are ignored).
+  ipcMain.handle("analytics:capture", (_e, draft) => {
+    if (!draft || typeof draft !== "object") return;
+    const event = (draft as { event?: unknown }).event;
+    const category = (draft as { category?: unknown }).category;
+    const properties = (draft as { properties?: unknown }).properties;
+    if (typeof event !== "string" || !event.trim()) return;
+    if (typeof category !== "string" || !ANALYTICS_CATEGORIES.has(category as AnalyticsCategory)) {
+      return;
+    }
+    analytics.capture({
+      event,
+      category: category as AnalyticsCategory,
+      properties:
+        properties && typeof properties === "object" && !Array.isArray(properties)
+          ? (properties as Record<string, unknown>)
+          : undefined,
+    });
+  });
 
   // Local OpenAI-compatible endpoint (was the backend's /v1 controller).
   ipcMain.handle("proxy:status", () => proxy.status());
