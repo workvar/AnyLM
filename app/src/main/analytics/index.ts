@@ -19,6 +19,7 @@ export {
   trackMessage,
   trackChatCompleted,
   trackChatFailed,
+  durationBucket,
   type CaptureSink,
   type CaptureDeps,
 } from "./events";

@@ -81,6 +81,15 @@ function maybeResetOnLogout(): void {
   }
 }
 
+/** Coarse chat failure code — never forward raw messages (may contain user content). */
+function coarseChatErrorCode(e: unknown): string {
+  if (!(e instanceof Error)) return "chat_error";
+  const msg = e.message;
+  if (msg === "No model selected") return "no_model";
+  if (msg === "Blocked by organization policy.") return "policy_blocked";
+  return "chat_error";
+}
+
 // Pending risky-tool confirmations, keyed by a one-time token → { resolve, id }.
 const pendingConfirms = new Map();
 // Pending ask_user replies, keyed by token → { resolve, id }.
@@ -495,7 +504,19 @@ function registerIpc() {
   // Standalone chats
   ipcMain.handle("chats:list", () => chats.list());
   ipcMain.handle("chats:get", (_e, id) => chats.get(id));
-  ipcMain.handle("chats:create", (_e, data) => chats.create(data));
+  ipcMain.handle("chats:create", (_e, data) => {
+    const chat = chats.create(data);
+    try {
+      const title =
+        (data && typeof data === "object" && (data.title || data.name)) || undefined;
+      analytics.trackChatCreated({
+        title: typeof title === "string" ? title : undefined,
+      });
+    } catch {
+      // never throw into IPC callers
+    }
+    return chat;
+  });
   ipcMain.handle("chats:update", (_e, { id, patch }) => chats.update(id, patch));
   ipcMain.handle("chats:delete", (_e, id) => chats.remove(id));
 
@@ -563,12 +584,26 @@ function registerIpc() {
       const ms = thought.end();
       act({ kind: "thinking", phase: "end", ms });
     };
+    const chatStartedAt = Date.now();
     try {
       const project = store.get(projectId);
       const useModel = model || (project && project.model);
       if (!useModel) throw new Error("No model selected");
 
       const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      if (lastUser) {
+        try {
+          analytics.trackMessage({
+            direction: "sent",
+            role: "user",
+            model: useModel,
+            text: lastUser.content,
+            title: project?.name,
+          });
+        } catch {
+          // never throw into chat flow
+        }
+      }
       const extras = Array.isArray(skillOverrides) ? skillOverrides.filter(Boolean) : [];
 
       // --- Governance: pre-flight limits/budget/rate/model, then content. ---
@@ -835,6 +870,8 @@ function registerIpc() {
           const thoughtMs = thought.totalMs();
           act({ kind: "done", thoughtMs, toolCount: toolsRun, summary: summaryOf(thoughtMs, toolsRun) });
         }
+        const promptTokens = totalPrompt || estimateTokens(full);
+        const completionTokens = totalCompletion || Math.round(text.length / 4);
         send("chat:done", {
           id,
           full: text,
@@ -846,11 +883,30 @@ function registerIpc() {
             tokens,
             ctx,
             percent,
-            promptTokens: totalPrompt || estimateTokens(full),
-            completionTokens: totalCompletion || Math.round(text.length / 4),
+            promptTokens,
+            completionTokens,
             measured: !!(totalPrompt || totalCompletion), // real Ollama counts vs ~4 chars/token estimate
           },
         });
+
+        try {
+          analytics.trackMessage({
+            direction: "received",
+            role: "assistant",
+            model: useModel,
+            text,
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+          });
+          analytics.trackChatCompleted({
+            model: useModel,
+            duration_bucket: analytics.durationBucket(Date.now() - chatStartedAt),
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+          });
+        } catch {
+          // never throw into chat flow
+        }
 
         // Persist the turn: project chats build shared project memory; standalone
         // chats feed the general knowledge base.
@@ -1206,6 +1262,11 @@ function registerIpc() {
         endThinking();
         const thoughtMs = thought.totalMs();
         act({ kind: "done", thoughtMs, toolCount: toolsRun, summary: summaryOf(thoughtMs, toolsRun) });
+      }
+      try {
+        analytics.trackChatFailed({ error_code: coarseChatErrorCode(e) });
+      } catch {
+        // never throw into chat flow
       }
       send("chat:error", { id, error: e.message });
     }

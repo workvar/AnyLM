@@ -126,3 +126,11 @@ export function trackChatFailed(props: { error_code?: string }): void {
     properties: { ...props },
   });
 }
+
+/** Coarse duration bucket for chat_completed — never emits exact ms. */
+export function durationBucket(ms: number): string {
+  if (ms < 5_000) return "0-5s";
+  if (ms < 30_000) return "5-30s";
+  if (ms < 120_000) return "30s-2m";
+  return "2m+";
+}
