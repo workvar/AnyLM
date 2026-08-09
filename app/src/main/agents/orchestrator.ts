@@ -1,4 +1,5 @@
 import { nextWave } from "./scheduler";
+import { insertFactChecks } from "./fact-check-insert";
 import type { AgentPlan, AgentStep, StepResult } from "./types";
 
 export interface OrchestratorDeps {
@@ -30,7 +31,7 @@ export async function runOrchestratedTurn(
     return { text: "", fellBack: true };
   }
 
-  const assigned = deps.assignKinds(plan);
+  const assigned = insertFactChecks(deps.assignKinds(plan), userText);
   const steps = assigned.steps;
 
   deps.act({

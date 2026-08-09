@@ -36,12 +36,12 @@ import * as graph from "./graph";
 import * as modelCatalog from "./model-catalog";
 import { labelFor, detailFor } from "./activity-labels";
 import { activitySend, createThoughtTimer } from "./activity";
-import { leanComplexity } from "./agents/complexity";
+import { leanComplexity, isPreferentialKnowledge } from "./agents/complexity";
 import { classifyComplexity } from "./agents/classify";
 import { planTurn } from "./agents/planner";
 import { assignKinds } from "./agents/router";
 import { runOrchestratedTurn } from "./agents/orchestrator";
-import { resolveAgentSettings, modelForRole } from "./agents/settings";
+import { resolveAgentSettings, modelForRole, modelForStepKind } from "./agents/settings";
 import { makeWorkers } from "./agents/workers";
 import { modelSupportsThink } from "./think";
 import * as appMenu from "./menu";
@@ -1171,6 +1171,7 @@ function registerIpc() {
           project,
           threadId,
           toolModel: modelForRole(agentCfg, "toolExecutor", useModel),
+          modelForKind: (kind) => modelForStepKind(agentCfg, kind, useModel),
           toolDefs,
           skillToolAllow,
           toolSystemPrompt: toolInstructionBlocks.length ? toolInstructionBlocks.join("\n\n---\n\n") : null,
@@ -1215,6 +1216,7 @@ function registerIpc() {
             planTurn({
               model: modelForRole(agentCfg, "planner", useModel),
               userText: lastText,
+              preferentialKnowledge: isPreferentialKnowledge(lastText),
               generate: trackedGenerate,
             }),
           assignKinds,
@@ -1237,7 +1239,8 @@ function registerIpc() {
                 content:
                   `Findings gathered by worker agents for this turn:\n\n${notes}\n\n` +
                   `Use these findings to write the final reply to the user. Do not mention ` +
-                  `that the work was delegated to worker agents.`,
+                  `that the work was delegated to worker agents.\n\n` +
+                  `If any worker reported disputed or unknown claims, surface that uncertainty clearly in the final reply. Do not invent citations.`,
               },
             ];
             thought.start();

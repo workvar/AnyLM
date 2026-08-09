@@ -113,6 +113,29 @@ test("beforeWave forces maxParallel 1 for the wave", async () => {
   expect(started.length).toBe(2);
 });
 
+test("inserts fact_check after assignKinds before agent:plan", async () => {
+  let planSteps: { id: string; goal: string; stepKind?: string }[] = [];
+  await runOrchestratedTurn("Research X thoroughly", {
+    maxParallel: 2,
+    planTurn: async () => ({
+      steps: [{ id: "1", goal: "Research X", dependsOn: [], kind: "research" }],
+    }),
+    assignKinds: (p) => ({
+      steps: [
+        ...p.steps,
+        { id: "2", goal: "Write reply", dependsOn: ["1"], kind: "synthesize" },
+      ],
+    }),
+    runStep: async (step) => ({ id: step.id, ok: true, output: "done" }),
+    synthesize: async () => "final",
+    act: (e) => {
+      if (e.kind === "agent:plan") planSteps = e.steps;
+    },
+    isCancelled: () => false,
+  });
+  expect(planSteps.some((s) => s.stepKind === "fact_check")).toBe(true);
+});
+
 test("beforeWave softStop skips remaining waves", async () => {
   let waves = 0;
   const r = await runOrchestratedTurn("do", {
