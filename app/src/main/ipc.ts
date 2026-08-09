@@ -61,6 +61,26 @@ const ANALYTICS_CATEGORIES = new Set<AnalyticsCategory>([
   "chatEvents",
 ]);
 
+/** Post-auth identify when consent is granted; never throws. */
+function maybeIdentifyAfterAuth(user?: AuthUser | null): void {
+  try {
+    if (settings.read().analyticsConsent !== true) return;
+    const uid = user?.id ?? identity.get().userId;
+    if (uid) analytics.identify(uid);
+  } catch {
+    // never throw into IPC callers
+  }
+}
+
+/** Clear analytics identity on logout; never throws. */
+function maybeResetOnLogout(): void {
+  try {
+    analytics.reset();
+  } catch {
+    // never throw into IPC callers
+  }
+}
+
 // Pending risky-tool confirmations, keyed by a one-time token → { resolve, id }.
 const pendingConfirms = new Map();
 // Pending ask_user replies, keyed by token → { resolve, id }.
@@ -173,19 +193,23 @@ function registerIpc() {
   ipcMain.handle("auth:register", async (_e, { email, password, name }) => {
     const user = await auth.register(email, password, name);
     await identity.refresh(user);
+    maybeIdentifyAfterAuth(user);
     return user;
   });
   ipcMain.handle("auth:login", async (_e, { email, password }) => {
     const user = await auth.login(email, password);
     await identity.refresh(user);
+    maybeIdentifyAfterAuth(user);
     return user;
   });
   ipcMain.handle("auth:oauth", async (_e, provider) => {
     const user = await auth.oauth(provider);
     await identity.refresh(user);
+    maybeIdentifyAfterAuth(user);
     return user;
   });
   ipcMain.handle("auth:logout", () => {
+    maybeResetOnLogout();
     identity.clear();
     governance.invalidate();
     return auth.logout();
@@ -195,6 +219,7 @@ function registerIpc() {
     try {
       const user = await auth.me();
       await identity.refresh(user);
+      maybeIdentifyAfterAuth(user);
       return user;
     } catch {
       return null;
