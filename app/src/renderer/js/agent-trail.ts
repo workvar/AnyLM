@@ -3,6 +3,7 @@
 // system): summarizeAgentTrail turns agent:plan/agent:step/agent:merge
 // events into a title + lines, and paintAgentTrail feeds that into a
 // <details class="agent-trail"> appended alongside the existing trail host.
+import { stepKindLabel } from "./agent-labels.js";
 import { node } from "./dom.js";
 
 export type AgentTrailSummary = { title: string; lines: string[] };
@@ -30,7 +31,7 @@ export function summarizeAgentTrail(events: ActivityEvent[]): AgentTrailSummary 
     const step = latestById.get(s.id);
     const glyph = stepGlyph(step?.status);
     const detail = step?.detail ? ` — ${step.detail}` : "";
-    return `${glyph} ${s.goal} (${s.stepKind})${detail}`;
+    return `${glyph} ${s.goal} (${stepKindLabel(s.stepKind)})${detail}`;
   });
 
   if (events.some((e) => e.kind === "agent:merge")) {

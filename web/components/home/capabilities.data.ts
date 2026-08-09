@@ -44,9 +44,8 @@ export const SKILLS: CapabilityItem[] = [
   {
     name: "Research specialist",
     description:
-      "Phase 2+ multi-agent research role that plans deeper web + doc passes on complex questions.",
+      "Phase 2 multi-agent research role that plans deeper web + doc passes on complex questions.",
     group: "Built-in",
-    upcoming: true,
   },
   {
     name: "Slack",

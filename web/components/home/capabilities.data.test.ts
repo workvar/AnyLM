@@ -16,7 +16,7 @@ describe("SKILLS", () => {
 
   it("labels roadmap items as upcoming", () => {
     const upcoming = SKILLS.filter((s) => s.upcoming);
-    assert.ok(upcoming.length >= 4);
+    assert.ok(upcoming.length >= 3);
     assert.ok(upcoming.every((s) => s.upcoming === true));
   });
 });
