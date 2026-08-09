@@ -1,12 +1,14 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/seo";
+import { SITE_URL } from "@/lib/config";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const paths = ["", "/download", "/releases"];
+  const now = new Date();
+  const paths = ["", "/download", "/releases", "/privacy"];
+
   return paths.map((path) => ({
     url: `${SITE_URL}${path || "/"}`,
-    lastModified: new Date(),
-    changeFrequency: path === "" ? "weekly" : "daily",
-    priority: path === "" ? 1 : 0.8,
+    lastModified: now,
+    changeFrequency: path === "" || path === "/download" ? "daily" : "weekly",
+    priority: path === "" ? 1 : path === "/download" ? 0.9 : 0.6,
   }));
 }

@@ -1,4 +1,4 @@
-# LLMeter (desktop app prototype)
+# AnyLM (desktop app)
 
 A desktop app that adds a **projects + context** layer on top of local LLMs, the way Claude Projects does. Create a project, give it instructions, attach reference docs (auto-summarized), and chat. Reference summaries plus instructions are injected as a system prompt on every message.
 

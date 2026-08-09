@@ -4,13 +4,13 @@ import "./globals.css";
 import Nav from "@/components/site/Nav";
 import Footer from "@/components/site/Footer";
 import Analytics from "@/components/site/Analytics";
+import { getVerification } from "@/lib/seo";
 import {
+  DESCRIPTION,
+  PRODUCT_NAME,
   SITE_URL,
-  DEFAULT_DESCRIPTION,
-  DEFAULT_KEYWORDS,
-  getVerification,
-} from "@/lib/seo";
-import { PRODUCT_NAME, TAGLINE } from "@/lib/config";
+  TAGLINE,
+} from "@/lib/config";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -30,30 +30,54 @@ export const metadata: Metadata = {
     default: `${PRODUCT_NAME} — ${TAGLINE}`,
     template: `%s · ${PRODUCT_NAME}`,
   },
-  description: DEFAULT_DESCRIPTION,
-  keywords: DEFAULT_KEYWORDS,
+  description: DESCRIPTION,
   applicationName: PRODUCT_NAME,
+  keywords: [
+    "AnyLM",
+    "local LLM",
+    "Ollama",
+    "RAG",
+    "OpenAI compatible",
+    "desktop AI",
+    "privacy",
+    "multi agent",
+    "model router",
+  ],
+  authors: [{ name: "Yash Aryan" }],
+  creator: "Yash Aryan",
   openGraph: {
     type: "website",
     url: SITE_URL,
     siteName: PRODUCT_NAME,
     title: `${PRODUCT_NAME} — ${TAGLINE}`,
-    description: DEFAULT_DESCRIPTION,
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: PRODUCT_NAME }],
+    description: DESCRIPTION,
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: `${PRODUCT_NAME} — one endpoint for every local model`,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: `${PRODUCT_NAME} — ${TAGLINE}`,
-    description: DEFAULT_DESCRIPTION,
+    description: DESCRIPTION,
     images: ["/og.png"],
   },
   icons: {
     icon: [
       { url: "/favicon.ico" },
+      { url: "/favicon.png", sizes: "32x32", type: "image/png" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/site.webmanifest",
+  alternates: {
+    canonical: SITE_URL,
   },
   verification: getVerification(),
 };

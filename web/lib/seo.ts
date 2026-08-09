@@ -1,10 +1,10 @@
-import { PRODUCT_NAME, TAGLINE } from "./config";
+import { DESCRIPTION, PRODUCT_NAME, SITE_URL as CONFIG_SITE_URL, TAGLINE } from "./config";
 
-const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://anylm.app";
-export const SITE_URL = raw.replace(/\/$/, "");
+/** Canonical site origin with no trailing slash. */
+export const SITE_URL = CONFIG_SITE_URL.replace(/\/$/, "");
 
-export const DEFAULT_DESCRIPTION =
-  "AnyLM is a background router for local LLMs. It pools every model already installed on your machine behind one OpenAI-compatible endpoint, so no app ever loads the same weights twice.";
+/** @deprecated Prefer DESCRIPTION from config — kept for tests/callers. */
+export const DEFAULT_DESCRIPTION = DESCRIPTION;
 
 export const DEFAULT_KEYWORDS = [
   "AnyLM",
@@ -32,7 +32,7 @@ export function buildSoftwareJsonLd(): Record<string, unknown> {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: PRODUCT_NAME,
-    description: DEFAULT_DESCRIPTION,
+    description: DESCRIPTION,
     url: SITE_URL,
     applicationCategory: "DeveloperApplication",
     operatingSystem: "macOS, Windows, Linux",
