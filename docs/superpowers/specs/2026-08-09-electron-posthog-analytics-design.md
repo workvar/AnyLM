@@ -38,7 +38,7 @@ The desktop app has no product or reliability analytics. We need PostHog in the 
 
 - PostHog (or other analytics) on the marketing site.
 - Session replay, autocapture, heatmaps.
-- Creating the PostHog project / committing a real production key into git.
+- Creating the PostHog project / committing a real production key into git (CI Variables hold the release key).
 - Sending full chat transcripts or tool payloads.
 - Cookie banners / GDPR legal copy beyond clear in-app wording.
 
@@ -73,9 +73,33 @@ Add to `app/scripts/env-schema.js` `PUBLIC_KEYS` and `app/.env.example`:
 | `ANYLM_POSTHOG_KEY` | no | Empty → analytics disabled |
 | `ANYLM_POSTHOG_HOST` | no | Default `https://us.i.posthog.com` |
 
-Same rules as other public identifiers: safe to ship in the asar; not a server secret.
+Same rules as other public identifiers: safe to ship in the asar; not a server secret. The PostHog **project** API key is a client-side token (like the Firebase web API key), not a personal/private API key — do not put a PostHog personal API key or write-only secret here.
 
-### 2.2 Settings (`AppSettings`)
+### 2.2 GitHub Actions injection
+
+Packaged builds bake env via `scripts/build-env.js` during `bun run build` in `.github/workflows/build.yml`. Extend the **Build and package** step `env:` block with the same `vars.* || secrets.*` pattern used for Firebase:
+
+```yaml
+ANYLM_POSTHOG_KEY: ${{ vars.ANYLM_POSTHOG_KEY || secrets.ANYLM_POSTHOG_KEY }}
+ANYLM_POSTHOG_HOST: ${{ vars.ANYLM_POSTHOG_HOST || secrets.ANYLM_POSTHOG_HOST }}
+```
+
+- Keys are **optional**: blank → analytics no-op in that build (do not fail the job).
+- Prefer **repository Variables** (Settings → Secrets and variables → Actions → **Variables**), not Secrets — values end up in the client bundle anyway.
+- `secrets.*` fallback remains for repos that already store public identifiers as secrets.
+
+**What to add in GitHub (repo or org):**
+
+| Name | Type | Required | Value |
+|------|------|----------|--------|
+| `ANYLM_POSTHOG_KEY` | **Variable** (preferred) | for analytics-enabled releases | PostHog Project API key (`phc_…`) from Project settings → Project API key |
+| `ANYLM_POSTHOG_HOST` | **Variable** (optional) | no | e.g. `https://us.i.posthog.com` or `https://eu.i.posthog.com`; omit to use app default |
+
+Do **not** add PostHog personal API keys, feature-flag secure API keys, or webhook secrets to this workflow.
+
+Local/dev: set the same keys in `app/.env` (never commit real values).
+
+### 2.3 Settings (`AppSettings`)
 
 ```ts
 analyticsConsent: null | boolean; // null = soft-ask pending; false = off; true = on + may identify
@@ -174,6 +198,7 @@ Reuse existing settings panel patterns (`settings-nav`, `settings-panel-*`).
 | `app/package.json` | add `posthog-node` |
 | `app/scripts/env-schema.js` | PostHog public keys |
 | `app/.env.example` | document keys |
+| `.github/workflows/build.yml` | inject `ANYLM_POSTHOG_KEY` / `ANYLM_POSTHOG_HOST` into Build and package |
 | `app/src/main/env.ts` | expose key/host |
 | `app/src/main/analytics/client.ts` | new |
 | `app/src/main/analytics/policy.ts` | new (+ unit tests) |
@@ -202,4 +227,5 @@ Reuse existing settings panel patterns (`settings-nav`, `settings-panel-*`).
 - [x] Consent vs identify vs field groups consistent
 - [x] Default B (titles on, truncated text off) explicit
 - [x] Website out of scope
+- [x] CI bake path matches existing Firebase Variables pattern; optional (no hard fail)
 - [x] Single implementation plan is enough
