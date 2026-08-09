@@ -18,6 +18,7 @@ const DEFAULTS: AppSettings = {
   railCollapsed: false,
   // Last model the user picked in a chat; new chats default to it.
   lastModel: "",
+  defaultUseToolsForChats: false,
   // ChromaDB server (vector store / memory backend). Runs locally like Ollama.
   chromaHost: "localhost",
   chromaPort: 8000,

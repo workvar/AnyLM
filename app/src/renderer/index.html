@@ -104,24 +104,15 @@
           </span>
         </div>
         <button id="new-chat-btn" class="primary">＋ New chat</button>
+        <button id="projects-nav" class="side-nav">▦ Projects</button>
+        <button id="artifacts-nav" class="side-nav" type="button">▭ Artifacts</button>
         <div class="side-search">
           <input id="sidebar-search" type="search" placeholder="Search chats…" autocomplete="off" />
         </div>
-        <button id="projects-nav" class="side-nav">▦ Projects</button>
-        <button id="artifacts-nav" class="side-nav" type="button">▭ Artifacts</button>
 
         <div class="side-scroll">
-          <div id="side-chats-pane">
-            <div class="side-section-label"><span id="side-chats-label">Chats</span></div>
-            <ul id="recents-list" class="nav-list"></ul>
-          </div>
-          <div id="artifacts-pane" class="hidden">
-            <div class="artifacts-head">
-              <button type="button" id="artifacts-back" class="ghost small hidden">← Back</button>
-              <span id="artifacts-title">Artifacts</span>
-            </div>
-            <ul id="artifacts-list" class="nav-list"></ul>
-          </div>
+          <div class="side-section-label"><span id="side-chats-label">Chats</span></div>
+          <ul id="recents-list" class="nav-list"></ul>
         </div>
         <div class="sidebar-foot">
           <div id="ollama-info">checking Ollama…</div>
@@ -156,6 +147,21 @@
             <input id="projects-search" type="text" placeholder="Search projects…" autocomplete="off" />
           </div>
           <div id="projects-grid" class="card-grid"></div>
+        </section>
+
+        <!-- Artifacts explorer (standalone + project-generated files) -->
+        <section id="artifacts-view" class="hidden">
+          <header class="view-toolbar">
+            <button id="sidebar-toggle-artifacts" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+            <button type="button" id="artifacts-back" class="ghost small hidden">‹ Artifacts</button>
+            <h1 class="view-title" id="artifacts-title">Artifacts</h1>
+          </header>
+          <div id="artifacts-body" class="folders-wrap">
+            <div id="artifacts-path" class="files-head hidden">
+              <span id="artifacts-dir" class="files-dir"></span>
+            </div>
+            <div id="artifacts-list" class="artifacts-icon-grid"></div>
+          </div>
         </section>
 
         <!-- A single project's chats -->
@@ -219,7 +225,10 @@
                       <button type="button" data-attach="camera">Camera…</button>
                     </div>
                   </div>
-                  <button type="button" id="tools-toggle" class="icon-btn tools-toggle" title="Let the model use tools">⚒</button>
+                  <button type="button" id="tools-toggle" class="icon-btn tools-toggle" title="Enable tools" aria-label="Enable tools">
+                    <span class="tools-toggle-icon" aria-hidden="true">⚒</span>
+                    <span class="tools-toggle-label">Tools</span>
+                  </button>
                   <button type="button" id="workspace-btn" class="icon-btn tools-toggle" title="Choose a working folder for file tools">📁</button>
                   <span id="workspace-label" class="chip hidden"></span>
                   <div id="model-dropdown" class="dropdown composer-model">
@@ -235,6 +244,9 @@
                         <path d="M2.5 9.5 5 12l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
                       </svg>
                     </button>
+                    <div id="model-lock-popover" class="model-lock-popover hidden" role="tooltip">
+                      Models cannot be changed after conversation has started.
+                    </div>
                     <div id="model-menu" class="dropdown-menu hidden" role="listbox">
                       <div id="model-search-wrap" class="dropdown-search hidden">
                         <input id="model-search" type="text" placeholder="Search models" autocomplete="off" spellcheck="false" />
@@ -737,6 +749,19 @@
         <div class="modal-foot">
           <button id="prompt-cancel" class="ghost">Cancel</button>
           <button id="prompt-ok" class="primary">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools scope: all new general chats vs this chat only -->
+    <div id="tools-scope-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 id="tools-scope-title">Keep tools enabled for…?</h2>
+        <p id="tools-scope-sub" class="modal-sub"></p>
+        <div class="modal-foot tools-scope-foot">
+          <button id="tools-scope-cancel" class="ghost" type="button">Cancel</button>
+          <button id="tools-scope-this" class="ghost" type="button">Only this chat</button>
+          <button id="tools-scope-all" class="primary" type="button">All new non-project chats</button>
         </div>
       </div>
     </div>

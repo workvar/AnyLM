@@ -2,9 +2,9 @@
 import { el, qsa } from "./dom.js";
 import { state } from "./state.js";
 import { renderProjectCards, renderProjectChats, renderContextList, addPendingContext } from "./views.js";
-import { getSelectedModel, setModelDropdownEnabled } from "./dropdown.js";
+import { getSelectedModel } from "./dropdown.js";
+import { updateModelLock } from "./convo.js";
 import { showView } from "./nav.js";
-import { closeArtifactsPane } from "./artifacts.js";
 import { showMenu, type MenuItem } from "./menu.js";
 import { promptText } from "./prompt.js";
 import { fetchThreads, openThread, archiveThread } from "./threads.js";
@@ -56,7 +56,6 @@ function renderDetail() {
 }
 
 export async function openProject(id) {
-  closeArtifactsPane();
   state.current = await window.api.getProject(id);
   state.viewProject = state.current;
   state.mode = null;
@@ -291,7 +290,7 @@ export async function saveProjectModel() {
 export async function toggleProjectLock(locked) {
   if (!state.current) return;
   state.current = { ...state.current, modelLocked: locked };
-  setModelDropdownEnabled(!locked);
+  updateModelLock();
   await window.api.updateProject(state.current.id, { modelLocked: locked });
 }
 

@@ -158,6 +158,8 @@ const api: AnyLmApi = {
   getProject: (id) => ipcRenderer.invoke("projects:get", id),
   createProject: (data) => ipcRenderer.invoke("projects:create", data),
   updateProject: (id, patch) => ipcRenderer.invoke("projects:update", { id, patch }),
+  setProjectDefaultUseTools: (id, enabled) =>
+    ipcRenderer.invoke("projects:setDefaultUseTools", { id, enabled }),
   deleteProject: (id) => ipcRenderer.invoke("projects:delete", id),
 
   // Project folder on disk (generated files, viewer, exports)

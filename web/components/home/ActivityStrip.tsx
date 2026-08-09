@@ -37,8 +37,8 @@ export default function ActivityStrip() {
         </div>
 
         <div className="flex flex-col items-center justify-center">
-          <div className="relative grid h-48 w-48 place-items-center rounded-full border border-white/10 bg-black/40">
-            <svg viewBox="0 0 120 120" className="absolute inset-3" aria-hidden>
+          <div className="relative h-48 w-48">
+            <svg viewBox="0 0 120 120" className="absolute inset-0 h-full w-full" aria-hidden>
               <circle
                 cx="60"
                 cy="60"
@@ -55,11 +55,11 @@ export default function ActivityStrip() {
                 stroke="#7df9a6"
                 strokeWidth="8"
                 strokeLinecap="round"
-                strokeDasharray="220 301"
+                strokeDasharray="226 301"
                 transform="rotate(-90 60 60)"
               />
             </svg>
-            <div className="text-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <p className="text-[10px] uppercase tracking-wide text-[var(--color-mist)]">Step 01</p>
               <p className="mt-1 text-lg font-semibold">Single endpoint</p>
             </div>

@@ -5,6 +5,7 @@ export interface CapabilityItem {
   description: string;
   group?: string;
   risky?: boolean;
+  upcoming?: boolean;
 }
 
 export const CAPABILITY_TABS: { id: CapabilityTab; label: string }[] = [
@@ -33,6 +34,38 @@ export const SKILLS: CapabilityItem[] = [
     name: "Custom skills",
     description: "Bundle your own instructions with any tool picks; enable per chat.",
     group: "User-defined",
+  },
+  {
+    name: "Project-first coding",
+    description:
+      "On coding turns, scaffold and write files in a working folder, research docs when online, and reply with a short summary — not a full source dump.",
+    group: "Built-in",
+  },
+  {
+    name: "Research specialist",
+    description:
+      "Phase 2+ multi-agent research role that plans deeper web + doc passes on complex questions.",
+    group: "Built-in",
+    upcoming: true,
+  },
+  {
+    name: "Slack",
+    description:
+      "Read channels and post messages in workspaces the user connects (confirm on send).",
+    group: "Connector",
+    upcoming: true,
+  },
+  {
+    name: "Shared team skills",
+    description: "Publish a skill once and enable it across an organisation's members.",
+    group: "User-defined",
+    upcoming: true,
+  },
+  {
+    name: "Skill marketplace",
+    description: "Browse and install community skills without hand-writing instruction bundles.",
+    group: "User-defined",
+    upcoming: true,
   },
 ];
 
@@ -170,5 +203,40 @@ export const PLATFORM: CapabilityItem[] = [
   {
     name: "Auto-updates",
     description: "Signed CI builds; the app updates itself in place.",
+  },
+  {
+    name: "Multi-agent orchestration",
+    description:
+      "On complex turns, plan and run specialized Phase 1 roles in parallel (within maxParallel), then synthesize one reply with an expandable agent trail.",
+  },
+  {
+    name: "Load protection",
+    description:
+      "Soft-stop the active turn and cap parallel agents when system RAM used stays over a configurable threshold (default 90%).",
+  },
+  {
+    name: "Ollama setup + boot splash",
+    description:
+      "Guided install/start when Ollama is missing or stopped, plus a splash so login never flashes before the real screen.",
+  },
+  {
+    name: "Artifacts explorer",
+    description:
+      "Browse and open generated documents across standalone and project folders; generate docs without requiring a project.",
+  },
+  {
+    name: "Tools toggle + model lock",
+    description:
+      "Labeled Tools control with project-wide persistence; locked model picker after the first message with a clear explanation.",
+  },
+  {
+    name: "Activity + reasoning strip",
+    description:
+      "Live thought / tool / reasoning status for the current turn; only the active phase stays live.",
+  },
+  {
+    name: "Document research quality",
+    description:
+      "Research-then-write guidance and thin-content rejection so generated PDFs/DOCX/MD stay substantive.",
   },
 ];

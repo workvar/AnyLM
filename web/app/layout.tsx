@@ -3,6 +3,8 @@ import { Space_Grotesk, Manrope } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/site/Nav";
 import Footer from "@/components/site/Footer";
+import Analytics from "@/components/site/Analytics";
+import { getVerification } from "@/lib/seo";
 import {
   DESCRIPTION,
   PRODUCT_NAME,
@@ -39,6 +41,7 @@ export const metadata: Metadata = {
     "desktop AI",
     "privacy",
     "multi agent",
+    "model router",
   ],
   authors: [{ name: "Yash Aryan" }],
   creator: "Yash Aryan",
@@ -65,6 +68,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: "/favicon.ico" },
       { url: "/favicon.png", sizes: "32x32", type: "image/png" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
@@ -75,12 +79,14 @@ export const metadata: Metadata = {
   alternates: {
     canonical: SITE_URL,
   },
+  verification: getVerification(),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
       <body className="grain min-h-dvh antialiased">
+        <Analytics />
         <Nav />
         <main>{children}</main>
         <Footer />

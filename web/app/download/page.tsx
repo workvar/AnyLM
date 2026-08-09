@@ -32,7 +32,7 @@ export default async function DownloadPage() {
           </h1>
           <p className="mt-3 text-[var(--color-mist)]">
             {release
-              ? `Published ${formatDate(release.publishedAt)}. Built by GitHub Actions straight from the tagged commit.`
+              ? `Published ${formatDate(release.publishedAt)}.`
               : "No release has been published yet. Push a version tag to trigger the build."}
           </p>
         </header>

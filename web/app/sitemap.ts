@@ -6,7 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const paths = ["", "/download", "/releases", "/privacy"];
 
   return paths.map((path) => ({
-    url: `${SITE_URL}${path}`,
+    url: `${SITE_URL}${path || "/"}`,
     lastModified: now,
     changeFrequency: path === "" || path === "/download" ? "daily" : "weekly",
     priority: path === "" ? 1 : path === "/download" ? 0.9 : 0.6,

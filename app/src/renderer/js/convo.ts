@@ -3,10 +3,10 @@
 import { el } from "./dom.js";
 import { state } from "./state.js";
 import { setModelDropdown, setModelDropdownEnabled } from "./dropdown.js";
+import { modelLockPopoverMessage } from "./model-lock-message.js";
 import { clearMessages, addMessage, setBubbleMarkdown } from "./views.js";
 import { hideContext } from "./contextmeter.js";
 import { showView } from "./nav.js";
-import { closeArtifactsPane } from "./artifacts.js";
 import { appendAskAnswered } from "./turns.js";
 import { renderFileCard } from "./file-cards.js";
 import { paintCollapsed, createTrailHost } from "./activity-trail.js";
@@ -19,7 +19,6 @@ export function showEmpty() {
   state.chat = [];
   clearMessages();
   hideContext();
-  closeArtifactsPane();
   showView("projects");
 }
 
@@ -29,7 +28,11 @@ export function openConvo({ mode, name, model, modelLocked, placeholder }) {
   showView("convo");
   el("convo-name").value = name || "";
   setModelDropdown(state.models, model);
-  setModelDropdownEnabled(!modelLocked);
+  const message = modelLockPopoverMessage({
+    started: false,
+    projectLocked: !!modelLocked,
+  });
+  setModelDropdownEnabled(!modelLocked, message);
   el("chat-input").placeholder = placeholder || "Message…";
 }
 
@@ -38,7 +41,9 @@ export function openConvo({ mode, name, model, modelLocked, placeholder }) {
 export function updateModelLock() {
   const projectLocked = state.mode === "project" && !!state.current?.modelLocked;
   const started = (state.chat?.length || 0) > 0;
-  setModelDropdownEnabled(!projectLocked && !started);
+  const enabled = !projectLocked && !started;
+  const message = modelLockPopoverMessage({ started, projectLocked });
+  setModelDropdownEnabled(enabled, message);
 }
 
 // Render a saved message history (assistant messages as markdown).

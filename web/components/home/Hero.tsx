@@ -11,7 +11,11 @@ export default function Hero({ release }: { release: Release | null }) {
     <section className="relative min-h-[92dvh] overflow-hidden px-6 pb-16 pt-28 text-center sm:pt-36">
       <Constellation />
 
-      <div className="relative mx-auto max-w-3xl">
+      <div className="relative z-10 mx-auto max-w-3xl">
+        <div
+          className="hero-scrim pointer-events-none absolute inset-[-3rem] -z-10 rounded-[3rem]"
+          aria-hidden
+        />
         <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-[var(--color-mist)] backdrop-blur">
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-slime)]" />
           Local-first · nothing leaves your machine
@@ -47,7 +51,7 @@ export default function Hero({ release }: { release: Release | null }) {
         </div>
       </div>
 
-      <div className="relative mx-auto mt-20 flex max-w-4xl flex-wrap items-center justify-center gap-x-8 gap-y-3 border-t border-white/5 pt-8 text-xs uppercase tracking-[0.18em] text-[var(--color-mist)]">
+      <div className="relative z-10 mx-auto mt-20 flex max-w-4xl flex-wrap items-center justify-center gap-x-8 gap-y-3 border-t border-white/5 pt-8 text-xs uppercase tracking-[0.18em] text-[var(--color-mist)]">
         <span className="normal-case tracking-normal text-white/50">Works with</span>
         {WORKS_WITH.map((name) => (
           <span key={name} className="text-white/55">

@@ -3,7 +3,6 @@
 import { el, qsa } from "./dom.js";
 import { state } from "./state.js";
 import { showView } from "./nav.js";
-import { closeArtifactsPane } from "./artifacts.js";
 import { loadProjects } from "./projects.js";
 import { openModelsView } from "./models.js";
 import { openOrgView } from "./org.js";
@@ -60,7 +59,6 @@ export function selectSettingsSection(section: SettingsSection | string = "gener
 }
 
 function backToHome() {
-  closeArtifactsPane();
   showView("projects");
   loadProjects();
 }

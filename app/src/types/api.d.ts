@@ -175,6 +175,7 @@ interface AnyLmApi {
   getProject(id: string): Promise<PublicProject | null>;
   createProject(data: Partial<Project> & { folderBase?: string; folderPath?: string }): Promise<Project | null>;
   updateProject(id: string, patch: Partial<Project>): Promise<Project | null>;
+  setProjectDefaultUseTools(id: string, enabled: boolean): Promise<PublicProject | null>;
   deleteProject(id: string): Promise<boolean>;
 
   // Project folder on disk

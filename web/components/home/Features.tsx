@@ -50,6 +50,14 @@ const ICONS: Record<string, ReactNode> = {
       strokeLinejoin="round"
     />
   ),
+  "☁": (
+    <path
+      d="M7 18h10a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.6-1.5A3.5 3.5 0 0 0 7 18z"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinejoin="round"
+    />
+  ),
 };
 
 export default function Features() {
@@ -79,7 +87,14 @@ export default function Features() {
                 )}
               </svg>
             </span>
-            <h3 className="mt-4 text-lg font-semibold text-white">{f.title}</h3>
+            <div className="mt-4 flex items-start justify-between gap-3">
+              <h3 className="text-lg font-semibold text-white">{f.title}</h3>
+              {f.upcoming ? (
+                <span className="shrink-0 rounded-full border border-[var(--color-slime)]/35 px-2 py-0.5 text-[10px] text-[var(--color-slime)]">
+                  Coming soon
+                </span>
+              ) : null}
+            </div>
             <p className="mt-2 text-sm leading-relaxed text-[var(--color-mist)]">{f.body}</p>
           </article>
         ))}
