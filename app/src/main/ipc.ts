@@ -376,6 +376,11 @@ function registerIpc() {
     if (data?.folderPath) custom = String(data.folderPath);
     else if (data?.folderBase) custom = projectFiles.childPath(data.folderBase, project.name);
     projectFiles.ensureFolder(project, custom);
+    try {
+      analytics.trackFeatureUsed("project_created");
+    } catch {
+      // never throw into IPC callers
+    }
     return store.get(project.id);
   });
   ipcMain.handle("projects:update", (_e, { id, patch }) => store.update(id, patch));
