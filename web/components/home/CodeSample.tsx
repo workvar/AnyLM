@@ -1,15 +1,4 @@
-const SNIPPET = `from openai import OpenAI
-
-client = OpenAI(
-    base_url="http://localhost:3227/v1",
-    api_key="anylm-local",
-)
-
-client.chat.completions.create(
-    model="llama3.2",
-    messages=[{"role": "user", "content": "ship it"}],
-    stream=True,
-)`;
+import { SNIPPET_TOKENS, TOKEN_CLASS } from "./code-sample.tokens";
 
 export default function CodeSample() {
   return (
@@ -27,8 +16,14 @@ export default function CodeSample() {
           </p>
         </div>
 
-        <pre className="overflow-x-auto rounded-2xl border border-white/10 bg-black/55 p-5 font-mono text-[13px] leading-relaxed text-[var(--color-slime)]">
-          <code>{SNIPPET}</code>
+        <pre className="overflow-x-auto rounded-2xl border border-white/10 bg-black/55 p-5 font-mono text-[13px] leading-relaxed">
+          <code>
+            {SNIPPET_TOKENS.map((t, i) => (
+              <span key={i} className={TOKEN_CLASS[t.kind]}>
+                {t.text}
+              </span>
+            ))}
+          </code>
         </pre>
       </div>
     </section>

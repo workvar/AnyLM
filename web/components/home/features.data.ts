@@ -2,6 +2,7 @@ export interface Feature {
   glyph: string;
   title: string;
   body: string;
+  upcoming?: boolean;
 }
 
 export const FEATURES: Feature[] = [
@@ -44,5 +45,11 @@ export const FEATURES: Feature[] = [
     glyph: "⌘",
     title: "Project-first coding",
     body: "Coding requests create or update files in a real folder — CLI scaffolds when available — and finish with a file/command summary instead of pasting the whole program into chat.",
+  },
+  {
+    glyph: "☁",
+    title: "Cloud API backends",
+    body: "Optional Claude, OpenAI, and similar API keys as selectable backends beside local models — same chat flow, cloud when you choose it.",
+    upcoming: true,
   },
 ];

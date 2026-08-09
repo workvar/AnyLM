@@ -1,3 +1,4 @@
+import JsonLd from "@/components/site/JsonLd";
 import Hero from "@/components/home/Hero";
 import Insights from "@/components/home/Insights";
 import ActivityStrip from "@/components/home/ActivityStrip";
@@ -15,6 +16,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <JsonLd />
       <Hero release={release} />
       <Insights />
       <ActivityStrip />

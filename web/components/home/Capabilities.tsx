@@ -90,7 +90,11 @@ export default function Capabilities() {
                   <article key={item.name} className="glass rounded-2xl p-5">
                     <div className="flex items-start justify-between gap-3">
                       <h4 className="font-mono text-sm font-medium text-white">{item.name}</h4>
-                      {item.risky ? (
+                      {item.upcoming ? (
+                        <span className="shrink-0 rounded-full border border-[var(--color-slime)]/35 px-2 py-0.5 text-[10px] text-[var(--color-slime)]">
+                          Coming soon
+                        </span>
+                      ) : item.risky ? (
                         <span className="shrink-0 rounded-full border border-[var(--color-bile)]/35 px-2 py-0.5 text-[10px] text-[var(--color-bile)]">
                           confirms
                         </span>

@@ -5,6 +5,7 @@ export interface CapabilityItem {
   description: string;
   group?: string;
   risky?: boolean;
+  upcoming?: boolean;
 }
 
 export const CAPABILITY_TABS: { id: CapabilityTab; label: string }[] = [
@@ -39,6 +40,32 @@ export const SKILLS: CapabilityItem[] = [
     description:
       "On coding turns, scaffold and write files in a working folder, research docs when online, and reply with a short summary — not a full source dump.",
     group: "Built-in",
+  },
+  {
+    name: "Research specialist",
+    description:
+      "Phase 2+ multi-agent research role that plans deeper web + doc passes on complex questions.",
+    group: "Built-in",
+    upcoming: true,
+  },
+  {
+    name: "Slack",
+    description:
+      "Read channels and post messages in workspaces the user connects (confirm on send).",
+    group: "Connector",
+    upcoming: true,
+  },
+  {
+    name: "Shared team skills",
+    description: "Publish a skill once and enable it across an organisation's members.",
+    group: "User-defined",
+    upcoming: true,
+  },
+  {
+    name: "Skill marketplace",
+    description: "Browse and install community skills without hand-writing instruction bundles.",
+    group: "User-defined",
+    upcoming: true,
   },
 ];
 
