@@ -4,6 +4,7 @@
 // with speed/ETA streamed to the renderer) -> "ready" (restart now, or let it
 // install silently on quit).
 import { app } from "electron";
+import * as analytics from "../analytics";
 import * as settings from "../settings";
 import * as feed from "./feed";
 import * as notes from "./notes";
@@ -20,11 +21,32 @@ function emit(state, extra = {}) {
   send("update:status", { state, ...extra });
 }
 
+function isCancelled(err: unknown): boolean {
+  const message = String((err && (err as Error).message) || err);
+  return /cancell?ed/i.test(message);
+}
+
+/** Coarse reliability events — never throws into updater flow. */
+function trackUpdater(event: string, properties?: Record<string, unknown>): void {
+  try {
+    analytics.capture({ event, category: "reliability", properties });
+  } catch {
+    // never throw into updater flow
+  }
+}
+
+function trackUpdaterError(): void {
+  trackUpdater("updater_error", { code: "updater_error" });
+}
+
 function wire() {
   if (wired) return feed.get();
   wired = true;
   return feed.wire({
-    onChecking: () => emit("checking"),
+    onChecking: () => {
+      trackUpdater("updater_check");
+      emit("checking");
+    },
 
     onAvailable: (info) => {
       pending = { version: info.version, notes: notes.normalize(info.releaseNotes) };
@@ -44,6 +66,8 @@ function wire() {
 
     onDownloaded: (info) => {
       cancelToken = null;
+      // Download already tracked at download() start. updater_install is only
+      // emitted from install() / quitAndInstall — not on download-complete.
       emit("ready", {
         version: info.version,
         notes: notes.normalize(info.releaseNotes),
@@ -54,8 +78,9 @@ function wire() {
     onError: (err) => {
       cancelToken = null;
       // A user-initiated cancel surfaces as an error; report it as a cancel.
-      const message = String((err && err.message) || err);
-      if (/cancell?ed/i.test(message)) return emit("cancelled");
+      const message = String((err && (err as Error).message) || err);
+      if (isCancelled(err)) return emit("cancelled");
+      trackUpdaterError();
       emit("error", { message });
     },
   });
@@ -75,13 +100,15 @@ async function check() {
     applyPreferences();
     await feed.get().checkForUpdates();
   } catch (err) {
-    emit("error", { message: String((err && err.message) || err) });
+    if (!isCancelled(err)) trackUpdaterError();
+    emit("error", { message: String((err && (err as Error).message) || err) });
   }
 }
 
 async function download({ auto = false } = {}) {
   if (!app.isPackaged || cancelToken) return;
   try {
+    trackUpdater("updater_download");
     tracker.reset();
     emit("downloading", {
       ...pending,
@@ -96,8 +123,9 @@ async function download({ auto = false } = {}) {
     await wire().downloadUpdate(cancelToken);
   } catch (err) {
     cancelToken = null;
-    const message = String((err && err.message) || err);
-    if (/cancell?ed/i.test(message)) return emit("cancelled");
+    const message = String((err && (err as Error).message) || err);
+    if (isCancelled(err)) return emit("cancelled");
+    trackUpdaterError();
     emit("error", { message });
   }
 }
@@ -114,6 +142,7 @@ function cancel() {
 // Quit and install the staged update now.
 function install() {
   if (!app.isPackaged) return;
+  trackUpdater("updater_install");
   feed.get().quitAndInstall();
 }
 

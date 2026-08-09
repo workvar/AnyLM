@@ -288,6 +288,7 @@
           <aside id="settings-nav">
             <button type="button" id="settings-back" class="icon-btn settings-back" title="Back to home" aria-label="Back to home">‹ Home</button>
             <button type="button" data-settings="general" class="active">General</button>
+            <button type="button" data-settings="privacy">Privacy</button>
             <button type="button" data-settings="models">Models</button>
             <button type="button" data-settings="org">Organization</button>
             <button type="button" data-settings="tools">Tools</button>
@@ -494,6 +495,110 @@
 
               </div>
             </div>
+
+            <div id="settings-panel-privacy" class="settings-panel hidden">
+              <header class="view-toolbar">
+                <button id="sidebar-toggle-privacy" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+                <h1 class="view-title">Privacy</h1>
+              </header>
+              <div class="settings-panel-body">
+                <p class="settings-panel-sub">Usage analytics help improve AnyLM. Message bodies are never sent in full.</p>
+
+                <div class="setting-row">
+                  <div class="label">
+                    Share usage analytics
+                    <small id="analytics-master-hint">Not decided yet — analytics collecting with defaults until you Accept or Decline.</small>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="analytics-master" />
+                    <span class="track"><span class="knob"></span></span>
+                  </label>
+                </div>
+
+                <p class="settings-panel-sub">What to share</p>
+
+                <div class="setting-row">
+                  <div class="label">
+                    Product usage
+                    <small>App opens, features used, and similar product signals.</small>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="analytics-product-usage" />
+                    <span class="track"><span class="knob"></span></span>
+                  </label>
+                </div>
+
+                <div class="setting-row">
+                  <div class="label">
+                    Reliability
+                    <small>Updater and other reliability events (coarse error codes only).</small>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="analytics-reliability" />
+                    <span class="track"><span class="knob"></span></span>
+                  </label>
+                </div>
+
+                <div class="setting-row">
+                  <div class="label">
+                    Chat events
+                    <small>Chat created, messages, completed, and failed (no full message bodies).</small>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="analytics-chat-events" />
+                    <span class="track"><span class="knob"></span></span>
+                  </label>
+                </div>
+
+                <div class="setting-row">
+                  <div class="label">
+                    Titles
+                    <small>Include chat or project titles on allowed events.</small>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="analytics-titles" />
+                    <span class="track"><span class="knob"></span></span>
+                  </label>
+                </div>
+
+                <div class="setting-row">
+                  <div class="label">
+                    Model and tokens
+                    <small>Include model name and token counts when available.</small>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="analytics-model-and-tokens" />
+                    <span class="track"><span class="knob"></span></span>
+                  </label>
+                </div>
+
+                <div class="setting-row">
+                  <div class="label">
+                    Truncated message text
+                    <small>Optional short text preview only — never full message bodies.</small>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="analytics-truncated-message-text" />
+                    <span class="track"><span class="knob"></span></span>
+                  </label>
+                </div>
+
+                <div class="setting-row hidden" id="analytics-truncate-chars-row">
+                  <div class="label">
+                    Truncate length
+                    <small>Characters kept in text previews (50–500).</small>
+                  </div>
+                  <input
+                    type="number"
+                    id="analytics-truncate-chars"
+                    class="auth-input agents-max-parallel"
+                    min="50"
+                    max="500"
+                  />
+                </div>
+              </div>
+            </div>
+
           <!-- Organization: governance, members, usage, billing -->
           <section id="org-view" class="hidden">
             <header class="view-toolbar">
@@ -777,6 +882,22 @@
         <div class="modal-foot">
           <button id="fr-no" class="ghost">Not now</button>
           <button id="fr-yes" class="primary">Check on every launch</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Soft-ask analytics consent -->
+    <div id="analytics-consent" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>Help improve AnyLM?</h2>
+        <p class="modal-sub">
+          Usage analytics help us improve AnyLM. Message bodies are never sent in full.
+          You can change this anytime in Settings → Privacy.
+        </p>
+        <div class="modal-foot">
+          <button id="analytics-consent-configure" class="ghost">Configure…</button>
+          <button id="analytics-consent-decline" class="ghost">Decline</button>
+          <button id="analytics-consent-accept" class="primary">Accept</button>
         </div>
       </div>
     </div>

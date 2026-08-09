@@ -52,6 +52,43 @@ import {
   effectiveMaxParallel,
   isOverKillLimit,
 } from "./load-guard/guard";
+import * as analytics from "./analytics";
+import type { AnalyticsCategory } from "./analytics";
+
+const ANALYTICS_CATEGORIES = new Set<AnalyticsCategory>([
+  "productUsage",
+  "reliability",
+  "chatEvents",
+]);
+
+/** Post-auth identify when consent is granted; never throws. */
+function maybeIdentifyAfterAuth(user?: AuthUser | null): void {
+  try {
+    if (settings.read().analyticsConsent !== true) return;
+    const uid = user?.id ?? identity.get().userId;
+    if (uid) analytics.identify(uid);
+  } catch {
+    // never throw into IPC callers
+  }
+}
+
+/** Clear analytics identity on logout; never throws. */
+function maybeResetOnLogout(): void {
+  try {
+    analytics.reset();
+  } catch {
+    // never throw into IPC callers
+  }
+}
+
+/** Coarse chat failure code — never forward raw messages (may contain user content). */
+function coarseChatErrorCode(e: unknown): string {
+  if (!(e instanceof Error)) return "chat_error";
+  const msg = e.message;
+  if (msg === "No model selected") return "no_model";
+  if (msg === "Blocked by organization policy.") return "policy_blocked";
+  return "chat_error";
+}
 
 // Pending risky-tool confirmations, keyed by a one-time token → { resolve, id }.
 const pendingConfirms = new Map();
@@ -92,9 +129,41 @@ function registerIpc() {
       proxy.stop();
       if (next.proxyEnabled) proxy.start(next.proxyPort);
     }
+    if (patch && typeof patch === "object" && "analyticsConsent" in patch) {
+      const consent = next.analyticsConsent;
+      if (typeof consent === "boolean") {
+        analytics.trackConsentSet(consent);
+        if (consent === true) {
+          const uid = identity.get().userId;
+          if (uid) analytics.identify(uid);
+        }
+      }
+    }
     return next;
   });
   ipcMain.handle("app:version", () => app.getVersion());
+
+  ipcMain.handle("analytics:available", () => analytics.isEnabled());
+
+  // Renderer → main analytics (validated; invalid drafts are ignored).
+  ipcMain.handle("analytics:capture", (_e, draft) => {
+    if (!draft || typeof draft !== "object") return;
+    const event = (draft as { event?: unknown }).event;
+    const category = (draft as { category?: unknown }).category;
+    const properties = (draft as { properties?: unknown }).properties;
+    if (typeof event !== "string" || !event.trim()) return;
+    if (typeof category !== "string" || !ANALYTICS_CATEGORIES.has(category as AnalyticsCategory)) {
+      return;
+    }
+    analytics.capture({
+      event,
+      category: category as AnalyticsCategory,
+      properties:
+        properties && typeof properties === "object" && !Array.isArray(properties)
+          ? (properties as Record<string, unknown>)
+          : undefined,
+    });
+  });
 
   // Local OpenAI-compatible endpoint (was the backend's /v1 controller).
   ipcMain.handle("proxy:status", () => proxy.status());
@@ -135,19 +204,23 @@ function registerIpc() {
   ipcMain.handle("auth:register", async (_e, { email, password, name }) => {
     const user = await auth.register(email, password, name);
     await identity.refresh(user);
+    maybeIdentifyAfterAuth(user);
     return user;
   });
   ipcMain.handle("auth:login", async (_e, { email, password }) => {
     const user = await auth.login(email, password);
     await identity.refresh(user);
+    maybeIdentifyAfterAuth(user);
     return user;
   });
   ipcMain.handle("auth:oauth", async (_e, provider) => {
     const user = await auth.oauth(provider);
     await identity.refresh(user);
+    maybeIdentifyAfterAuth(user);
     return user;
   });
   ipcMain.handle("auth:logout", () => {
+    maybeResetOnLogout();
     identity.clear();
     governance.invalidate();
     return auth.logout();
@@ -157,6 +230,7 @@ function registerIpc() {
     try {
       const user = await auth.me();
       await identity.refresh(user);
+      maybeIdentifyAfterAuth(user);
       return user;
     } catch {
       return null;
@@ -304,6 +378,11 @@ function registerIpc() {
     if (data?.folderPath) custom = String(data.folderPath);
     else if (data?.folderBase) custom = projectFiles.childPath(data.folderBase, project.name);
     projectFiles.ensureFolder(project, custom);
+    try {
+      analytics.trackFeatureUsed("project_created");
+    } catch {
+      // never throw into IPC callers
+    }
     return store.get(project.id);
   });
   ipcMain.handle("projects:update", (_e, { id, patch }) => store.update(id, patch));
@@ -432,7 +511,19 @@ function registerIpc() {
   // Standalone chats
   ipcMain.handle("chats:list", () => chats.list());
   ipcMain.handle("chats:get", (_e, id) => chats.get(id));
-  ipcMain.handle("chats:create", (_e, data) => chats.create(data));
+  ipcMain.handle("chats:create", (_e, data) => {
+    const chat = chats.create(data);
+    try {
+      const title =
+        (data && typeof data === "object" && (data.title || data.name)) || undefined;
+      analytics.trackChatCreated({
+        title: typeof title === "string" ? title : undefined,
+      });
+    } catch {
+      // never throw into IPC callers
+    }
+    return chat;
+  });
   ipcMain.handle("chats:update", (_e, { id, patch }) => chats.update(id, patch));
   ipcMain.handle("chats:delete", (_e, id) => chats.remove(id));
 
@@ -500,6 +591,7 @@ function registerIpc() {
       const ms = thought.end();
       act({ kind: "thinking", phase: "end", ms });
     };
+    const chatStartedAt = Date.now();
     try {
       const project = store.get(projectId);
       const useModel = model || (project && project.model);
@@ -515,6 +607,18 @@ function registerIpc() {
       if (!pre.allowed) throw new Error(pre.reason || "Blocked by organization policy.");
       if (lastUser) {
         const verdict = await governance.evaluatePrompt(lastUser.content);
+        // Track after governance so text is redacted; omit text on blocked path.
+        try {
+          analytics.trackMessage({
+            direction: "sent",
+            role: "user",
+            model: useModel,
+            ...(verdict.blocked ? {} : { text: verdict.text }),
+            title: project?.name,
+          });
+        } catch {
+          // never throw into chat flow
+        }
         if (verdict.blocked) throw new Error(verdict.reason);
         warnings.push(...verdict.warnings);
         lastUser.content = verdict.text; // may be redacted
@@ -772,6 +876,8 @@ function registerIpc() {
           const thoughtMs = thought.totalMs();
           act({ kind: "done", thoughtMs, toolCount: toolsRun, summary: summaryOf(thoughtMs, toolsRun) });
         }
+        const promptTokens = totalPrompt || estimateTokens(full);
+        const completionTokens = totalCompletion || Math.round(text.length / 4);
         send("chat:done", {
           id,
           full: text,
@@ -783,11 +889,30 @@ function registerIpc() {
             tokens,
             ctx,
             percent,
-            promptTokens: totalPrompt || estimateTokens(full),
-            completionTokens: totalCompletion || Math.round(text.length / 4),
+            promptTokens,
+            completionTokens,
             measured: !!(totalPrompt || totalCompletion), // real Ollama counts vs ~4 chars/token estimate
           },
         });
+
+        try {
+          analytics.trackMessage({
+            direction: "received",
+            role: "assistant",
+            model: useModel,
+            text,
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+          });
+          analytics.trackChatCompleted({
+            model: useModel,
+            duration_bucket: analytics.durationBucket(Date.now() - chatStartedAt),
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+          });
+        } catch {
+          // never throw into chat flow
+        }
 
         // Persist the turn: project chats build shared project memory; standalone
         // chats feed the general knowledge base.
@@ -1143,6 +1268,11 @@ function registerIpc() {
         endThinking();
         const thoughtMs = thought.totalMs();
         act({ kind: "done", thoughtMs, toolCount: toolsRun, summary: summaryOf(thoughtMs, toolsRun) });
+      }
+      try {
+        analytics.trackChatFailed({ error_code: coarseChatErrorCode(e) });
+      } catch {
+        // never throw into chat flow
       }
       send("chat:error", { id, error: e.message });
     }

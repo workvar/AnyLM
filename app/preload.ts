@@ -92,6 +92,10 @@ const api: AnyLmApi = {
   setSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
   getVersion: () => ipcRenderer.invoke("app:version"),
 
+  // Analytics (main-process PostHog; policy-gated)
+  analyticsAvailable: () => ipcRenderer.invoke("analytics:available"),
+  analyticsCapture: (draft) => ipcRenderer.invoke("analytics:capture", draft),
+
   // Local OpenAI-compatible endpoint
   proxyStatus: () => ipcRenderer.invoke("proxy:status"),
 

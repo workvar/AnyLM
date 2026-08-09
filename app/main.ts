@@ -8,6 +8,7 @@ import * as chromaServer from "./src/main/chroma-server";
 import * as proxy from "./src/main/proxy/server";
 import * as settings from "./src/main/settings";
 import * as appMenu from "./src/main/menu";
+import * as analytics from "./src/main/analytics";
 import { PRODUCT_NAME, productDisplayName } from "./src/main/product";
 
 // Force the app name everywhere (menu bar, dock, About) — without this the dev
@@ -91,6 +92,8 @@ app.whenReady().then(() => {
   if (cfg.proxyEnabled) proxy.start(cfg.proxyPort);
   registerIpc();
   createWindow();
+  analytics.init();
+  analytics.trackAppOpened();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -100,8 +103,30 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-// Shut the bundled Chroma server and the local proxy down with the app.
-app.on("will-quit", () => {
-  chromaServer.stop();
-  proxy.stop();
+// Flush analytics on quit: preventDefault once, await shutdown (≤2s), then exit.
+// Flag avoids infinite will-quit ↔ preventDefault loops when app.exit() re-enters.
+let analyticsQuitHandled = false;
+app.on("will-quit", (event) => {
+  if (analyticsQuitHandled) return;
+  analyticsQuitHandled = true;
+  event.preventDefault();
+
+  void (async () => {
+    try {
+      analytics.capture({ event: "app_quit", category: "productUsage" });
+    } catch {
+      // best-effort
+    }
+    try {
+      await Promise.race([
+        analytics.shutdown(),
+        new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+      ]);
+    } catch {
+      // best-effort
+    }
+    chromaServer.stop();
+    proxy.stop();
+    app.exit(0);
+  })();
 });
