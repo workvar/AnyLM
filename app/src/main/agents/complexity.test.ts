@@ -1,5 +1,36 @@
 import { describe, expect, test } from "bun:test";
-import { leanComplexity } from "./complexity";
+import { isPreferentialKnowledge, leanComplexity } from "./complexity";
+
+describe("isPreferentialKnowledge", () => {
+  test("research", () => {
+    expect(isPreferentialKnowledge("Research the latest Next.js app router docs")).toBe(true);
+  });
+  test("fact check", () => {
+    expect(isPreferentialKnowledge("Fact check these claims about Ollama")).toBe(true);
+  });
+  test("summarize", () => {
+    expect(isPreferentialKnowledge("Summarize the key points from this article")).toBe(true);
+  });
+  test("document", () => {
+    expect(isPreferentialKnowledge("Write a PDF brief on local LLM tooling")).toBe(true);
+  });
+  test("plain Q&A false", () => {
+    expect(isPreferentialKnowledge("What is 2+2?")).toBe(false);
+  });
+});
+
+describe("leanComplexity preferential", () => {
+  test("research phrase is complex even without tools", () => {
+    expect(
+      leanComplexity({
+        text: "Research current Vite create-app options",
+        useTools: false,
+        hasProject: false,
+        hasAttachments: false,
+      })
+    ).toBe("complex");
+  });
+});
 
 describe("leanComplexity", () => {
   test("simple short Q&A without tools", () => {

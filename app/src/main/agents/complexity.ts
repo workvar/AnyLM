@@ -13,7 +13,27 @@ const MULTI_STEP_RE =
 const CODE_RE = /\b(code|refactor|debug|stack trace|pull request|unit test)\b/i;
 const FILE_RE = /\b(file|folder|directory|pdf|docx|csv)\b/i;
 
+const RESEARCH_RE =
+  /\b(research|look up|find sources|what does the web say|investigate)\b/i;
+const FACT_CHECK_RE = /\b(verify|fact[- ]?check|is this true|cross[- ]?check)\b/i;
+const SUMMARIZE_RE = /\b(summarize|tl;?dr|brief me on|condense)\b/i;
+const DOCUMENT_RE =
+  /\b(write|generate|draft)\b.*\b(pdf|docx|report|brief|memo|document)\b|\b(pdf|docx)\b.*\b(brief|report)\b/i;
+
+export function isPreferentialKnowledge(text: string): boolean {
+  const t = (text || "").trim();
+  if (!t) return false;
+  return (
+    RESEARCH_RE.test(t) ||
+    FACT_CHECK_RE.test(t) ||
+    SUMMARIZE_RE.test(t) ||
+    DOCUMENT_RE.test(t)
+  );
+}
+
 export function leanComplexity(input: ComplexityInput): ComplexityLean {
+  if (isPreferentialKnowledge(input.text)) return "complex";
+
   const text = (input.text || "").trim();
   if (!text) return "simple";
 
