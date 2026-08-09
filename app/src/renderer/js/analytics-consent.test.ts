@@ -34,6 +34,11 @@ const ids = [
 let elements: Record<(typeof ids)[number], FakeElement>;
 let api: {
   analyticsAvailable: () => Promise<boolean>;
+  analyticsClarityConfig: () => Promise<{ id: string | null; enabled: boolean }>;
+  getVersion: () => Promise<string>;
+  authMe: () => Promise<AuthUser | null>;
+  platform: NodeJS.Platform;
+  isPackaged: boolean;
   setSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>;
 };
 
@@ -43,6 +48,11 @@ beforeEach(() => {
   elements = Object.fromEntries(ids.map((id) => [id, new FakeElement(id)])) as typeof elements;
   api = {
     analyticsAvailable: async () => true,
+    analyticsClarityConfig: async () => ({ id: null, enabled: false }),
+    getVersion: async () => "0.0.0",
+    authMe: async () => null,
+    platform: "darwin",
+    isPackaged: false,
     setSettings: async (patch) => patch as AppSettings,
   };
   Object.assign(globalThis, {

@@ -4,6 +4,7 @@ import "./globals.css";
 import Nav from "@/components/site/Nav";
 import Footer from "@/components/site/Footer";
 import Analytics from "@/components/site/Analytics";
+import AppAnalytics from "@/components/site/AppAnalytics";
 import { getVerification } from "@/lib/seo";
 import {
   DESCRIPTION,
@@ -87,6 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
       <body className="grain min-h-dvh antialiased">
         <Analytics />
+        <AppAnalytics />
         <Nav />
         <main>{children}</main>
         <Footer />

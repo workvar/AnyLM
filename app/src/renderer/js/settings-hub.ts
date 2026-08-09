@@ -46,6 +46,7 @@ function normalize(section?: string): SettingsSection {
 }
 
 export function openSettingsHub(section: SettingsSection | string = "general") {
+  void window.api.analyticsCapture({ event: "settings_opened", category: "productUsage" }).catch(() => {});
   showView("settings");
   selectSettingsSection(section);
 }

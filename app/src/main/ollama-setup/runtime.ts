@@ -69,3 +69,5 @@ export function startRuntime() {
 export function openDownload(): Promise<void> {
   return shell.openExternal(DOWNLOAD_URL);
 }
+
+export { findInstall };

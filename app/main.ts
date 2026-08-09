@@ -7,6 +7,7 @@ import * as macUI from "./src/main/mac-ui";
 import * as chromaServer from "./src/main/chroma-server";
 import * as proxy from "./src/main/proxy/server";
 import * as settings from "./src/main/settings";
+import * as startupDeps from "./src/main/startup-deps";
 import * as appMenu from "./src/main/menu";
 import * as analytics from "./src/main/analytics";
 import { PRODUCT_NAME, productDisplayName } from "./src/main/product";
@@ -63,7 +64,7 @@ function createWindow(): void {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Dock icon for the dev build (packaged builds use the bundled .icns).
   if (process.platform === "darwin" && app.dock) {
     try {
@@ -83,11 +84,8 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) =>
     cb(permission === "media")
   );
-  // Start the bundled Chroma server (context + memory backend). Fire-and-forget:
-  // the app stays usable while it comes up, and fails soft if it can't.
-  chromaServer.start();
-  // Serve the OpenAI-compatible endpoint for other local apps. Fire-and-
-  // forget for the same reason as Chroma: the app is fully usable without it.
+  // Verify bundled backends (Chroma + graph store) and probe Ollama before UI.
+  await startupDeps.ensureReady();
   const cfg = settings.read();
   if (cfg.proxyEnabled) proxy.start(cfg.proxyPort);
   registerIpc();
@@ -113,7 +111,7 @@ app.on("will-quit", (event) => {
 
   void (async () => {
     try {
-      analytics.capture({ event: "app_quit", category: "productUsage" });
+      analytics.trackAppClosed();
     } catch {
       // best-effort
     }

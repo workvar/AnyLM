@@ -90,35 +90,35 @@ describe("filterEvent", () => {
     });
   });
 
-  describe("chat_failed error_code", () => {
-    test("strips error_code when reliability is off but chatEvents is on", () => {
+  describe("ai_request_failed error_type", () => {
+    test("strips error_type when reliability is off but chatEvents is on", () => {
       const result = filterEvent(
         input({
           analytics: { ...allOn, reliability: false, chatEvents: true },
           draft: {
-            event: "chat_failed",
+            event: "ai_request_failed",
             category: "chatEvents",
-            properties: { error_code: "timeout", other: "keep" },
+            properties: { error_type: "timeout", other: "keep" },
           },
         }),
       );
       expect(result).toEqual({
-        event: "chat_failed",
+        event: "ai_request_failed",
         properties: { other: "keep" },
       });
     });
 
-    test("keeps error_code when reliability is on", () => {
+    test("keeps error_type when reliability is on", () => {
       const result = filterEvent(
         input({
           draft: {
-            event: "chat_failed",
+            event: "ai_request_failed",
             category: "chatEvents",
-            properties: { error_code: "timeout" },
+            properties: { error_type: "timeout" },
           },
         }),
       );
-      expect(result?.properties.error_code).toBe("timeout");
+      expect(result?.properties.error_type).toBe("timeout");
     });
   });
 

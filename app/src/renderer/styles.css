@@ -255,6 +255,7 @@ body {
   flex: 1;
 }
 .nav-list li {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -267,7 +268,12 @@ body {
   overflow: hidden;
 }
 .nav-list li > .conv-dot {
+  /* Overlay the activity indicator so idle dots don't indent titles past "Chats". */
+  position: absolute;
+  left: 2px;
+  top: 50%;
   flex: 0 0 auto;
+  pointer-events: none;
 }
 .nav-list li > .conv-title {
   flex: 1;
@@ -1495,6 +1501,11 @@ select {
   font-size: 22px;
   letter-spacing: -0.02em;
 }
+.boot-splash-status {
+  font-size: 13px;
+  color: var(--muted);
+  min-height: 1.2em;
+}
 @keyframes boot-pulse {
   0%,
   100% {
@@ -1513,6 +1524,79 @@ select {
   #boot-splash.nebula {
     background: var(--bg);
   }
+}
+
+/* First-run setup wizard */
+.setup-wizard-modal {
+  max-width: 480px;
+}
+.setup-wizard-progress {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.setup-checklist {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.setup-dep {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  grid-template-rows: auto auto;
+  gap: 2px 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+.setup-dep-icon {
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+.setup-dep.ok .setup-dep-icon {
+  color: var(--accent, #7df9a6);
+}
+.setup-dep.warn .setup-dep-icon {
+  color: #f5a623;
+}
+.setup-dep.pending .setup-dep-icon {
+  color: var(--muted);
+}
+.setup-dep-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+.setup-dep-detail {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.setup-callout {
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+.setup-callout.ok {
+  background: rgba(125, 249, 166, 0.08);
+  border-color: rgba(125, 249, 166, 0.25);
+}
+.setup-callout p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.setup-embed-progress {
+  margin: 12px 0;
 }
 
 /* Auth screen */
@@ -2429,6 +2513,9 @@ button.full {
   overflow: visible;
 }
 .side-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   margin-top: 8px;
   padding: 6px 12px;
@@ -2437,6 +2524,12 @@ button.full {
   background: transparent;
   border: 1px solid var(--border);
   border-radius: 999px;
+}
+.side-nav-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  display: block;
 }
 .side-nav:hover {
   background: var(--panel-2);
@@ -2452,7 +2545,9 @@ button.full {
   background: var(--accent-grad);
 }
 .side-section-label {
-  margin: 16px 4px 4px;
+  /* Match .nav-list li horizontal padding so "Chats" lines up with titles. */
+  margin: 16px 0 4px;
+  padding: 0 10px;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -3962,9 +4057,9 @@ button.full {
   flex-shrink: 0;
   width: 7px;
   height: 7px;
-  margin-right: 2px;
   border-radius: 50%;
   background: transparent;
+  transform: translateY(-50%);
 }
 .is-working .conv-dot {
   background: var(--accent);
@@ -3978,11 +4073,11 @@ button.full {
   0%,
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(-50%) scale(1);
   }
   50% {
     opacity: 0.35;
-    transform: scale(0.72);
+    transform: translateY(-50%) scale(0.72);
   }
 }
 @media (prefers-reduced-motion: reduce) {

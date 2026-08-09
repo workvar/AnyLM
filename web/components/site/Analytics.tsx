@@ -3,7 +3,7 @@
 import Script from "next/script";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
-const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim();
+const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID?.trim();
 
 export default function Analytics() {
   if (!GA_ID && !CLARITY_ID) return null;
@@ -28,6 +28,7 @@ export default function Analytics() {
             t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
             y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
           })(window, document, "clarity", "script", "${CLARITY_ID}");
+          if (typeof clarity === "function") clarity("set", "app", "web");
         `}</Script>
       ) : null}
     </>

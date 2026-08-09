@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { track } from "@/lib/analytics";
+import { WebEvents } from "@/lib/analytics.events";
 import { detectOs } from "@/lib/platform";
 import { pickAsset } from "@/lib/pickAsset";
 import { PLATFORM_LABELS, formatDate, formatSize, type Release } from "@/lib/releases";
@@ -33,9 +35,23 @@ export default function DownloadButton({ release }: Props) {
   const asset = os ? pickAsset(release, os.platform, os.arch) : null;
   const platformName = os?.platform ? PLATFORM_LABELS[os.platform] : "your platform";
 
+  function handlePrimaryClick() {
+    track(WebEvents.ctaClicked, { source: "hero", feature: "download" });
+    if (asset) {
+      track(WebEvents.downloadClicked, {
+        source: "hero",
+        platform: os?.platform ?? asset.platform ?? "unknown",
+      });
+    }
+  }
+
   return (
     <div className="flex flex-col items-center gap-3">
-      <a href={asset?.downloadUrl ?? "/download"} className="btn-primary text-base">
+      <a
+        href={asset?.downloadUrl ?? "/download"}
+        className="btn-primary text-base"
+        onClick={handlePrimaryClick}
+      >
         {asset ? `Download for ${platformName}` : "See downloads"}
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
           <path

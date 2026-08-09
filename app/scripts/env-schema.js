@@ -28,8 +28,9 @@ const PUBLIC_KEYS = {
   // A public OAuth client id for the Outlook connector. Public clients carry
   // no secret; PKCE protects the exchange, so this is safe to ship.
   ANYLM_MS_CLIENT_ID: { required: false, description: "Microsoft public client id for the Outlook skill" },
-  ANYLM_POSTHOG_KEY: { required: false, description: "PostHog project API key (phc_…); empty disables analytics" },
-  ANYLM_POSTHOG_HOST: { required: false, description: "PostHog host; defaults to https://us.i.posthog.com" },
+  ANYLM_GA_MEASUREMENT_ID: { required: false, description: "GA4 measurement ID (G-…); empty disables GA4" },
+  ANYLM_GA_API_SECRET: { required: false, description: "GA4 Measurement Protocol API secret; required with measurement ID; CI/shell only — must not appear in app/.env (FORBIDDEN_PATTERNS /SECRET/i)" },
+  ANYLM_CLARITY_ID: { required: false, description: "Microsoft Clarity project id; empty disables Clarity" },
 };
 
 /**

@@ -60,6 +60,13 @@ export async function openProject(id) {
   state.viewProject = state.current;
   state.mode = null;
   el("detail-title").textContent = state.current.name || "Untitled project";
+  void window.api
+    .analyticsCapture({
+      event: "project_opened",
+      category: "productUsage",
+      properties: { source: "grid", title: state.current.name },
+    })
+    .catch(() => {});
   await fetchThreads();
   renderDetail();
   resetDetailTabs();

@@ -50,6 +50,7 @@ interface AppSettings {
   chromaPort: number;
   chromaSsl: boolean;
   ollamaSetupDeclined: boolean | null;
+  setupWizardCompleted: boolean | null;
   embedInstallDeclined: boolean | null;
   notifyUsage: boolean;
   notifyRenewals: boolean;

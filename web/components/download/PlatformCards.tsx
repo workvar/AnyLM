@@ -22,7 +22,9 @@ export default function PlatformCards({ release }: { release: Release | null }) 
 
           <div className="space-y-2">
             {groups[platform].length > 0 ? (
-              groups[platform].map((asset) => <AssetRow key={asset.id} asset={asset} />)
+              groups[platform].map((asset) => (
+                <AssetRow key={asset.id} asset={asset} source="download" />
+              ))
             ) : (
               <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-[var(--color-mist)]">
                 No build for this platform in the latest release.
