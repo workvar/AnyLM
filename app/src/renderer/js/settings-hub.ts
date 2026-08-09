@@ -1,5 +1,5 @@
-// Settings hub: left-nav shell that swaps General / Models / Org / Tools /
-// Skills / Customize panels inside #settings-view.
+// Settings hub: left-nav shell that swaps General / Privacy / Models / Org /
+// Tools / Skills / Customize panels inside #settings-view.
 import { el, qsa } from "./dom.js";
 import { state } from "./state.js";
 import { showView } from "./nav.js";
@@ -9,14 +9,31 @@ import { openOrgView } from "./org.js";
 import { openToolsView } from "./tools-view.js";
 import { openSkillsView } from "./skills-view.js";
 import { paintCustomize } from "./customize.js";
+import { paintPrivacySettings } from "./privacy-settings.js";
 import { refreshSettingsGeneral } from "./settings.js";
 
-export type SettingsSection = "general" | "models" | "org" | "tools" | "skills" | "customize";
+export type SettingsSection =
+  | "general"
+  | "privacy"
+  | "models"
+  | "org"
+  | "tools"
+  | "skills"
+  | "customize";
 
-const SECTIONS: SettingsSection[] = ["general", "models", "org", "tools", "skills", "customize"];
+const SECTIONS: SettingsSection[] = [
+  "general",
+  "privacy",
+  "models",
+  "org",
+  "tools",
+  "skills",
+  "customize",
+];
 
 const PANEL_IDS: Record<SettingsSection, string> = {
   general: "settings-panel-general",
+  privacy: "settings-panel-privacy",
   models: "models-view",
   org: "org-view",
   tools: "tools-view",
@@ -51,6 +68,7 @@ export function selectSettingsSection(section: SettingsSection | string = "gener
   }
 
   if (s === "general") refreshSettingsGeneral();
+  else if (s === "privacy") void paintPrivacySettings();
   else if (s === "models") openModelsView();
   else if (s === "org") openOrgView();
   else if (s === "tools") openToolsView();

@@ -48,6 +48,7 @@ import { toggleOrgShare, toggleAutoLog } from "./projects.js";
 import { initSidebar } from "./sidebar/index.js";
 import { initCustomize } from "./customize.js";
 import { initSettingsHub } from "./settings-hub.js";
+import { initPrivacySettings } from "./privacy-settings.js";
 import { initWebResearchHint } from "./web-research-hint.js";
 import { initAppMenu, syncMenuContext } from "./app-menu.js";
 import { initOllamaSetup, runOllamaLaunchFlow } from "./ollama-setup.js";
@@ -136,6 +137,7 @@ function bindEvents() {
   bindClick("sidebar-toggle-tools", toggleSidebar);
   bindClick("sidebar-toggle-skills", toggleSidebar);
   bindClick("sidebar-toggle-settings", toggleSidebar);
+  bindClick("sidebar-toggle-privacy", toggleSidebar);
   bindClick("sidebar-toggle-customize", toggleSidebar);
 
   // Projects grid controls
@@ -236,6 +238,7 @@ async function startApp(settings) {
   initRail(settings);
   initSidebar();
   initSettingsHub();
+  initPrivacySettings();
   initCustomize();
   initAppMenu();
   bindModelEvents();
