@@ -26,6 +26,16 @@ interface AgentSettings {
   loadProtection: LoadProtectionSettings;
 }
 
+interface AnalyticsSettings {
+  productUsage: boolean;
+  reliability: boolean;
+  chatEvents: boolean;
+  titles: boolean;
+  modelAndTokens: boolean;
+  truncatedMessageText: boolean;
+  truncateChars: number;
+}
+
 interface AppSettings {
   theme: ThemePreference;
   checkUpdatesOnLaunch: boolean | null;
@@ -54,6 +64,8 @@ interface AppSettings {
   /** Customize: personal context added to every chat. */
   userContext: UserContext;
   agents: AgentSettings;
+  analyticsConsent: boolean | null;
+  analytics: AnalyticsSettings;
 }
 
 interface UserContext {

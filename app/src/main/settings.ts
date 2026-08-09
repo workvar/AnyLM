@@ -3,6 +3,7 @@
 import { app } from "electron";
 import * as fs from "fs";
 import * as path from "path";
+import { clampTruncateChars } from "./analytics/clamp";
 import { clampMaxParallel } from "./agents/max-parallel";
 import { env } from "./env";
 import { clampKillPercent } from "./load-guard/clamp";
@@ -58,29 +59,50 @@ const DEFAULTS: AppSettings = {
       killPercent: 90,
     },
   },
+  analyticsConsent: null,
+  analytics: {
+    productUsage: true,
+    reliability: true,
+    chatEvents: true,
+    titles: true,
+    modelAndTokens: true,
+    truncatedMessageText: false,
+    truncateChars: 200,
+  },
 };
 
 function filePath(): string {
   return path.join(app.getPath("userData"), "llmeter-settings.json");
 }
 
+function mergeSettings(saved: Partial<AppSettings>): AppSettings {
+  const merged: AppSettings = { ...DEFAULTS, ...saved };
+  // Deep-merge agents so older settings files still get loadProtection defaults.
+  if (saved.agents) {
+    merged.agents = {
+      ...DEFAULTS.agents,
+      ...saved.agents,
+      models: { ...DEFAULTS.agents.models, ...(saved.agents.models || {}) },
+      loadProtection: {
+        ...DEFAULTS.agents.loadProtection,
+        ...(saved.agents.loadProtection || {}),
+      },
+    };
+  }
+  if (saved.analytics) {
+    merged.analytics = {
+      ...DEFAULTS.analytics,
+      ...saved.analytics,
+      truncateChars: clampTruncateChars(saved.analytics.truncateChars),
+    };
+  }
+  return merged;
+}
+
 function read(): AppSettings {
   try {
     const saved = JSON.parse(fs.readFileSync(filePath(), "utf8")) as Partial<AppSettings>;
-    const merged: AppSettings = { ...DEFAULTS, ...saved };
-    // Deep-merge agents so older settings files still get loadProtection defaults.
-    if (saved.agents) {
-      merged.agents = {
-        ...DEFAULTS.agents,
-        ...saved.agents,
-        models: { ...DEFAULTS.agents.models, ...(saved.agents.models || {}) },
-        loadProtection: {
-          ...DEFAULTS.agents.loadProtection,
-          ...(saved.agents.loadProtection || {}),
-        },
-      };
-    }
-    return merged;
+    return mergeSettings(saved);
   } catch {
     return { ...DEFAULTS };
   }
@@ -106,9 +128,18 @@ function write(patch: Partial<AppSettings>): AppSettings {
       },
     };
   }
+  if (patch.analytics) {
+    next.analytics = {
+      ...prev.analytics,
+      ...patch.analytics,
+      truncateChars: clampTruncateChars(
+        patch.analytics.truncateChars ?? prev.analytics.truncateChars
+      ),
+    };
+  }
   fs.writeFileSync(filePath(), JSON.stringify(next, null, 2));
   return next;
 }
 
-export { read, write };
+export { mergeSettings, read, write };
 
