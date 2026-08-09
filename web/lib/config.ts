@@ -4,12 +4,16 @@ export const GITHUB_REPO = process.env.NEXT_PUBLIC_GITHUB_REPO ?? "AnyLM";
 export const REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
 export const RELEASES_URL = `${REPO_URL}/releases`;
 
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://anylm.app").replace(
-  /\/$/,
-  "",
-);
+/** Prefer the public hostname that actually serves this app (OG/canonical). */
+export const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.replace(/^https?:\/\//, "")}`
+    : "https://anylm.workvar.com")
+).replace(/\/$/, "");
 
 export const PRODUCT_NAME = "AnyLM";
 export const TAGLINE = "One router. Every model. Zero duplication.";
+/** Keep ≤ ~155 chars (search) and ideally ≤ ~125 (social OG previews). */
 export const DESCRIPTION =
-  "AnyLM is a local-first desktop workspace for Ollama: projects with RAG, multi-agent chat, and one OpenAI-compatible endpoint every local app can share — nothing leaves your machine for inference.";
+  "AnyLM: local Ollama workspace with projects, RAG, multi-agent chat, and one OpenAI-compatible endpoint for every local app.";
