@@ -256,28 +256,39 @@ async function startApp(settings) {
 
 let started = false;
 async function init() {
-  const settings = await initSettings();
-  initUpdates();
-  initEmbedModel();
-  initOllamaSetup(() => {
-    refreshStatus();
-  });
-  initSetupWizard(() => {
-    refreshStatus();
-  });
+  // Never block splash dismissal on settings/UI wiring failures.
+  let settings: AppSettings | null = null;
+  try {
+    settings = await initSettings();
+  } catch (err) {
+    console.error("initSettings failed:", err);
+  }
+  try {
+    initUpdates();
+    initEmbedModel();
+    initOllamaSetup(() => {
+      refreshStatus();
+    });
+    initSetupWizard(() => {
+      refreshStatus();
+    });
+  } catch (err) {
+    console.error("boot wiring failed:", err);
+  }
 
   initAuth(async () => {
     if (started) return;
     started = true;
-    await startApp(settings);
+    const bootSettings = settings ?? (await window.api.getSettings());
+    await startApp(bootSettings);
     const current = await window.api.getSettings();
     if (shouldRunSetupWizard(current)) {
       await runSetupWizard(current);
       return;
     }
-    await runLaunchUpdateFlow(settings);
-    await runEmbedLaunchFlow(settings);
-    await runOllamaLaunchFlow(settings);
+    await runLaunchUpdateFlow(bootSettings);
+    await runEmbedLaunchFlow(bootSettings);
+    await runOllamaLaunchFlow(bootSettings);
     await runAnalyticsConsentFlow(await window.api.getSettings());
   });
 }

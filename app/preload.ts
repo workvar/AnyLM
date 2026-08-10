@@ -3,12 +3,13 @@
 // The object below is annotated with AnyLmApi (src/types/api.d.ts), which is
 // the same type the renderer sees on `window.api`. Renaming or re-signing a
 // method on either side is now a compile error rather than a runtime undefined.
-import { app, contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
 
 const api: AnyLmApi = {
   // Platform ("darwin" | "win32" | "linux"), for native-feel styling.
   platform: process.platform,
-  isPackaged: app.isPackaged,
+  // `app` is main-process-only; sandboxed preload must ask main via sync IPC.
+  isPackaged: ipcRenderer.sendSync("app:isPackaged") === true,
 
   // Auth
   authMe: () => ipcRenderer.invoke("auth:me"),

@@ -208,6 +208,10 @@ function registerIpc() {
     return next;
   });
   ipcMain.handle("app:version", () => app.getVersion());
+  // Sync: preload reads this while building window.api (app is main-only).
+  ipcMain.on("app:isPackaged", (event) => {
+    event.returnValue = app.isPackaged;
+  });
 
   ipcMain.handle("analytics:available", () =>
     isAnalyticsAvailable({
