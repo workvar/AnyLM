@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { makeWorkers, type WorkersDeps } from "./workers";
 import type { AgentStep } from "./types";
+import { specialistPrompt } from "./specialists/prompts";
 
 function baseDeps(overrides: Partial<WorkersDeps> = {}): WorkersDeps {
   return {
@@ -365,6 +366,109 @@ describe("makeWorkers: confirm/ask serialization", () => {
       runStep({ id: "b", goal: "step b", dependsOn: [], kind: "tool" }),
     ]);
     expect(maxActive).toBe(2);
+  });
+});
+
+describe("makeWorkers: knowledge specialists", () => {
+  test("fact_check prepends prior dependency outputs to the user message", async () => {
+    const seenMessages: ChatMessage[][] = [];
+    const runStep = makeWorkers(
+      baseDeps({
+        chat: async (_model, messages) => {
+          seenMessages.push(messages as ChatMessage[]);
+          return { text: "verified", promptTokens: 1, completionTokens: 1, toolCalls: [] };
+        },
+      })
+    );
+    await runStep(
+      { id: "fc", goal: "Fact check claims from step research", dependsOn: ["research"], kind: "fact_check" },
+      [{ id: "research", ok: true, output: "Vite uses Rollup under the hood." }]
+    );
+    const userMsg = seenMessages[0].find((m) => m.role === "user");
+    expect(userMsg?.content).toContain("Prior step outputs:");
+    expect(userMsg?.content).toContain("[step research]: Vite uses Rollup under the hood.");
+    expect(userMsg?.content).toContain("Fact check claims from step research");
+  });
+
+  test("summarize prepends prior dependency outputs to the user message", async () => {
+    const seenMessages: ChatMessage[][] = [];
+    const runStep = makeWorkers(
+      baseDeps({
+        chat: async (_model, messages) => {
+          seenMessages.push(messages as ChatMessage[]);
+          return { text: "summary", promptTokens: 1, completionTokens: 1, toolCalls: [] };
+        },
+      })
+    );
+    await runStep(
+      { id: "sum", goal: "Summarize findings", dependsOn: ["a", "b"], kind: "summarize" },
+      [
+        { id: "a", ok: true, output: "finding one" },
+        { id: "b", ok: false, output: "", error: "timeout" },
+      ]
+    );
+    const userMsg = seenMessages[0].find((m) => m.role === "user");
+    expect(userMsg?.content).toContain("[step a]: finding one");
+    expect(userMsg?.content).toContain("[step b]: timeout");
+  });
+
+  test("summarize uses modelForKind, null tools, and specialist system prompt", async () => {
+    let seenModel = "";
+    let seenTools: OllamaToolDef[] | null | undefined;
+    const seenMessages: ChatMessage[][] = [];
+    const runStep = makeWorkers(
+      baseDeps({
+        toolDefs: [
+          {
+            type: "function",
+            function: { name: "web_search", description: "", parameters: { type: "object", properties: {}, required: [] } },
+          },
+        ],
+        modelForKind: (kind) => (kind === "summarize" ? "summarize-model" : "test-model"),
+        chat: async (model, messages, _onChunk, tools) => {
+          seenModel = model;
+          seenTools = tools;
+          seenMessages.push(messages as ChatMessage[]);
+          return { text: "summary", promptTokens: 1, completionTokens: 1, toolCalls: [] };
+        },
+      })
+    );
+    const r = await runStep(step("summarize"));
+    expect(r.ok).toBe(true);
+    expect(seenModel).toBe("summarize-model");
+    expect(seenTools).toBeNull();
+    const systemContents = seenMessages[0].filter((m) => m.role === "system").map((m) => m.content);
+    expect(systemContents).toContain(specialistPrompt("summarize"));
+  });
+
+  test("research passes filtered tool defs containing only allowlisted names", async () => {
+    let seenTools: OllamaToolDef[] | null | undefined;
+    const runStep = makeWorkers(
+      baseDeps({
+        toolDefs: [
+          {
+            type: "function",
+            function: { name: "web_search", description: "", parameters: { type: "object", properties: {}, required: [] } },
+          },
+          {
+            type: "function",
+            function: { name: "http_fetch", description: "", parameters: { type: "object", properties: {}, required: [] } },
+          },
+          {
+            type: "function",
+            function: { name: "generate_document", description: "", parameters: { type: "object", properties: {}, required: [] } },
+          },
+        ],
+        chat: async (_model, _messages, _onChunk, tools) => {
+          seenTools = tools;
+          return { text: "research done", promptTokens: 1, completionTokens: 1, toolCalls: [] };
+        },
+      })
+    );
+    await runStep(step("research"));
+    expect(seenTools).not.toBeNull();
+    const names = seenTools!.map((d) => d.function.name).sort();
+    expect(names).toEqual(["http_fetch", "web_search"]);
   });
 });
 

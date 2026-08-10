@@ -12,10 +12,30 @@ import { recoverToolCalls } from "../tools/recover-tool-calls";
 import { labelFor, detailFor } from "../activity-labels";
 import * as ollama from "../ollama";
 import { createMutex } from "./mutex";
-import type { AgentStep, StepResult } from "./types";
+import { allowlistFor, filterToolDefs } from "./specialists/allowlists";
+import { specialistPrompt } from "./specialists/prompts";
+import type { AgentStep, AgentStepKind, StepResult } from "./types";
 
 const RETRIEVE_CHAR_CAP = 6000;
 const MAX_TOOL_ROUNDS = 3;
+
+function formatPriorOutputs(prior: StepResult[]): string {
+  if (!prior.length) return "";
+  const lines = prior.map((r) => {
+    const body = r.ok ? r.output : r.error || "(error)";
+    return `[step ${r.id}]: ${body}`;
+  });
+  return `Prior step outputs:\n${lines.join("\n")}\n\n`;
+}
+
+function userContentForStep(step: AgentStep, prior: StepResult[]): string {
+  const prefix = formatPriorOutputs(prior);
+  return prefix ? prefix + step.goal : step.goal;
+}
+
+const GENERIC_WORKER_SYSTEM =
+  "You are a worker agent completing one step of a larger task on behalf of another " +
+  "assistant. Use tools when they help, then report your findings concisely.";
 
 type ConfirmFn = (
   tool: { name: string; description: string },
@@ -28,6 +48,8 @@ export interface WorkersDeps {
   threadId?: string | null;
   /** Model used for the tool-calling mini-loop (agents.models.toolExecutor, falls back to chat model). */
   toolModel: string;
+  /** Per-step model resolver; defaults to toolModel when omitted (ipc wires this in Task 8). */
+  modelForKind?: (kind: AgentStepKind) => string;
   toolDefs: OllamaToolDef[] | null;
   skillToolAllow: Set<string> | null;
   /** Same skills-instructions / workspace / follow-up blocks the single-agent
@@ -98,7 +120,13 @@ async function runTool(
   step: AgentStep,
   deps: WorkersDeps,
   confirm: ConfirmFn,
-  ask: AskFn
+  ask: AskFn,
+  opts: {
+    model: string;
+    toolDefs: OllamaToolDef[] | null;
+    specialistSystem: string;
+    prior?: StepResult[];
+  }
 ): Promise<ToolRunOutput> {
   const chat = deps.chat || ollama.chatStream;
   const execTool = deps.execTool || toolsExec.execute;
@@ -115,11 +143,12 @@ async function runTool(
   }
   messages.push({
     role: "system",
-    content:
-      "You are a worker agent completing one step of a larger task on behalf of another " +
-      "assistant. Use tools when they help, then report your findings concisely.",
+    content: opts.specialistSystem,
   });
-  messages.push({ role: "user", content: step.goal });
+  messages.push({
+    role: "user",
+    content: userContentForStep(step, opts.prior || []),
+  });
 
   let lastText = "";
   let promptTokens = 0;
@@ -127,7 +156,7 @@ async function runTool(
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     if (deps.isCancelled()) break;
 
-    const result = await chat(deps.toolModel, messages, () => {}, deps.toolDefs);
+    const result = await chat(opts.model, messages, () => {}, opts.toolDefs);
     promptTokens += result.promptTokens || 0;
     completionTokens += result.completionTokens || 0;
     lastText = result.text || lastText;
@@ -135,8 +164,8 @@ async function runTool(
 
     // Small models often paste tool JSON in the reply instead of emitting
     // structured tool_calls — recover those, same as the single-agent loop.
-    if (deps.toolDefs && !calls.length && result.text) {
-      const allowed = deps.toolDefs.map((d) => d.function.name);
+    if (opts.toolDefs && !calls.length && result.text) {
+      const allowed = opts.toolDefs.map((d) => d.function.name);
       const recovered = recover(result.text, allowed);
       if (recovered.calls.length) {
         calls = recovered.calls;
@@ -144,7 +173,7 @@ async function runTool(
       }
     }
 
-    if (!deps.toolDefs || !calls.length) break;
+    if (!opts.toolDefs || !calls.length) break;
 
     messages.push({ role: "assistant", content: result.text, tool_calls: calls });
     for (const call of calls) {
@@ -188,7 +217,8 @@ async function runTool(
  *  the user at a time — others queue on the same lock instead of firing a
  *  second confirm/ask the renderer (which tracks one pending prompt) can't
  *  surface. Non-interactive tool execution still runs fully in parallel. */
-export function makeWorkers(deps: WorkersDeps): (step: AgentStep) => Promise<StepResult> {
+export function makeWorkers(deps: WorkersDeps): (step: AgentStep, prior?: StepResult[]) => Promise<StepResult> {
+  const modelForKind = deps.modelForKind ?? ((k: AgentStepKind) => deps.toolModel);
   const lock = createMutex();
   // Re-check isCancelled() after acquiring the lock, not just before queuing:
   // a confirm/ask queued behind another worker's prompt has no token yet
@@ -200,7 +230,7 @@ export function makeWorkers(deps: WorkersDeps): (step: AgentStep) => Promise<Ste
   const serialAsk: AskFn = (payload) =>
     lock(() => (deps.isCancelled() ? Promise.resolve(null) : deps.ask(payload)));
 
-  return async function runStep(step: AgentStep): Promise<StepResult> {
+  return async function runStep(step: AgentStep, prior: StepResult[] = []): Promise<StepResult> {
     try {
       let output = "";
       let promptTokens = 0;
@@ -212,8 +242,34 @@ export function makeWorkers(deps: WorkersDeps): (step: AgentStep) => Promise<Ste
         case "retrieve":
           output = await runRetrieve(step, deps);
           break;
+        case "research":
+        case "fact_check":
+        case "summarize":
+        case "document": {
+          const allow = allowlistFor(step.kind);
+          const toolDefs = filterToolDefs(deps.toolDefs, allow);
+          const usePrior =
+            prior.length > 0 &&
+            (step.kind === "fact_check" ||
+              step.kind === "summarize" ||
+              ((step.kind === "document" || step.kind === "research") && step.dependsOn.length > 0));
+          const r = await runTool(step, deps, serialConfirm, serialAsk, {
+            model: modelForKind(step.kind),
+            toolDefs,
+            specialistSystem: specialistPrompt(step.kind),
+            prior: usePrior ? prior : undefined,
+          });
+          output = r.text;
+          promptTokens = r.promptTokens;
+          completionTokens = r.completionTokens;
+          break;
+        }
         default: {
-          const r = await runTool(step, deps, serialConfirm, serialAsk);
+          const r = await runTool(step, deps, serialConfirm, serialAsk, {
+            model: modelForKind("tool"),
+            toolDefs: deps.toolDefs,
+            specialistSystem: GENERIC_WORKER_SYSTEM,
+          });
           output = r.text;
           promptTokens = r.promptTokens;
           completionTokens = r.completionTokens;

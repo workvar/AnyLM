@@ -52,6 +52,24 @@ describe("summarizeAgentTrail", () => {
     expect(s?.lines[(s?.lines.length ?? 1) - 1]).toMatch(/combin/i);
   });
 
+  test("shows Research label", () => {
+    const summary = summarizeAgentTrail([
+      {
+        kind: "agent:plan",
+        steps: [{ id: "1", goal: "Look up X", stepKind: "research" }],
+      },
+      {
+        kind: "agent:step",
+        id: "1",
+        goal: "Look up X",
+        stepKind: "research",
+        parallelGroup: 1,
+        status: "done",
+      },
+    ]);
+    expect(summary?.lines[0]).toContain("Research");
+  });
+
   test("singular step count reads naturally", () => {
     const s = summarizeAgentTrail([
       { kind: "agent:plan", steps: [{ id: "1", goal: "Solo", stepKind: "tool" }] },

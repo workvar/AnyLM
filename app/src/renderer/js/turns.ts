@@ -5,6 +5,7 @@
 // whether or not the user is looking at it. Coming back re-attaches the live
 // bubble (and any question the model asked while they were away).
 import { el, node } from "./dom.js";
+import { stepKindLabel } from "./agent-labels.js";
 import { state } from "./state.js";
 import { addThinking, setBubbleMarkdown, paintRecentsTitle } from "./views.js";
 import { createStreamRenderer } from "./stream.js";
@@ -112,7 +113,7 @@ function stripLabel(turn): string {
       return formatThought(thoughtTickMs(turn) ?? 0);
     }
     if (ev.kind === "agent:merge") return "Combining results…";
-    if (ev.kind === "agent:step" && ev.status === "running") return `${ev.goal} (${ev.stepKind})`;
+    if (ev.kind === "agent:step" && ev.status === "running") return `${ev.goal} (${stepKindLabel(ev.stepKind)})`;
     if (ev.kind === "agent:plan") return "Planning…";
   }
   if (turn.pendingAsk) return "Waiting for your answer…";

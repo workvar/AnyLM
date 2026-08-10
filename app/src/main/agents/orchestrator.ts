@@ -1,4 +1,5 @@
 import { nextWave } from "./scheduler";
+import { insertFactChecks } from "./fact-check-insert";
 import type { AgentPlan, AgentStep, StepResult } from "./types";
 
 export interface OrchestratorDeps {
@@ -7,7 +8,7 @@ export interface OrchestratorDeps {
   beforeWave?: () => { maxParallel: number; softStop: boolean };
   planTurn: (userText: string) => Promise<AgentPlan | null>;
   assignKinds: (plan: AgentPlan) => AgentPlan;
-  runStep: (step: AgentStep) => Promise<StepResult>;
+  runStep: (step: AgentStep, prior: StepResult[]) => Promise<StepResult>;
   synthesize: (ctx: { userText: string }, results: StepResult[]) => Promise<string>;
   act: (event: ActivityEvent) => void;
   isCancelled: () => boolean;
@@ -30,7 +31,7 @@ export async function runOrchestratedTurn(
     return { text: "", fellBack: true };
   }
 
-  const assigned = deps.assignKinds(plan);
+  const assigned = insertFactChecks(deps.assignKinds(plan), userText);
   const steps = assigned.steps;
 
   deps.act({
@@ -75,8 +76,9 @@ export async function runOrchestratedTurn(
 
     const waveResults = await Promise.all(
       wave.map(async (step) => {
+        const prior = results.filter((r) => step.dependsOn.includes(r.id));
         try {
-          return await deps.runStep(step);
+          return await deps.runStep(step, prior);
         } catch (err) {
           return {
             id: step.id,

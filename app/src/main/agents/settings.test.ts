@@ -1,12 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import { clampKillPercent } from "../load-guard/clamp";
-import { modelForRole, resolveAgentSettings } from "./settings";
+import { modelForRole, modelForStepKind, resolveAgentSettings } from "./settings";
 import type { AgentSettings } from "./types";
 
 const base: AgentSettings = {
   enabled: true,
   maxParallel: 2,
-  models: { planner: null, router: "tiny", toolExecutor: null, synthesize: null },
+  models: {
+    planner: null,
+    router: "tiny",
+    toolExecutor: "tool-model",
+    synthesize: null,
+    research: null,
+    factCheck: null,
+    summarize: null,
+    document: null,
+  },
   loadProtection: { enabled: true, killPercent: 90 },
 };
 
@@ -24,12 +33,40 @@ describe("modelForRole", () => {
   });
 });
 
+describe("modelForStepKind", () => {
+  test("research falls back through toolExecutor", () => {
+    expect(modelForStepKind(base, "research", "chat")).toBe("tool-model");
+  });
+
+  test("fact_check falls back to chat", () => {
+    expect(modelForStepKind(base, "fact_check", "chat")).toBe("chat");
+  });
+
+  test("document uses document model when set", () => {
+    const agents = {
+      ...base,
+      models: { ...base.models, document: "doc-model" },
+    };
+    expect(modelForStepKind(agents, "document", "chat")).toBe("doc-model");
+  });
+});
+
 describe("resolveAgentSettings", () => {
   test("clamps maxParallel to at least 1", () => {
     const r = resolveAgentSettings({
       agents: { ...base, maxParallel: 0 },
     } as AppSettings);
     expect(r.maxParallel).toBe(1);
+  });
+
+  test("defaults new model keys to null", () => {
+    const r = resolveAgentSettings({
+      agents: { enabled: true, maxParallel: 2, models: {} },
+    } as AppSettings);
+    expect(r.models.research).toBeNull();
+    expect(r.models.factCheck).toBeNull();
+    expect(r.models.summarize).toBeNull();
+    expect(r.models.document).toBeNull();
   });
 });
 

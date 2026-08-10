@@ -1,4 +1,12 @@
-export type AgentStepKind = "memory" | "retrieve" | "tool" | "synthesize";
+export type AgentStepKind =
+  | "memory"
+  | "retrieve"
+  | "tool"
+  | "synthesize"
+  | "research"
+  | "fact_check"
+  | "summarize"
+  | "document";
 
 export interface AgentStep {
   id: string;
@@ -22,13 +30,25 @@ export interface StepResult {
   completionTokens?: number;
 }
 
-export type AgentRole = "planner" | "router" | "toolExecutor" | "synthesize";
+export type AgentRole =
+  | "planner"
+  | "router"
+  | "toolExecutor"
+  | "synthesize"
+  | "research"
+  | "factCheck"
+  | "summarize"
+  | "document";
 
 export interface AgentModelMap {
   planner: string | null;
   router: string | null;
   toolExecutor: string | null;
   synthesize: string | null;
+  research: string | null;
+  factCheck: string | null;
+  summarize: string | null;
+  document: string | null;
 }
 
 export interface LoadProtectionSettings {

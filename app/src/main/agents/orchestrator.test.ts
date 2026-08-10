@@ -7,7 +7,7 @@ test("falls back when planner fails", async () => {
     maxParallel: 2,
     planTurn: async () => null,
     assignKinds: (p) => p,
-    runStep: async () => ({ id: "x", ok: true, output: "" }),
+    runStep: async (_step, _prior) => ({ id: "x", ok: true, output: "" }),
     synthesize: async () => "nope",
     act: () => {},
     isCancelled: () => false,
@@ -22,7 +22,7 @@ test("falls back when planner throws instead of hard-erroring", async () => {
       throw new Error("ollama down");
     },
     assignKinds: (p) => p,
-    runStep: async () => ({ id: "x", ok: true, output: "" }),
+    runStep: async (_step, _prior) => ({ id: "x", ok: true, output: "" }),
     synthesize: async () => "nope",
     act: () => {},
     isCancelled: () => false,
@@ -57,6 +57,32 @@ test("skips synthesize when cancelled right after the last wave", async () => {
   expect(synthesizeCalled).toBe(false);
   expect(r.fellBack).toBe(false);
   expect(r.text).toBe("");
+});
+
+test("passes completed dependency outputs to runStep", async () => {
+  const seen: { stepId: string; prior: StepResult[] }[] = [];
+  await runOrchestratedTurn("do stuff", {
+    maxParallel: 2,
+    planTurn: async () => ({
+      steps: [
+        { id: "research", goal: "Research X", dependsOn: [], kind: "research" },
+        { id: "fc", goal: "Fact check claims", dependsOn: ["research"], kind: "fact_check" },
+        { id: "final", goal: "Write reply", dependsOn: ["fc"], kind: "synthesize" },
+      ],
+    }),
+    assignKinds: (p) => p,
+    runStep: async (step, prior) => {
+      seen.push({ stepId: step.id, prior: [...prior] });
+      return { id: step.id, ok: true, output: `${step.id}-out` };
+    },
+    synthesize: async () => "done",
+    act: () => {},
+    isCancelled: () => false,
+  });
+  expect(seen.find((s) => s.stepId === "research")?.prior).toEqual([]);
+  expect(seen.find((s) => s.stepId === "fc")?.prior).toEqual([
+    { id: "research", ok: true, output: "research-out" },
+  ]);
 });
 
 test("runs independent steps with maxParallel and emits events", async () => {
@@ -111,6 +137,29 @@ test("beforeWave forces maxParallel 1 for the wave", async () => {
   // With maxParallel 1, first wave is only one of the independent steps.
   expect(started[0] === "a" || started[0] === "b").toBe(true);
   expect(started.length).toBe(2);
+});
+
+test("inserts fact_check after assignKinds before agent:plan", async () => {
+  let planSteps: { id: string; goal: string; stepKind?: string }[] = [];
+  await runOrchestratedTurn("Research X thoroughly", {
+    maxParallel: 2,
+    planTurn: async () => ({
+      steps: [{ id: "1", goal: "Research X", dependsOn: [], kind: "research" }],
+    }),
+    assignKinds: (p) => ({
+      steps: [
+        ...p.steps,
+        { id: "2", goal: "Write reply", dependsOn: ["1"], kind: "synthesize" },
+      ],
+    }),
+    runStep: async (step) => ({ id: step.id, ok: true, output: "done" }),
+    synthesize: async () => "final",
+    act: (e) => {
+      if (e.kind === "agent:plan") planSteps = e.steps;
+    },
+    isCancelled: () => false,
+  });
+  expect(planSteps.some((s) => s.stepKind === "fact_check")).toBe(true);
 });
 
 test("beforeWave softStop skips remaining waves", async () => {

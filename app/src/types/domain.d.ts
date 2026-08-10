@@ -12,6 +12,10 @@ interface AgentModelMap {
   router: string | null;
   toolExecutor: string | null;
   synthesize: string | null;
+  research: string | null;
+  factCheck: string | null;
+  summarize: string | null;
+  document: string | null;
 }
 
 interface LoadProtectionSettings {

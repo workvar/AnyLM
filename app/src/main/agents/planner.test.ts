@@ -16,6 +16,24 @@ test("planTurn returns plan from generate", async () => {
   expect(plan?.steps.length).toBe(2);
 });
 
+test("prompt lists Knowledge kinds", async () => {
+  let prompt = "";
+  await planTurn({
+    model: "m",
+    userText: "Research X",
+    preferentialKnowledge: true,
+    generate: async (_m, p) => {
+      prompt = p;
+      return JSON.stringify({
+        steps: [{ id: "1", goal: "Research X", dependsOn: [], kind: "research" }],
+      });
+    },
+  });
+  expect(prompt).toMatch(/research/);
+  expect(prompt).toMatch(/fact_check/);
+  expect(prompt).toMatch(/Prefer Knowledge/i);
+});
+
 test("planTurn repairs once then null", async () => {
   let n = 0;
   const plan = await planTurn({
