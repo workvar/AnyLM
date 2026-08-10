@@ -138,17 +138,14 @@ export function initAttach() {
   };
 }
 
-// Shape sent to the backend with a chat turn.
-export function getAttachments() {
-  return {
-    docs: attachments.filter((a) => a.kind === "doc").map((a) => ({ name: a.name, text: a.text })),
-    images: attachments.filter((a) => a.kind === "image").map((a) => a.base64),
-  };
-}
-
-// Data URLs of attached images, for showing thumbnails in the chat bubble.
-export function getImageThumbs() {
-  return attachments.filter((a) => a.kind === "image").map((a) => a.dataUrl);
+/** Snapshot pending tray items for persistence into state.chat. */
+export function snapshotPending() {
+  return attachments.map((a) => ({
+    kind: a.kind as "image" | "doc",
+    name: a.name as string,
+    text: a.text as string | undefined,
+    dataUrl: a.dataUrl as string | undefined,
+  }));
 }
 
 export function hasAttachments() {

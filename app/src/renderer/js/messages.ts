@@ -7,6 +7,27 @@ export function askArtifact({ question, answer }: { question: string; answer: st
   return { role: "ask", question, answer };
 }
 
+export function chatAttachment({
+  kind,
+  name,
+  dataUrl,
+  text,
+}: {
+  kind: "image" | "doc";
+  name: string;
+  dataUrl?: string;
+  text?: string;
+}): ChatAttachmentMessage {
+  return {
+    role: "attachment",
+    kind,
+    name,
+    ...(dataUrl !== undefined ? { dataUrl } : {}),
+    ...(text !== undefined ? { text } : {}),
+    createdAt: Date.now(),
+  };
+}
+
 export function isLlmMessage(m: StoredMessage): m is ChatMessage {
   return m.role === "system" || m.role === "user" || m.role === "assistant" || m.role === "tool";
 }

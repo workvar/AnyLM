@@ -81,11 +81,7 @@ interface ChatPayload {
   projectId?: string | null;
   threadId?: string | null;
   model: string;
-  messages: ChatMessage[];
-  attachments?: {
-    docs?: Array<{ name: string; text: string }>;
-    images?: string[];
-  };
+  messages: StoredMessage[];
   useTools?: boolean;
   skillOverrides?: string[];
 }

@@ -57,6 +57,7 @@ import * as analytics from "./analytics";
 import { analyticsAvailable as isAnalyticsAvailable } from "./analytics/availability";
 import type { AnalyticsCategory } from "./analytics";
 import { env } from "./env";
+import { conversationAttachments } from "./chat-attachments";
 
 const ANALYTICS_CATEGORIES = new Set<AnalyticsCategory>([
   "productUsage",
@@ -729,7 +730,7 @@ function registerIpc() {
   // Streaming chat
   ipcMain.on("chat:start", async (
     event,
-    { id, projectId, threadId, model, messages, attachments, useTools, skillOverrides }
+    { id, projectId, threadId, model, messages, useTools, skillOverrides }
   ) => {
     const send = (channel, payload) => {
       if (!event.sender.isDestroyed()) event.sender.send(channel, payload);
@@ -759,6 +760,7 @@ function registerIpc() {
 
       const lastUser = [...messages].reverse().find((m) => m.role === "user");
       const extras = Array.isArray(skillOverrides) ? skillOverrides.filter(Boolean) : [];
+      const derived = conversationAttachments(messages);
 
       // --- Governance: pre-flight limits/budget/rate/model, then content. ---
       const warnings = [];
@@ -783,13 +785,11 @@ function registerIpc() {
         warnings.push(...verdict.warnings);
         lastUser.content = verdict.text; // may be redacted
       }
-      if (attachments && attachments.docs) {
-        for (const d of attachments.docs) {
-          const v = await governance.evaluatePrompt(d.text || "");
-          if (v.blocked) throw new Error(`${v.reason} (attachment "${d.name}")`);
-          warnings.push(...v.warnings);
-          d.text = v.text;
-        }
+      for (const d of derived.docs) {
+        const v = await governance.evaluatePrompt(d.text || "");
+        if (v.blocked) throw new Error(`${v.reason} (attachment "${d.name}")`);
+        warnings.push(...v.warnings);
+        d.text = v.text;
       }
       if (warnings.length) send("chat:governance", { id, warnings });
 
@@ -839,8 +839,8 @@ function registerIpc() {
       // asked to "summarize this document" has no way to see the document
       // text at all (it only gets step.goal), and produces a confidently
       // wrong answer instead of using the attachment.
-      if (attachments && attachments.docs && attachments.docs.length) {
-        const docsBlock = attachments.docs
+      if (derived.docs.length) {
+        const docsBlock = derived.docs
           .map((d) => `Attached document "${d.name}":\n${d.text}`)
           .join("\n\n");
         blocks.push(docsBlock);
@@ -909,13 +909,17 @@ function registerIpc() {
       const system = blocks.join("\n\n---\n\n");
       const full = [];
       if (system) full.push({ role: "system", content: system });
-      for (const m of messages) full.push(m);
+      for (const m of messages) {
+        if (m.role === "system" || m.role === "user" || m.role === "assistant" || m.role === "tool") {
+          full.push(m);
+        }
+      }
 
       // Attach images to the latest user message (vision models).
-      if (attachments && attachments.images && attachments.images.length) {
+      if (derived.images.length) {
         for (let i = full.length - 1; i >= 0; i--) {
           if (full[i].role === "user") {
-            full[i] = { ...full[i], images: attachments.images };
+            full[i] = { ...full[i], images: derived.images };
             break;
           }
         }
@@ -1139,11 +1143,7 @@ function registerIpc() {
           text: lastText,
           useTools: !!useTools,
           hasProject: !!project,
-          hasAttachments: !!(
-            attachments &&
-            ((attachments.docs && attachments.docs.length) ||
-              (attachments.images && attachments.images.length))
-          ),
+          hasAttachments: !!(derived.docs.length || derived.images.length),
         });
         if (lean === "complex") {
           useMulti = true;
