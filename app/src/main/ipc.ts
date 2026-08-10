@@ -26,6 +26,12 @@ import { lookupCodingDocs } from "./project-coding/docs";
 import { buildProjectSummary, type ToolOutcome } from "./project-coding/summary";
 import * as webSearch from "./tools/web-search";
 import * as documentIntent from "./documents/intent";
+import {
+  DOCUMENT_GENERATE_NUDGE,
+  recordToolRound,
+  shouldNudgeDocumentGenerate,
+  type DocNudgeState,
+} from "./documents/doc-nudge";
 import * as proxy from "./proxy/server";
 import * as projectFiles from "./project-files";
 import * as artifacts from "./artifacts";
@@ -765,6 +771,8 @@ function registerIpc() {
       const lastUser = [...messages].reverse().find((m) => m.role === "user");
       const extras = Array.isArray(skillOverrides) ? skillOverrides.filter(Boolean) : [];
       const derived = conversationAttachments(messages);
+      let wantsDocument = false;
+      const fetchedUrls = new Set<string>();
 
       // --- Governance: pre-flight limits/budget/rate/model, then content. ---
       const warnings = [];
@@ -898,6 +906,7 @@ function registerIpc() {
         // instead of pasting the document into its reply.
         if (lastUser) {
           const wantedFormat = documentIntent.detect(lastUser.content);
+          wantsDocument = !!wantedFormat;
           if (wantedFormat) {
             const docBlock = documentIntent.promptBlock(wantedFormat);
             blocks.push(docBlock);
@@ -1295,6 +1304,12 @@ function registerIpc() {
       let totalCompletion = 0;
       let rounds = 0;
       let stopped = false;
+      let docNudge: DocNudgeState = {
+        documentIntent: wantsDocument,
+        researchOnlyRounds: 0,
+        attemptedGenerate: false,
+        nudged: false,
+      };
       for (;;) {
         if (cancelledChats.has(id)) {
           cancelledChats.delete(id);
@@ -1384,6 +1399,7 @@ function registerIpc() {
                 // Generated documents surface as a clickable file card in the chat.
                 onFile: (file) => send("chat:file", { id, ...file }),
                 ask,
+                fetchedUrls,
               });
           toolsRun += 1;
           act({
@@ -1408,6 +1424,16 @@ function registerIpc() {
             act({ kind: "status", text: "Generating code" });
           }
           full.push({ role: "tool", content: String(output), tool_name: fname });
+        }
+        // Soft nudge: after two research-only rounds on a document turn,
+        // remind the model to call generate_document (at most once).
+        docNudge = recordToolRound(
+          docNudge,
+          calls.map((c) => c.function?.name || "")
+        );
+        if (shouldNudgeDocumentGenerate(docNudge)) {
+          full.push({ role: "system", content: DOCUMENT_GENERATE_NUDGE });
+          docNudge = { ...docNudge, nudged: true };
         }
       }
       let text = (result && result.text) || "";

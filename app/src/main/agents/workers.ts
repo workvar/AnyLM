@@ -15,6 +15,12 @@ import { createMutex } from "./mutex";
 import { allowlistFor, filterToolDefs } from "./specialists/allowlists";
 import { specialistPrompt } from "./specialists/prompts";
 import type { AgentStep, AgentStepKind, StepResult } from "./types";
+import {
+  DOCUMENT_GENERATE_NUDGE,
+  recordToolRound,
+  shouldNudgeDocumentGenerate,
+  type DocNudgeState,
+} from "../documents/doc-nudge";
 
 const RETRIEVE_CHAR_CAP = 6000;
 const MAX_TOOL_ROUNDS = 3;
@@ -153,6 +159,22 @@ async function runTool(
   let lastText = "";
   let promptTokens = 0;
   let completionTokens = 0;
+  const fetchedUrls = new Set<string>();
+  const kindAllow =
+    step.kind === "research" ||
+    step.kind === "fact_check" ||
+    step.kind === "summarize" ||
+    step.kind === "document"
+      ? allowlistFor(step.kind)
+      : null;
+  const wantsDocument =
+    step.kind === "document" || (!!kindAllow && kindAllow.includes("generate_document"));
+  let docNudge: DocNudgeState = {
+    documentIntent: wantsDocument,
+    researchOnlyRounds: 0,
+    attemptedGenerate: false,
+    nudged: false,
+  };
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     if (deps.isCancelled()) break;
 
@@ -189,6 +211,7 @@ async function runTool(
             projectId: deps.project ? deps.project.id : null,
             onFile: deps.onFile || (() => {}),
             ask,
+            fetchedUrls,
           });
       deps.onToolCall?.();
 
@@ -202,6 +225,15 @@ async function runTool(
         output: String(output).slice(0, 400),
       });
       messages.push({ role: "tool", content: String(output), tool_name: fname });
+    }
+    // Soft nudge after research-only rounds on document specialists (once).
+    docNudge = recordToolRound(
+      docNudge,
+      calls.map((c) => c.function?.name || "")
+    );
+    if (shouldNudgeDocumentGenerate(docNudge)) {
+      messages.push({ role: "system", content: DOCUMENT_GENERATE_NUDGE });
+      docNudge = { ...docNudge, nudged: true };
     }
   }
 

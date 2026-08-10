@@ -145,8 +145,17 @@ async function execBuiltin(tool, args, context) {
     }
     case "run_shell":
       return runShell(String(args.command || ""));
-    case "http_fetch":
-      return httpFetch(String(args.url || ""), String(args.method || "GET").toUpperCase(), args.body);
+    case "http_fetch": {
+      const url = String(args.url || "");
+      const method = String(args.method || "GET").toUpperCase();
+      const duplicate = !!(url && context?.fetchedUrls?.has(url));
+      const body = await httpFetch(url, method, args.body);
+      if (url) context?.fetchedUrls?.add(url);
+      if (duplicate) {
+        return `Note: this URL was already fetched earlier this turn.\n\n${body}`;
+      }
+      return body;
+    }
     default:
       return `Error: unknown builtin "${tool.name}"`;
   }
@@ -172,8 +181,9 @@ async function execCustom(tool, args) {
 // confirm(tool, args) → Promise<boolean>; only invoked for risky calls.
 // allow: optional Set of names permitted even when globally disabled
 // (tools referenced by an enabled skill).
-// context: { projectId, onFile, ask } — chat context for tools that write
-// project files or need an answer from the user.
+// context: { projectId, onFile, ask, fetchedUrls? } — chat context for tools
+// that write project files, need an answer from the user, or soft-dedupe
+// http_fetch URLs within a turn.
 async function execute(name, args, confirm, allow, context) {
   const tool = registry.get(name);
   const allowed = tool && (tool.enabled !== false || (allow && allow.has(name)));
