@@ -696,7 +696,7 @@
                 <button id="sidebar-toggle-customize" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
                 <h1 class="view-title">Customize</h1>
               </header>
-              <div class="settings-panel-body">
+              <div class="settings-panel-body customize-body">
                 <p class="settings-panel-sub">
                 Context about you, added to every chat in every project. Project
                 instructions still apply on top of this.
@@ -712,20 +712,54 @@
                 </label>
                 </div>
 
-                <label class="field-label">What should the model call you?</label>
-                <input id="uc-name" class="auth-input" placeholder="Yash" autocomplete="off" />
+                <div class="customize-wizard" data-step="1">
+                  <div class="customize-steps" role="list" aria-label="Customize steps">
+                    <span class="customize-step-pill" data-step-n="1" aria-current="step">1</span>
+                    <span class="customize-step-sep" aria-hidden="true">—</span>
+                    <span class="customize-step-pill" data-step-n="2">2</span>
+                    <span class="customize-step-sep" aria-hidden="true">—</span>
+                    <span class="customize-step-pill" data-step-n="3">3</span>
+                  </div>
+                  <p class="customize-step-title" id="customize-step-title">Who you are</p>
 
-                <label class="field-label">About you</label>
-                <textarea id="uc-about" placeholder="Role, background, what you're responsible for…"></textarea>
+                  <div class="customize-step" data-step-panel="1">
+                    <div class="customize-field">
+                      <label class="field-label" for="uc-name">What should the model call you?</label>
+                      <input id="uc-name" class="auth-input" placeholder="Yash" autocomplete="off" />
+                    </div>
+                    <div class="customize-field">
+                      <label class="field-label" for="uc-about">About you</label>
+                      <textarea id="uc-about" class="auth-input customize-textarea" rows="4"
+                        placeholder="Role, background, what you're responsible for…"></textarea>
+                    </div>
+                  </div>
 
-                <label class="field-label">What you work on</label>
-                <textarea id="uc-work" placeholder="Products, stacks, teams, recurring projects…"></textarea>
+                  <div class="customize-step hidden" data-step-panel="2">
+                    <div class="customize-field">
+                      <label class="field-label" for="uc-work">What you work on</label>
+                      <textarea id="uc-work" class="auth-input customize-textarea" rows="4"
+                        placeholder="Products, stacks, teams, recurring projects…"></textarea>
+                    </div>
+                  </div>
 
-                <label class="field-label">How replies should be written</label>
-                <textarea id="uc-style" placeholder="Concise. No preamble. Code in small modules…"></textarea>
+                  <div class="customize-step hidden" data-step-panel="3">
+                    <div class="customize-field">
+                      <label class="field-label" for="uc-style">How replies should be written</label>
+                      <textarea id="uc-style" class="auth-input customize-textarea" rows="4"
+                        placeholder="Concise. No preamble. Code in small modules…"></textarea>
+                    </div>
+                    <div class="customize-field">
+                      <label class="field-label" for="uc-extra">Anything else</label>
+                      <textarea id="uc-extra" class="auth-input customize-textarea" rows="4"
+                        placeholder="Constraints, preferences, things to avoid…"></textarea>
+                    </div>
+                  </div>
 
-                <label class="field-label">Anything else</label>
-                <textarea id="uc-extra" placeholder="Constraints, preferences, things to avoid…"></textarea>
+                  <div class="customize-nav">
+                    <button type="button" id="customize-back" class="ghost" disabled>Back</button>
+                    <button type="button" id="customize-next" class="primary">Next</button>
+                  </div>
+                </div>
 
                 <div class="settings-panel-foot"><span id="uc-saved" class="modal-note"></span></div>
               </div>

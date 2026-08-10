@@ -3925,6 +3925,84 @@ button.full {
   min-height: 1.2em;
 }
 
+.customize-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 14px;
+  width: 100%;
+}
+
+.customize-textarea.auth-input,
+textarea.customize-textarea {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  box-sizing: border-box;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 11px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.customize-wizard {
+  margin-top: 8px;
+}
+
+.customize-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.customize-step-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.customize-step-pill.is-current {
+  background: var(--accent-grad);
+  color: var(--accent-contrast);
+  border-color: transparent;
+}
+
+.customize-step-pill.is-done {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.customize-step-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.customize-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.customize-nav .primary,
+.customize-nav .ghost {
+  min-height: 32px;
+}
+
 /* ===== Clarifying question ============================================= */
 .ask-card {
   align-self: stretch;
