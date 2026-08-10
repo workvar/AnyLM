@@ -1360,6 +1360,12 @@ select {
   border-color: transparent;
 }
 
+#chat-form #workspace-btn.active {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--text) 22%, var(--border));
+  background: color-mix(in srgb, var(--panel-2) 86%, var(--text) 10%);
+}
+
 #chat-form #workspace-label.chip {
   max-width: 160px;
   padding: 0 8px 0 10px;
