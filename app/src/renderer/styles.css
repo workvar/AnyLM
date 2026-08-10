@@ -1304,13 +1304,87 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 .composer-left {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1;
 }
+
+#chat-form #attach-btn,
+#chat-form #tools-toggle,
+#chat-form #workspace-btn,
+#chat-form #workspace-label.chip,
+#chat-form .composer-model .dropdown-trigger,
+#chat-form #send-btn {
+  box-sizing: border-box;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#chat-form #attach-btn,
+#chat-form #workspace-btn {
+  width: 32px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+#chat-form #tools-toggle {
+  width: auto;
+  padding: 0 10px;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+#chat-form #tools-toggle .tools-toggle-label,
+#chat-form #tools-toggle .tools-toggle-icon {
+  color: inherit;
+}
+
+#chat-form #tools-toggle.tools-toggle.active,
+#chat-form #tools-toggle.active {
+  background: var(--accent-grad);
+  color: var(--accent-contrast);
+  border-color: transparent;
+}
+
+#chat-form #workspace-label.chip {
+  max-width: 160px;
+  padding: 0 8px 0 10px;
+  overflow: hidden;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+#chat-form #workspace-label .chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+#chat-form .composer-model .dropdown-trigger {
+  padding: 0 8px 0 11px;
+  max-width: 180px;
+}
+
+#chat-form #send-btn {
+  padding: 0 14px;
+  flex-shrink: 0;
+}
+
 /* Model picker inside the composer opens upward and aligns left. */
 .composer-model .dropdown-menu {
   top: auto;
