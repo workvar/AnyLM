@@ -258,7 +258,7 @@ body {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 0 10px;
   height: 36px;
   border-radius: 7px;
@@ -268,11 +268,15 @@ body {
   overflow: hidden;
 }
 .nav-list li > .conv-dot {
-  /* Overlay the activity indicator so idle dots don't indent titles past "Chats". */
-  position: absolute;
-  left: 2px;
-  top: 50%;
-  flex: 0 0 auto;
+  position: static;
+  left: auto;
+  top: auto;
+  flex: 0 0 12px;
+  width: 12px;
+  height: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
 }
 .nav-list li > .conv-title {
@@ -4059,7 +4063,7 @@ button.full {
   height: 7px;
   border-radius: 50%;
   background: transparent;
-  transform: translateY(-50%);
+  transform: none;
 }
 .is-working .conv-dot {
   background: var(--accent);
@@ -4073,11 +4077,11 @@ button.full {
   0%,
   100% {
     opacity: 1;
-    transform: translateY(-50%) scale(1);
+    transform: scale(1);
   }
   50% {
     opacity: 0.35;
-    transform: translateY(-50%) scale(0.72);
+    transform: scale(0.72);
   }
 }
 @media (prefers-reduced-motion: reduce) {
