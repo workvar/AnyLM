@@ -26,6 +26,7 @@ import { lookupCodingDocs } from "./project-coding/docs";
 import { buildProjectSummary, type ToolOutcome } from "./project-coding/summary";
 import * as webSearch from "./tools/web-search";
 import * as documentIntent from "./documents/intent";
+import { documentToolDefs } from "./documents/auto-tools";
 import {
   DOCUMENT_GENERATE_NUDGE,
   recordToolRound,
@@ -863,6 +864,19 @@ function registerIpc() {
       // collected into `toolInstructionBlocks` so the multi-agent tool
       // worker (workers.ts) gets the same tool-usage guidance the
       // single-agent loop does — not just the tool definitions themselves.
+      // "Create a PDF" etc: nudge the model to call generate_document
+      // instead of pasting the document into its reply. Detected OUTSIDE the
+      // tools gate on purpose — with tools off the model has no file tool at
+      // all and replies "I can't create PDFs", which is the bug this fixes.
+      const wantedFormat = lastUser ? documentIntent.detect(lastUser.content) : null;
+      wantsDocument = !!wantedFormat;
+      const docAutoTools = !useTools && !!wantedFormat;
+      if (wantedFormat) {
+        const docBlock = documentIntent.promptBlock(wantedFormat);
+        blocks.push(docBlock);
+        toolInstructionBlocks.push(docBlock);
+      }
+
       if (useTools) {
         if (projectCoding) {
           act({ kind: "status", text: "Setting up project" });
@@ -902,17 +916,6 @@ function registerIpc() {
           blocks.push(wsBlock);
           toolInstructionBlocks.push(wsBlock);
         }
-        // "Create a PDF" etc: nudge the model to call generate_document
-        // instead of pasting the document into its reply.
-        if (lastUser) {
-          const wantedFormat = documentIntent.detect(lastUser.content);
-          wantsDocument = !!wantedFormat;
-          if (wantedFormat) {
-            const docBlock = documentIntent.promptBlock(wantedFormat);
-            blocks.push(docBlock);
-            toolInstructionBlocks.push(docBlock);
-          }
-        }
       }
 
       // Personal context the user set in Customize, applied to every chat.
@@ -951,6 +954,8 @@ function registerIpc() {
           .filter((d) => !seen.has(d.function.name));
         toolDefs = [...base, ...fromSkills];
         skillToolAllow = skillsRegistry.customToolNames(extras);
+      } else if (docAutoTools) {
+        toolDefs = documentToolDefs(toolsRegistry.ollamaTools());
       }
       activityStarted = true;
 

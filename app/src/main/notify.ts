@@ -1,7 +1,8 @@
 // System notifications, gated by the user's Settings toggles.
-import { app, Notification, BrowserWindow, nativeImage } from "electron";
+import { app, Notification, nativeImage } from "electron";
 import * as path from "path";
 import * as settings from "./settings";
+import { focusWindow } from "./window";
 
 type Kind = "usage" | "renewal" | "report" | "attention";
 
@@ -21,15 +22,8 @@ function appIcon(): Electron.NativeImage | undefined {
   return icon.isEmpty() ? undefined : icon;
 }
 
-// Bring the window forward when a notification is clicked. Notifications that
-// ask for input are useless if they cannot get the user back to the chat.
-function focusWindow(): void {
-  const win = BrowserWindow.getAllWindows()[0];
-  if (!win || win.isDestroyed()) return;
-  if (win.isMinimized()) win.restore();
-  win.show();
-  win.focus();
-}
+// Notifications that ask for input are useless if they cannot get the user
+// back to the chat, so a click raises the window (see ./window).
 
 function send(kind: Kind, title: string, body: string): boolean {
   const s = settings.read();

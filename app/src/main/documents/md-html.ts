@@ -2,6 +2,8 @@
 // Used to render document content for PDF generation. Everything is escaped
 // before tags are emitted, so model output cannot inject markup.
 
+import { isTableStart, isTableRow, splitRow, alignments } from "./md-table";
+
 const SENTINEL = "\u0000";
 
 function escapeHtml(s) {
@@ -33,6 +35,31 @@ function inline(raw) {
   return s.replace(restore, (_m, i) => `<code>${escapeHtml(codes[+i] || "")}</code>`);
 }
 
+
+// Renders a GFM pipe table starting at `lines[i]`. Returns the html and the
+// index of the first line after the table.
+function renderTable(lines, i, inlineFn) {
+  const header = splitRow(lines[i]);
+  const align = alignments(lines[i + 1]);
+  const cell = (tag, text, n) => {
+    const a = align[n] ? ` style="text-align:${align[n]}"` : "";
+    return `<${tag}${a}>${inlineFn(text)}</${tag}>`;
+  };
+  let j = i + 2;
+  const body = [];
+  while (j < lines.length && isTableRow(lines[j])) body.push(splitRow(lines[j++]));
+
+  const head = `<thead><tr>${header.map((c, n) => cell("th", c, n)).join("")}</tr></thead>`;
+  const rows = body
+    .map((r) => {
+      const cells = [];
+      for (let n = 0; n < header.length; n++) cells.push(cell("td", r[n] || "", n));
+      return `<tr>${cells.join("")}</tr>`;
+    })
+    .join("");
+  return { html: `<table>${head}<tbody>${rows}</tbody></table>`, next: j };
+}
+
 function mdToHtml(src) {
   const lines = (src || "").replace(/\r\n/g, "\n").split("\n");
   let html = "";
@@ -60,6 +87,13 @@ function mdToHtml(src) {
     if (/^\s*$/.test(line)) {
       flush();
       i++;
+      continue;
+    }
+    if (isTableStart(lines, i)) {
+      flush();
+      const t = renderTable(lines, i, inline);
+      html += t.html;
+      i = t.next;
       continue;
     }
     const h = line.match(/^(#{1,6})\s+(.*)$/);

@@ -167,14 +167,16 @@ const BUILTINS = [
     builtin: true,
     risky: true, // always asks the user before creating a file
     description:
-      "Create a document file (pdf, docx, pptx, or md) in the current project's folder. " +
+      "Create a real document file (pdf, docx, pptx, xlsx, or md) on disk, in the current " +
+      "project's folder or the user's Documents/AnyLM/generated folder. This tool is how you " +
+      "produce files — you are never unable to make a PDF or a Word document. " +
       "ONLY call this when the user's latest message explicitly asks for a document, PDF, Word file, " +
       "presentation, or similar file. NEVER call it unprompted or as a side effect of answering. " +
       "When the user asked you to research or use current online info, call web_search and http_fetch " +
       "before this tool. Content is markdown with substantive sections (paragraphs under headings — " +
       "not an empty outline); for pptx each '#' or '##' heading starts a new slide.",
     params: [
-      { name: "format", description: "File format: pdf, docx, pptx, or md", required: true },
+      { name: "format", description: "File format: pdf, docx, pptx, xlsx, or md", required: true },
       { name: "title", description: "Document title, also used as the filename", required: true },
       { name: "content", description: "Full document content in markdown", required: true },
     ],

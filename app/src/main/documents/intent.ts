@@ -12,7 +12,11 @@ const FORMAT_WORDS: Array<[string, RegExp]> = [
 
 // Verbs that mean "produce a file", as opposed to talking about one.
 const WANTS =
-  /\b(make|create|generate|build|write|produce|export|save|draft|prepare|turn (this|that|it) into|give me|send me|i (want|need)|can you (make|create|write|prepare))\b/i;
+  /\b(make|create|generate|build|write|produce|export|save|draft|prepare|compile|convert|put together|turn (this|that|it) into|give me|send me|i (want|need)|can (you|i) (make|create|write|prepare|get|have))\b/i;
+
+// "as a PDF", "into a spreadsheet" — a format request without an explicit verb.
+const AS_FORMAT =
+  /\b(as|in|into|to)\s+(a|an)?\s*(pdf|docx?|word|excel|xlsx|spreadsheet|presentation|slides?|deck|markdown)\b/i;
 
 // Phrases that mean the user is asking about a file, not for one.
 const NOT_WANTS = /\b(what is|how do i|explain|difference between|instead of)\b/i;
@@ -21,7 +25,7 @@ const NOT_WANTS = /\b(what is|how do i|explain|difference between|instead of)\b/
 function detect(text: unknown): string | null {
   const s = String(text || "");
   if (!s.trim() || NOT_WANTS.test(s)) return null;
-  if (!WANTS.test(s)) return null;
+  if (!WANTS.test(s) && !AS_FORMAT.test(s)) return null;
   for (const [format, re] of FORMAT_WORDS) {
     if (re.test(s)) return format;
   }
@@ -35,6 +39,8 @@ function detect(text: unknown): string | null {
 function promptBlock(format: string): string {
   return (
     `The user is asking for a ${format.toUpperCase()} file. ` +
+    "You CAN create files: the generate_document tool writes them to disk. " +
+    "Never reply that you are unable to create or generate files. " +
     `Always call generate_document with format "${format}", a short title, and full markdown content. ` +
     `When the topic needs current or researched facts, call web_search, then http_fetch on 1–2 solid URLs before generate_document. ` +
     `Every heading must have real paragraphs or detailed steps (commands/examples where relevant) — ` +

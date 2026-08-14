@@ -57,14 +57,13 @@
 
         <form id="auth-form">
           <input id="auth-name" class="auth-input hidden" placeholder="Name" autocomplete="name" />
-          <input id="auth-email" class="auth-input" type="email" placeholder="Email" autocomplete="email" />
+          <input id="auth-email" class="auth-input" type="email" placeholder="Email" autocomplete="email" aria-label="Email" />
           <input
             id="auth-password"
             class="auth-input"
             type="password"
             placeholder="Password"
-            autocomplete="current-password"
-          />
+            autocomplete="current-password" aria-label="Password" />
           <div id="auth-error" class="auth-error" role="alert"></div>
           <button id="auth-submit" type="submit" class="primary full">Sign in</button>
         </form>
@@ -76,6 +75,7 @@
     </div>
 
     <div id="app" class="hidden">
+      <a class="skip-link" href="#main">Skip to main content</a>
       <div id="ollama-setup-banner" class="ollama-setup-banner hidden" role="status">
         <div class="ollama-setup-banner-message">
           <span id="ollama-setup-banner-text"></span>
@@ -87,7 +87,7 @@
         </div>
       </div>
 
-      <aside id="sidebar">
+      <aside id="sidebar" aria-label="Chats and navigation">
         <div class="brand">
           <span class="logo">
             <span class="brand-badge" aria-hidden="true">
@@ -100,8 +100,8 @@
             AnyLM
           </span>
           <span class="status-dots">
-            <span id="status-dot" class="dot" title="Ollama status"></span>
-            <span id="chroma-dot" class="dot" title="Memory backend (Chroma) status"></span>
+            <span id="status-dot" class="dot" role="img" title="Ollama status" aria-label="Ollama status"></span>
+            <span id="chroma-dot" class="dot" role="img" title="Memory backend (Chroma) status" aria-label="Memory backend status"></span>
           </span>
         </div>
         <button id="new-chat-btn" class="primary">＋ New chat</button>
@@ -124,7 +124,7 @@
           Artifacts
         </button>
         <div class="side-search">
-          <input id="sidebar-search" type="search" placeholder="Search chats…" autocomplete="off" />
+          <input id="sidebar-search" type="search" placeholder="Search chats…" autocomplete="off" aria-label="Search chats…" />
         </div>
 
         <div class="side-scroll">
@@ -145,7 +145,7 @@
         </div>
       </aside>
 
-      <main id="main">
+      <main id="main" tabindex="-1">
         <!-- Projects grid -->
         <section id="projects-view">
           <header class="view-toolbar">
@@ -161,7 +161,7 @@
             </div>
           </header>
           <div class="view-search">
-            <input id="projects-search" type="text" placeholder="Search projects…" autocomplete="off" />
+            <input id="projects-search" type="text" placeholder="Search projects…" autocomplete="off" aria-label="Search projects…" />
           </div>
           <div id="projects-grid" class="card-grid"></div>
         </section>
@@ -207,9 +207,9 @@
             <header id="convo-header">
               <button id="sidebar-toggle" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
               <button id="convo-back" class="icon-btn" title="Back" aria-label="Back">‹</button>
-              <input id="convo-name" class="name-input" />
+              <input id="convo-name" class="name-input" aria-label="Conversation title" />
             </header>
-            <div id="messages"></div>
+            <div id="messages" role="log" aria-live="polite" aria-label="Conversation messages"></div>
             <div id="ask-dock" class="ask-dock hidden"></div>
             <div id="working-strip" class="working-strip hidden" aria-live="polite">
               <div class="working-strip-main">
@@ -225,28 +225,28 @@
             <div id="ctx-meter" class="ctx-meter hidden">
               <div class="ctx-track"><div id="ctx-bar" class="ctx-bar"></div></div>
               <span id="ctx-text" class="ctx-text"></span>
-              <button id="ctx-compact" class="ghost small hidden" type="button" title="Summarize and continue in a new chat">Compact</button>
+              <button id="ctx-compact" class="ghost small hidden" type="button" title="Summarize and continue in a new chat" aria-label="Compact: summarize and continue in a new chat">Compact</button>
             </div>
             <div id="web-research-hint" class="web-research-hint hidden" role="status"></div>
             <div id="attach-chips" class="attach-chips"></div>
             <form id="chat-form">
-              <textarea id="chat-input" placeholder="Message…" rows="2"></textarea>
+              <textarea id="chat-input" placeholder="Message…" rows="2" aria-label="Message"></textarea>
               <div class="composer-toolbar">
                 <div class="composer-left">
                   <div class="attach-wrap">
-                    <button type="button" id="attach-btn" class="icon-btn" title="Attach" aria-haspopup="true" aria-expanded="false">+</button>
-                    <div id="attach-menu" class="attach-menu hidden" role="menu">
-                      <button type="button" data-attach="image">Image…</button>
-                      <button type="button" data-attach="document">Document…</button>
-                      <button type="button" data-attach="folder">Folder…</button>
-                      <button type="button" data-attach="camera">Camera…</button>
+                    <button type="button" id="attach-btn" class="icon-btn" title="Attach" aria-label="Attach a file" aria-haspopup="true" aria-expanded="false">+</button>
+                    <div id="attach-menu" class="attach-menu hidden" role="menu" aria-label="Attach">
+                      <button type="button" role="menuitem" data-attach="image">Image…</button>
+                      <button type="button" role="menuitem" data-attach="document">Document…</button>
+                      <button type="button" role="menuitem" data-attach="folder">Folder…</button>
+                      <button type="button" role="menuitem" data-attach="camera">Camera…</button>
                     </div>
                   </div>
                   <button type="button" id="tools-toggle" class="icon-btn tools-toggle" title="Enable tools" aria-label="Enable tools">
                     <span class="tools-toggle-icon" aria-hidden="true">⚒</span>
                     <span class="tools-toggle-label">Tools</span>
                   </button>
-                  <button type="button" id="workspace-btn" class="icon-btn tools-toggle" title="Choose a working folder for file tools">📁</button>
+                  <button type="button" id="workspace-btn" class="icon-btn tools-toggle" title="Choose a working folder for file tools" aria-label="Choose a working folder for file tools">📁</button>
                   <span id="workspace-label" class="chip hidden"></span>
                   <div id="model-dropdown" class="dropdown composer-model">
                     <button
@@ -264,11 +264,11 @@
                     <div id="model-lock-popover" class="model-lock-popover hidden" role="tooltip">
                       Models cannot be changed after conversation has started.
                     </div>
-                    <div id="model-menu" class="dropdown-menu hidden" role="listbox">
+                    <div id="model-menu" class="dropdown-menu hidden">
                       <div id="model-search-wrap" class="dropdown-search hidden">
-                        <input id="model-search" type="text" placeholder="Search models" autocomplete="off" spellcheck="false" />
+                        <input id="model-search" type="text" placeholder="Search models" aria-label="Search models" autocomplete="off" spellcheck="false" />
                       </div>
-                      <ul id="model-options" class="dropdown-options"></ul>
+                      <ul id="model-options" class="dropdown-options" role="listbox" aria-label="Models"></ul>
                     </div>
                   </div>
                 </div>
@@ -280,7 +280,7 @@
             <input type="file" id="attach-folder-input" webkitdirectory multiple hidden />
           </div>
 
-          <aside id="rail">
+          <aside id="rail" aria-label="Conversation context">
             <div class="rail-top">
               <button id="rail-toggle" class="icon-btn" title="Toggle context panel" aria-label="Toggle context panel">◧</button>
             </div>
@@ -302,7 +302,7 @@
 
         <!-- Settings hub: General + Models/Org/Tools/Skills/Customize -->
         <section id="settings-view" class="hidden">
-          <aside id="settings-nav">
+          <aside id="settings-nav" aria-label="Settings sections">
             <button type="button" id="settings-back" class="icon-btn settings-back" title="Back to home" aria-label="Back to home">‹ Home</button>
             <button type="button" data-settings="general" class="active">General</button>
             <button type="button" data-settings="privacy">Privacy</button>
@@ -335,7 +335,7 @@
                 <small>Look for a new version every time the app starts.</small>
                 </div>
                 <label class="switch">
-                <input type="checkbox" id="update-toggle" />
+                <input type="checkbox" id="update-toggle" aria-label="Check for updates on launch" />
                 <span class="track"><span class="knob"></span></span>
                 </label>
                 </div>
@@ -346,7 +346,7 @@
                 <small>Skip the prompt and fetch new versions in the background.</small>
                 </div>
                 <label class="switch">
-                <input type="checkbox" id="auto-download-toggle" />
+                <input type="checkbox" id="auto-download-toggle" aria-label="Download updates automatically" />
                 <span class="track"><span class="knob"></span></span>
                 </label>
                 </div>
@@ -357,7 +357,7 @@
                 <small>Apply a downloaded update the next time you quit AnyLM.</small>
                 </div>
                 <label class="switch">
-                <input type="checkbox" id="install-on-quit-toggle" />
+                <input type="checkbox" id="install-on-quit-toggle" aria-label="Install on quit" />
                 <span class="track"><span class="knob"></span></span>
                 </label>
                 </div>
@@ -376,7 +376,7 @@
                 <small>System notification at 75%, 90%, and 100% of your allowance.</small>
                 </div>
                 <label class="switch">
-                <input type="checkbox" id="notify-usage" />
+                <input type="checkbox" id="notify-usage" aria-label="Usage limit alerts" />
                 <span class="track"><span class="knob"></span></span>
                 </label>
                 </div>
@@ -387,7 +387,7 @@
                 <small>Notify when your token allowance resets.</small>
                 </div>
                 <label class="switch">
-                <input type="checkbox" id="notify-renewals" />
+                <input type="checkbox" id="notify-renewals" aria-label="Renewal notifications" />
                 <span class="track"><span class="knob"></span></span>
                 </label>
                 </div>
@@ -398,7 +398,7 @@
                 <small>Notify when a chat running in the background is waiting on your answer.</small>
                 </div>
                 <label class="switch">
-                <input type="checkbox" id="notify-interventions" />
+                <input type="checkbox" id="notify-interventions" aria-label="When a chat needs you" />
                 <span class="track"><span class="knob"></span></span>
                 </label>
                 </div>
@@ -408,7 +408,7 @@
                 Scheduled usage reports
                 <small>Save a CSV report to Documents/AnyLM Reports and notify. Managers and admins only.</small>
                 </div>
-                <select id="report-frequency">
+                <select id="report-frequency" aria-label="Scheduled usage reports">
                 <option value="off">Off</option>
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
@@ -424,7 +424,7 @@
                 <small>On complex chats, AnyLM can plan and run steps in parallel.</small>
                 </div>
                 <label class="switch">
-                <input type="checkbox" id="agents-enabled" />
+                <input type="checkbox" id="agents-enabled" aria-label="Multi-agent" />
                 <span class="track"><span class="knob"></span></span>
                 </label>
                 </div>
@@ -434,7 +434,7 @@
                 Max parallel steps
                 <small>How many agent steps can run at once (1–8).</small>
                 </div>
-                <input type="number" id="agents-max-parallel" class="auth-input agents-max-parallel" min="1" max="8" />
+                <input type="number" id="agents-max-parallel" class="auth-input agents-max-parallel" min="1" max="8" aria-label="Max parallel steps" />
                 </div>
 
                 <div class="setting-row">
@@ -443,7 +443,7 @@
                 <small>Stop turns when system memory is high. Off skips all memory sampling.</small>
                 </div>
                 <label class="switch">
-                <input type="checkbox" id="load-protection-enabled" />
+                <input type="checkbox" id="load-protection-enabled" aria-label="Load cutoff" />
                 <span class="track"><span class="knob"></span></span>
                 </label>
                 </div>
@@ -458,44 +458,43 @@
                 id="load-protection-kill"
                 class="auth-input agents-max-parallel"
                 min="50"
-                max="99"
-                />
+                max="99" aria-label="Memory kill threshold" />
                 </div>
 
                 <div class="setting-row">
                 <div class="label">Planner model</div>
-                <select id="agents-model-planner"><option value="">Same as chat</option></select>
+                <select id="agents-model-planner" aria-label="Planner model"><option value="">Same as chat</option></select>
                 </div>
 
                 <div class="setting-row">
                 <div class="label">Router model</div>
-                <select id="agents-model-router"><option value="">Same as chat</option></select>
+                <select id="agents-model-router" aria-label="Router model"><option value="">Same as chat</option></select>
                 </div>
 
                 <div class="setting-row">
                 <div class="label">Tool executor model</div>
-                <select id="agents-model-tool"><option value="">Same as chat</option></select>
+                <select id="agents-model-tool" aria-label="Tool executor model"><option value="">Same as chat</option></select>
                 </div>
 
                 <div class="setting-row">
                 <div class="label">Synthesize model</div>
-                <select id="agents-model-synth"><option value="">Same as chat</option></select>
+                <select id="agents-model-synth" aria-label="Synthesize model"><option value="">Same as chat</option></select>
                 </div>
                 <div class="setting-row">
                 <div class="label">Research model</div>
-                <select id="agents-model-research"><option value="">Same as chat</option></select>
+                <select id="agents-model-research" aria-label="Research model"><option value="">Same as chat</option></select>
                 </div>
                 <div class="setting-row">
                 <div class="label">Fact check model</div>
-                <select id="agents-model-factcheck"><option value="">Same as chat</option></select>
+                <select id="agents-model-factcheck" aria-label="Fact check model"><option value="">Same as chat</option></select>
                 </div>
                 <div class="setting-row">
                 <div class="label">Summarize model</div>
-                <select id="agents-model-summarize"><option value="">Same as chat</option></select>
+                <select id="agents-model-summarize" aria-label="Summarize model"><option value="">Same as chat</option></select>
                 </div>
                 <div class="setting-row">
                 <div class="label">Document writer model</div>
-                <select id="agents-model-document"><option value="">Same as chat</option></select>
+                <select id="agents-model-document" aria-label="Document writer model"><option value="">Same as chat</option></select>
                 </div>
 
                 <div class="setting-row">
@@ -543,7 +542,7 @@
                     <small id="analytics-master-hint">Not decided yet — analytics collecting with defaults until you Accept or Decline.</small>
                   </div>
                   <label class="switch">
-                    <input type="checkbox" id="analytics-master" />
+                    <input type="checkbox" id="analytics-master" aria-label="Share usage analytics" />
                     <span class="track"><span class="knob"></span></span>
                   </label>
                 </div>
@@ -556,7 +555,7 @@
                     <small>App opens, features used, and similar product signals.</small>
                   </div>
                   <label class="switch">
-                    <input type="checkbox" id="analytics-product-usage" />
+                    <input type="checkbox" id="analytics-product-usage" aria-label="Product usage" />
                     <span class="track"><span class="knob"></span></span>
                   </label>
                 </div>
@@ -567,7 +566,7 @@
                     <small>Updater and other reliability events (coarse error codes only).</small>
                   </div>
                   <label class="switch">
-                    <input type="checkbox" id="analytics-reliability" />
+                    <input type="checkbox" id="analytics-reliability" aria-label="Reliability" />
                     <span class="track"><span class="knob"></span></span>
                   </label>
                 </div>
@@ -578,7 +577,7 @@
                     <small>Chat created, messages, completed, and failed (no full message bodies).</small>
                   </div>
                   <label class="switch">
-                    <input type="checkbox" id="analytics-chat-events" />
+                    <input type="checkbox" id="analytics-chat-events" aria-label="Chat events" />
                     <span class="track"><span class="knob"></span></span>
                   </label>
                 </div>
@@ -589,7 +588,7 @@
                     <small>Include chat or project titles on allowed events.</small>
                   </div>
                   <label class="switch">
-                    <input type="checkbox" id="analytics-titles" />
+                    <input type="checkbox" id="analytics-titles" aria-label="Titles" />
                     <span class="track"><span class="knob"></span></span>
                   </label>
                 </div>
@@ -600,7 +599,7 @@
                     <small>Include model name and token counts when available.</small>
                   </div>
                   <label class="switch">
-                    <input type="checkbox" id="analytics-model-and-tokens" />
+                    <input type="checkbox" id="analytics-model-and-tokens" aria-label="Model and tokens" />
                     <span class="track"><span class="knob"></span></span>
                   </label>
                 </div>
@@ -611,7 +610,7 @@
                     <small>Optional short text preview only — never full message bodies.</small>
                   </div>
                   <label class="switch">
-                    <input type="checkbox" id="analytics-truncated-message-text" />
+                    <input type="checkbox" id="analytics-truncated-message-text" aria-label="Truncated message text" />
                     <span class="track"><span class="knob"></span></span>
                   </label>
                 </div>
@@ -626,8 +625,7 @@
                     id="analytics-truncate-chars"
                     class="auth-input agents-max-parallel"
                     min="50"
-                    max="500"
-                  />
+                    max="500" aria-label="Truncate length" />
                 </div>
               </div>
             </div>
@@ -678,14 +676,14 @@
                   <button data-filter="installed">Installed</button>
                 </div>
                 <div class="seg" id="models-layout">
-                  <button data-layout="list" class="active" title="List view">List</button>
-                  <button data-layout="grid" title="Grid view">Grid</button>
+                  <button data-layout="list" class="active" title="List view" aria-label="List view" aria-pressed="true">List</button>
+                  <button data-layout="grid" title="Grid view" aria-label="Grid view" aria-pressed="false">Grid</button>
                 </div>
               </div>
             </header>
             <div class="models-browser">
               <div class="models-search-bar">
-                <input id="models-search" type="search" placeholder="Search models…" autocomplete="off" />
+                <input id="models-search" type="search" placeholder="Search models…" autocomplete="off" aria-label="Search models…" />
                 <span id="models-system-hint" class="models-system-hint"></span>
               </div>
               <div id="models-container" class="models-list"></div>
@@ -707,13 +705,13 @@
                 <small>Turn off to leave it out of prompts without deleting it.</small>
                 </div>
                 <label class="switch">
-                <input type="checkbox" id="uc-enabled" />
+                <input type="checkbox" id="uc-enabled" aria-label="Use my context" />
                 <span class="track"><span class="knob"></span></span>
                 </label>
                 </div>
 
                 <div class="customize-wizard" data-step="1">
-                  <div class="customize-steps" role="list" aria-label="Customize steps">
+                  <div class="customize-steps" role="group" aria-label="Customize steps">
                     <span class="customize-step-pill" data-step-n="1" aria-current="step">1</span>
                     <span class="customize-step-sep" aria-hidden="true">—</span>
                     <span class="customize-step-pill" data-step-n="2">2</span>
@@ -770,7 +768,7 @@
     </div>
 
     <div id="ollama-setup-modal" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-labelledby="ollama-setup-title">
         <h2 id="ollama-setup-title">Ollama is not installed</h2>
         <p class="modal-sub" id="ollama-setup-body">
           Ollama is required to run models locally.
@@ -797,10 +795,10 @@
 
         <div class="project-settings-panels">
           <div id="ps-panel-general" class="project-settings-panel" data-panel="general">
-            <label class="field-label">Project name</label>
+            <label class="field-label" for="project-name-input">Project name</label>
             <input id="project-name-input" class="auth-input" placeholder="Project name" />
 
-            <label class="field-label">Instructions</label>
+            <label class="field-label" for="instructions">Instructions</label>
             <textarea
               id="instructions"
               placeholder="System prompt / background for every chat in this project..."
@@ -812,7 +810,7 @@
                 <small>Use only this model here; disables the picker.</small>
               </div>
               <label class="switch">
-                <input type="checkbox" id="model-lock" />
+                <input type="checkbox" id="model-lock" aria-label="Lock model to this project" />
                 <span class="track"><span class="knob"></span></span>
               </label>
             </div>
@@ -835,7 +833,7 @@
                 <small>Append every chat exchange to decisions-log.md in the storage folder. Off by default.</small>
               </div>
               <label class="switch">
-                <input type="checkbox" id="auto-log" />
+                <input type="checkbox" id="auto-log" aria-label="Auto-log exchanges to folder" />
                 <span class="track"><span class="knob"></span></span>
               </label>
             </div>
@@ -848,7 +846,7 @@
                 <small>Reference docs added here also feed your org's shared knowledge base.</small>
               </div>
               <label class="switch">
-                <input type="checkbox" id="org-share" />
+                <input type="checkbox" id="org-share" aria-label="Share knowledge with organization" />
                 <span class="track"><span class="knob"></span></span>
               </label>
             </div>
@@ -885,14 +883,14 @@
 
     <!-- New project (name + storage location) -->
     <div id="new-project-modal" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-label="New project">
         <h2>New project</h2>
         <p class="modal-sub">Everything this project generates is saved to its folder.</p>
-        <label class="field-label">Project name</label>
+        <label class="field-label" for="np-name">Project name</label>
         <input id="np-name" class="auth-input" placeholder="Project name" autocomplete="off" />
         <label class="field-label">Storage location</label>
         <div class="pol-row">
-          <input id="np-location" class="auth-input" />
+          <input id="np-location" class="auth-input" aria-label="Storage location" />
           <button id="np-browse" class="ghost small">Change…</button>
         </div>
         <div class="modal-foot">
@@ -915,9 +913,9 @@
 
     <!-- Text prompt (folder name, etc.) -->
     <div id="prompt-modal" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-labelledby="prompt-title">
         <h2 id="prompt-title">Name</h2>
-        <input id="prompt-input" class="auth-input" autocomplete="off" />
+        <input id="prompt-input" class="auth-input" autocomplete="off" aria-labelledby="prompt-title" />
         <div class="modal-foot">
           <button id="prompt-cancel" class="ghost">Cancel</button>
           <button id="prompt-ok" class="primary">OK</button>
@@ -927,7 +925,7 @@
 
     <!-- Tools scope: all new general chats vs this chat only -->
     <div id="tools-scope-modal" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-labelledby="tools-scope-title">
         <h2 id="tools-scope-title">Keep tools enabled for…?</h2>
         <p id="tools-scope-sub" class="modal-sub"></p>
         <div class="modal-foot tools-scope-foot">
@@ -940,7 +938,7 @@
 
     <!-- First-launch update opt-in (legacy; first-run wizard handles this now) -->
     <div id="first-run" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-label="Stay up to date?">
         <h2>Stay up to date?</h2>
         <p class="modal-sub">
           AnyLM can check for new versions each time it launches. You can change
@@ -955,7 +953,7 @@
 
     <!-- Soft-ask analytics consent -->
     <div id="analytics-consent" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-label="Help improve AnyLM?">
         <h2>Help improve AnyLM?</h2>
         <p class="modal-sub">
           Usage analytics help us improve AnyLM. Message bodies are never sent in full.
@@ -1053,7 +1051,7 @@
 
     <!-- Embed-model install prompt (shown on launch when missing) -->
     <div id="embed-prompt" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-label="Install the embedding model?">
         <h2>Install the embedding model?</h2>
         <p class="modal-sub">
           AnyLM uses the <strong id="embed-prompt-model">nomic-embed-text</strong> model to
@@ -1069,7 +1067,7 @@
 
     <!-- Embed-model download confirmation (size + requirements) -->
     <div id="embed-confirm" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-label="Download embedding model">
         <h2>Download embedding model</h2>
         <p class="modal-sub" id="embed-confirm-sub">Review the download details below.</p>
         <div class="setting-row">
@@ -1094,7 +1092,7 @@
 
     <!-- Camera capture -->
     <div id="camera-modal" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-label="Camera">
         <h2>Camera</h2>
         <p class="modal-sub">Capture a photo to attach.</p>
         <video id="camera-video" autoplay playsinline muted></video>
@@ -1110,31 +1108,31 @@
 
     <!-- Custom tool editor -->
     <div id="tool-modal" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-labelledby="tool-modal-title">
         <h2 id="tool-modal-title">New tool</h2>
         <p class="modal-sub">Give the model a new capability. Use {param} placeholders in the command or URL.</p>
 
-        <label class="field-label">Name (snake_case)</label>
+        <label class="field-label" for="tool-name">Name (snake_case)</label>
         <input id="tool-name" class="auth-input" placeholder="open_spotify_playlist" />
 
-        <label class="field-label">Description (tells the model when to use it)</label>
+        <label class="field-label" for="tool-desc">Description (tells the model when to use it)</label>
         <input id="tool-desc" class="auth-input" placeholder="Play a Spotify playlist by name" />
 
-        <label class="field-label">Kind</label>
+        <label class="field-label" for="tool-kind">Kind</label>
         <select id="tool-kind">
           <option value="shell">Shell command</option>
           <option value="http">HTTP request</option>
         </select>
 
         <div id="tool-cfg-shell">
-          <label class="field-label">Command (use {param} placeholders)</label>
+          <label class="field-label" for="tool-command">Command (use {param} placeholders)</label>
           <input id="tool-command" class="auth-input" placeholder='open -a Spotify "spotify:playlist:{playlist_id}"' />
         </div>
 
         <div id="tool-cfg-http" class="hidden">
-          <label class="field-label">URL (use {param} placeholders)</label>
+          <label class="field-label" for="tool-url">URL (use {param} placeholders)</label>
           <input id="tool-url" class="auth-input" placeholder="http://localhost:8080/search?q={query}" />
-          <label class="field-label">Method</label>
+          <label class="field-label" for="tool-method">Method</label>
           <select id="tool-method">
             <option>GET</option>
             <option>POST</option>
@@ -1143,7 +1141,7 @@
           </select>
         </div>
 
-        <label class="field-label">Parameters (one per line: name | description | required?)</label>
+        <label class="field-label" for="tool-params">Parameters (one per line: name | description | required?)</label>
         <textarea id="tool-params" placeholder="playlist_id | The Spotify playlist ID | required"></textarea>
 
         <div id="tool-error" class="auth-error"></div>
@@ -1156,17 +1154,17 @@
 
     <!-- Custom skill editor -->
     <div id="skill-modal" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-labelledby="skill-modal-title">
         <h2 id="skill-modal-title">New skill</h2>
         <p class="modal-sub">Bundle instructions and tools into one capability the model can be given.</p>
 
-        <label class="field-label">Name</label>
+        <label class="field-label" for="skill-name">Name</label>
         <input id="skill-name" class="auth-input" placeholder="Meeting notes" />
 
-        <label class="field-label">Description (shown in this list)</label>
+        <label class="field-label" for="skill-desc">Description (shown in this list)</label>
         <input id="skill-desc" class="auth-input" placeholder="Summarize and file meeting notes" />
 
-        <label class="field-label">Instructions (added to the system prompt when enabled)</label>
+        <label class="field-label" for="skill-instructions">Instructions (added to the system prompt when enabled)</label>
         <textarea
           id="skill-instructions"
           placeholder="When the user pastes meeting notes, summarize decisions and action items, then save them with the save_note tool..."
@@ -1185,7 +1183,7 @@
 
     <!-- Risky tool confirmation -->
     <div id="tool-confirm-modal" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-label="Allow tool run?">
         <h2>Allow tool run?</h2>
         <p class="modal-sub">The model wants to run a tool that can act on your computer.</p>
         <div class="tool-confirm-box">
@@ -1201,14 +1199,14 @@
 
     <!-- Governance policy editor -->
     <div id="policy-modal" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-labelledby="policy-modal-title">
         <h2 id="policy-modal-title">New policy</h2>
         <p class="modal-sub" id="policy-modal-sub">Define how prompts are governed.</p>
 
-        <label class="field-label">Name</label>
+        <label class="field-label" for="policy-name">Name</label>
         <input id="policy-name" class="auth-input" placeholder="e.g. Block secrets" />
 
-        <label class="field-label">Type</label>
+        <label class="field-label" for="policy-type">Type</label>
         <select id="policy-type">
           <option value="content_filter">Content filter (keywords / regex)</option>
           <option value="pii">PII detection</option>
@@ -1217,7 +1215,7 @@
           <option value="token_limit">Token limit (per request / per day)</option>
         </select>
 
-        <label class="field-label">Action</label>
+        <label class="field-label" for="policy-action">Action</label>
         <select id="policy-action">
           <option value="block">Block the request</option>
           <option value="warn">Allow with warning</option>
@@ -1225,7 +1223,7 @@
         </select>
 
         <div id="policy-cfg-content" class="policy-cfg">
-          <label class="field-label">Patterns (one per line)</label>
+          <label class="field-label" for="policy-patterns">Patterns (one per line)</label>
           <textarea id="policy-patterns" placeholder="confidential&#10;project-x"></textarea>
           <label class="pol-check"><input type="checkbox" id="policy-regex" /> Treat patterns as regular expressions</label>
         </div>
@@ -1242,30 +1240,30 @@
         </div>
 
         <div id="policy-cfg-models" class="policy-cfg hidden">
-          <label class="field-label">Allowed models (comma-separated)</label>
+          <label class="field-label" for="policy-models">Allowed models (comma-separated)</label>
           <input id="policy-models" class="auth-input" placeholder="llama3.2, mistral" />
         </div>
 
         <div id="policy-cfg-rate" class="policy-cfg hidden">
-          <label class="field-label">Max requests per hour (blank = unlimited)</label>
+          <label class="field-label" for="policy-maxhour">Max requests per hour (blank = unlimited)</label>
           <input id="policy-maxhour" class="auth-input" type="number" min="1" placeholder="60" />
           <label class="field-label">Allowed hours (blank = always)</label>
           <div class="pol-row">
-            <input id="policy-start" class="auth-input" type="number" min="0" max="23" placeholder="9" />
+            <input id="policy-start" class="auth-input" type="number" min="0" max="23" placeholder="9" aria-label="Allowed hours, start" />
             <span class="pol-sep">to</span>
-            <input id="policy-end" class="auth-input" type="number" min="0" max="23" placeholder="18" />
+            <input id="policy-end" class="auth-input" type="number" min="0" max="23" placeholder="18" aria-label="Allowed hours, end" />
           </div>
         </div>
 
         <div id="policy-cfg-tokens" class="policy-cfg hidden">
-          <label class="field-label">Max prompt tokens per request (blank = unlimited)</label>
+          <label class="field-label" for="policy-maxreq">Max prompt tokens per request (blank = unlimited)</label>
           <input id="policy-maxreq" class="auth-input" type="number" min="1" placeholder="4000" />
-          <label class="field-label">Max total tokens per day (blank = unlimited)</label>
+          <label class="field-label" for="policy-maxday">Max total tokens per day (blank = unlimited)</label>
           <input id="policy-maxday" class="auth-input" type="number" min="1" placeholder="100000" />
         </div>
 
         <div id="policy-target-row" class="policy-cfg hidden">
-          <label class="field-label">Applies to</label>
+          <label class="field-label" for="policy-target">Applies to</label>
           <select id="policy-target"></select>
         </div>
 
@@ -1280,7 +1278,7 @@
     <!-- Update banner -->
     <!-- Update toast: expands to a card, collapses to a progress pill -->
     <div id="update-toast" class="hidden" data-collapsed="false">
-      <button id="up-pill" type="button" title="Show update details">
+      <button id="up-pill" type="button" title="Show update details" aria-label="Show update details">
         <span id="up-toast-ring" class="up-ring hidden">
           <svg viewBox="0 0 22 22" aria-hidden="true">
             <circle class="up-ring-track" cx="11" cy="11" r="9" />
@@ -1293,7 +1291,7 @@
       <div class="up-card">
         <div class="up-head">
           <div class="up-title" id="up-title"></div>
-          <button id="up-collapse" type="button" class="up-min" title="Minimize">−</button>
+          <button id="up-collapse" type="button" class="up-min" title="Minimize" aria-label="Minimize update notice">−</button>
         </div>
         <div class="up-msg" id="up-msg"></div>
         <div class="up-notes hidden" id="up-notes"></div>

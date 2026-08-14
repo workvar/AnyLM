@@ -1,9 +1,16 @@
 // src/renderer/js/web-research-hint.ts
+import {
+  captureConversationTarget,
+  isCurrentTarget,
+  persistConversationPatch,
+  targetOverrides,
+  type ConversationTarget,
+} from "./conversation-target.js";
 import { el } from "./dom.js";
 import { hasHttpUrl } from "./has-http-url.js";
 import { refreshSkills } from "./rail/index.js";
 import { state } from "./state.js";
-import { setUseTools } from "./tools-toggle.js";
+import { setConversationUseTools } from "./tools-toggle.js";
 
 const SKILL_ID = "web-research";
 
@@ -23,10 +30,7 @@ function nextWebResearchHintDismissed(dismissed: boolean, text: string): boolean
   return hasHttpUrl(text) ? dismissed : false;
 }
 
-function nextWebResearchSkillOverrides(
-  overrides: string[],
-  keepGlobally: boolean
-): string[] {
+function nextWebResearchSkillOverrides(overrides: string[], keepGlobally: boolean): string[] {
   if (keepGlobally) return overrides.filter((id) => id !== SKILL_ID);
   return [...new Set([...overrides, SKILL_ID])];
 }
@@ -46,56 +50,15 @@ async function isGlobalWebResearchEnabled(): Promise<boolean> {
   return !!skill?.enabled;
 }
 
-type ConversationPatch = {
-  skillOverrides?: string[];
-  useTools?: boolean;
-};
-
-type ConversationTarget =
-  | { mode: "chat"; chatId: string; overrides: string[] }
-  | { mode: "project"; projectId: string; threadId: string; overrides: string[] };
-
-function captureConversationTarget(): ConversationTarget | null {
-  if (state.mode === "chat" && state.current) {
-    return {
-      mode: "chat",
-      chatId: state.current.id,
-      overrides: [...(state.current.skillOverrides || [])],
-    };
-  }
-  if (state.mode === "project" && state.current && state.thread) {
-    return {
-      mode: "project",
-      projectId: state.current.id,
-      threadId: state.thread.id,
-      overrides: [...(state.thread.skillOverrides || [])],
-    };
-  }
-  return null;
-}
-
-function isCurrentTarget(target: ConversationTarget): boolean {
-  if (target.mode === "chat") {
-    return state.mode === "chat" && state.current?.id === target.chatId;
-  }
-  return (
-    state.mode === "project" &&
-    state.current?.id === target.projectId &&
-    state.thread?.id === target.threadId
-  );
-}
-
-async function persistPatchFor(
-  target: ConversationTarget,
-  patch: ConversationPatch
-): Promise<void> {
-  if (target.mode === "chat") {
-    if (isCurrentTarget(target)) state.current = { ...state.current, ...patch };
-    await window.api.updateChat(target.chatId, patch);
-  } else {
-    if (isCurrentTarget(target)) state.thread = { ...state.thread, ...patch };
-    await window.api.updateThread(target.projectId, target.threadId, patch);
-  }
+// Enabling the skill also needs tools on. Route that through the same
+// per-conversation write path the toggle uses so the button and the stored
+// value can never disagree.
+async function enableWebResearch(target: ConversationTarget, keepGlobally: boolean): Promise<void> {
+  const next = nextWebResearchSkillOverrides(targetOverrides(target), keepGlobally);
+  await persistConversationPatch(target, { skillOverrides: next });
+  await setConversationUseTools(target, true);
+  if (isCurrentTarget(target)) dismissed = false;
+  await syncWebResearchHint();
 }
 
 function ensureWebResearchHint(host: UiElement): void {
@@ -114,13 +77,7 @@ function ensureWebResearchHint(host: UiElement): void {
   enable.onclick = async () => {
     const target = captureConversationTarget();
     if (!target) return;
-    const next = nextWebResearchSkillOverrides(target.overrides, false);
-    await persistPatchFor(target, { skillOverrides: next, useTools: true });
-    if (isCurrentTarget(target)) {
-      setUseTools(true, { persist: false });
-      dismissed = false;
-    }
-    await syncWebResearchHint();
+    await enableWebResearch(target, false);
   };
 
   const keep = document.createElement("button");
@@ -129,15 +86,9 @@ function ensureWebResearchHint(host: UiElement): void {
   keep.onclick = async () => {
     const target = captureConversationTarget();
     if (!target) return;
-    const next = nextWebResearchSkillOverrides(target.overrides, true);
     await window.api.skillsToggle(SKILL_ID, true);
     await refreshSkills();
-    await persistPatchFor(target, { skillOverrides: next, useTools: true });
-    if (isCurrentTarget(target)) {
-      setUseTools(true, { persist: false });
-      dismissed = false;
-    }
-    await syncWebResearchHint();
+    await enableWebResearch(target, true);
   };
 
   const dismiss = document.createElement("button");
@@ -168,7 +119,7 @@ async function syncWebResearchHint(): Promise<void> {
   ensureWebResearchHint(host);
   const globalEnabled = await isGlobalWebResearchEnabled();
   const show = shouldShowWebResearchHint({
-    text: input?.value || "",
+    text,
     globalEnabled,
     skillOverrides: currentOverrides(),
     dismissed,

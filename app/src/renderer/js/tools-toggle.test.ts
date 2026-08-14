@@ -32,7 +32,7 @@ function fakeElement(id: string) {
   };
 }
 
-describe("toggleUseTools navigation safety", () => {
+describe("toggleUseTools", () => {
   const originalDocument = globalThis.document;
   const originalWindow = globalThis.window;
   const elements = new Map<string, ReturnType<typeof fakeElement>>();
@@ -64,23 +64,30 @@ describe("toggleUseTools navigation safety", () => {
       addEventListener() {},
     } as unknown as Document;
     initToolsScopePrompt();
-    setUseTools(false, { persist: false });
+    setUseTools(false);
   });
 
   afterEach(() => {
     state.mode = null;
     state.current = null;
     state.thread = null;
-    setUseTools(false, { persist: false });
+    setUseTools(false);
     globalThis.document = originalDocument;
     globalThis.window = originalWindow;
   });
 
-  test("does not apply a project response after leaving its initiating thread", async () => {
-    const response = deferred<PublicProject | null>();
+  test("a project toggle writes only the current thread, not the project default", async () => {
+    const updates: Array<{ pid: string; tid: string; patch: Record<string, unknown> }> = [];
+    let defaultCalls = 0;
     globalThis.window = {
       api: {
-        setProjectDefaultUseTools: () => response.promise,
+        setProjectDefaultUseTools: async () => {
+          defaultCalls += 1;
+          return null;
+        },
+        updateThread: async (pid: string, tid: string, patch: Record<string, unknown>) => {
+          updates.push({ pid, tid, patch });
+        },
       },
     } as unknown as Window & typeof globalThis;
     state.mode = "project";
@@ -88,6 +95,54 @@ describe("toggleUseTools navigation safety", () => {
     state.thread = { id: "thread-1", useTools: false };
 
     const toggling = toggleUseTools();
+    elements.get("tools-scope-this")!.onclick!();
+    await toggling;
+
+    expect(defaultCalls).toBe(0);
+    expect(updates).toEqual([{ pid: "project-1", tid: "thread-1", patch: { useTools: true } }]);
+    expect(state.thread).toEqual({ id: "thread-1", useTools: true });
+    expect(getUseTools()).toBe(true);
+  });
+
+  test("choosing all-new in a project sets the default and the current thread", async () => {
+    const updates: Array<{ pid: string; tid: string; patch: Record<string, unknown> }> = [];
+    globalThis.window = {
+      api: {
+        setProjectDefaultUseTools: async (id: string) =>
+          ({ id, defaultUseTools: true }) as unknown as PublicProject,
+        updateThread: async (pid: string, tid: string, patch: Record<string, unknown>) => {
+          updates.push({ pid, tid, patch });
+        },
+      },
+    } as unknown as Window & typeof globalThis;
+    state.mode = "project";
+    state.current = { id: "project-1", name: "One" };
+    state.thread = { id: "thread-1", useTools: false };
+
+    const toggling = toggleUseTools();
+    elements.get("tools-scope-all")!.onclick!();
+    await toggling;
+
+    expect(updates).toEqual([{ pid: "project-1", tid: "thread-1", patch: { useTools: true } }]);
+    expect(state.current.defaultUseTools).toBe(true);
+    expect(getUseTools()).toBe(true);
+  });
+
+  test("does not apply a project response after leaving its initiating thread", async () => {
+    const response = deferred<PublicProject | null>();
+    globalThis.window = {
+      api: {
+        setProjectDefaultUseTools: () => response.promise,
+        updateThread: async () => {},
+      },
+    } as unknown as Window & typeof globalThis;
+    state.mode = "project";
+    state.current = { id: "project-1", name: "One" };
+    state.thread = { id: "thread-1", useTools: false };
+
+    const toggling = toggleUseTools();
+    elements.get("tools-scope-all")!.onclick!();
+    await Promise.resolve();
     state.current = { id: "project-2", name: "Two" };
     state.thread = { id: "thread-2", useTools: false };
     response.resolve({ id: "project-1", name: "Updated One" } as PublicProject);
@@ -151,12 +206,11 @@ describe("toggleUseTools navigation safety", () => {
     expect(getUseTools()).toBe(false);
   });
 
-  test("persists the disabled default when choosing all new chats", async () => {
+  test("disabling always offers the scope prompt, whatever the current default", async () => {
     const settingsPatches: Array<Partial<AppSettings>> = [];
     const updates: Array<{ id: string; patch: Record<string, unknown> }> = [];
     globalThis.window = {
       api: {
-        getSettings: async () => ({ defaultUseToolsForChats: true }) as AppSettings,
         setSettings: async (patch: Partial<AppSettings>) => {
           settingsPatches.push(patch);
           return { defaultUseToolsForChats: false } as AppSettings;
@@ -168,10 +222,9 @@ describe("toggleUseTools navigation safety", () => {
     } as unknown as Window & typeof globalThis;
     state.mode = "chat";
     state.current = { id: "chat-1", useTools: true };
-    setUseTools(true, { persist: false });
+    setUseTools(true);
 
     const toggling = toggleUseTools();
-    await Promise.resolve();
     elements.get("tools-scope-all")!.onclick!();
     await toggling;
 
@@ -180,17 +233,41 @@ describe("toggleUseTools navigation safety", () => {
     expect(getUseTools()).toBe(false);
   });
 
-  test("surfaces an error when a project tools update returns null", async () => {
+  test("cancelling the prompt changes nothing", async () => {
+    const updates: unknown[] = [];
+    globalThis.window = {
+      api: {
+        setSettings: async () => ({}) as AppSettings,
+        updateChat: async (id: string, patch: Record<string, unknown>) => {
+          updates.push({ id, patch });
+        },
+      },
+    } as unknown as Window & typeof globalThis;
+    state.mode = "chat";
+    state.current = { id: "chat-1", useTools: false };
+
+    const toggling = toggleUseTools();
+    elements.get("tools-scope-cancel")!.onclick!();
+    await toggling;
+
+    expect(updates).toEqual([]);
+    expect(getUseTools()).toBe(false);
+  });
+
+  test("surfaces an error when a project default update returns null", async () => {
     globalThis.window = {
       api: {
         setProjectDefaultUseTools: async () => null,
+        updateThread: async () => {},
       },
     } as unknown as Window & typeof globalThis;
     state.mode = "project";
     state.current = { id: "project-1", name: "One" };
     state.thread = { id: "thread-1", useTools: false };
 
-    await toggleUseTools();
+    const toggling = toggleUseTools();
+    elements.get("tools-scope-all")!.onclick!();
+    await toggling;
 
     expect(elements.get("up-title")!.textContent).toBe("Couldn't update tools");
     expect(elements.get("update-toast")!.classList.contains("hidden")).toBe(false);
@@ -215,31 +292,5 @@ describe("toggleUseTools navigation safety", () => {
 
     expect(elements.get("up-title")!.textContent).toBe("Couldn't update tools");
     expect(getUseTools()).toBe(false);
-  });
-
-  test("persists disable to the initiating chat after settings load", async () => {
-    const settings = deferred<AppSettings>();
-    const updates: Array<{ id: string; patch: Record<string, unknown> }> = [];
-    globalThis.window = {
-      api: {
-        getSettings: () => settings.promise,
-        updateChat: async (id: string, patch: Record<string, unknown>) => {
-          updates.push({ id, patch });
-        },
-      },
-    } as unknown as Window & typeof globalThis;
-    state.mode = "chat";
-    state.current = { id: "chat-1", useTools: true };
-    setUseTools(true, { persist: false });
-
-    const toggling = toggleUseTools();
-    state.current = { id: "chat-2", useTools: true };
-    setUseTools(true, { persist: false });
-    settings.resolve({ defaultUseToolsForChats: false } as AppSettings);
-    await toggling;
-
-    expect(updates).toEqual([{ id: "chat-1", patch: { useTools: false } }]);
-    expect(state.current).toEqual({ id: "chat-2", useTools: true });
-    expect(getUseTools()).toBe(true);
   });
 });

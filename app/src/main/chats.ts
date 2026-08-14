@@ -5,6 +5,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as settings from "./settings";
 import { resolveNewChatUseTools } from "./chat-tools-seed";
+import { resolveUseTools } from "./use-tools";
 
 function filePath() {
   return path.join(app.getPath("userData"), "llmeter-chats.json");
@@ -42,7 +43,10 @@ function list(): ChatSummary[] {
 }
 
 function get(cid: string): StandaloneChat | null {
-  return readAll().find((c) => c.id === cid) || null;
+  const chat = readAll().find((c) => c.id === cid);
+  if (!chat) return null;
+  // Normalise here so the renderer never has to guess what `undefined` means.
+  return { ...chat, useTools: resolveUseTools(chat.useTools) };
 }
 
 function create({ title, model, useTools }: Partial<StandaloneChat> = {}): StandaloneChat {

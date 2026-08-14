@@ -3,6 +3,7 @@ import { app } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import { applyProjectDefaultUseTools } from "./project-tools";
+import { resolveUseTools } from "./use-tools";
 
 function filePath() {
   return path.join(app.getPath("userData"), "llmeter-projects.json");
@@ -206,7 +207,11 @@ function removeFolder(pid: string, fid: string): boolean {
 
 function getThread(pid: string, tid: string): ProjectThread | null {
   const p = get(pid);
-  return p ? (p.threads || []).find((t) => t.id === tid) || null : null;
+  if (!p) return null;
+  const t = (p.threads || []).find((x) => x.id === tid);
+  if (!t) return null;
+  // Normalise here so the renderer never has to guess what `undefined` means.
+  return { ...t, useTools: resolveUseTools(t.useTools, p.defaultUseTools) };
 }
 
 function createThread(
@@ -224,7 +229,7 @@ function createThread(
     messages: [],
     createdAt: now,
     updatedAt: now,
-    useTools: useTools != null ? !!useTools : !!p.defaultUseTools,
+    useTools: resolveUseTools(useTools, p.defaultUseTools),
   };
   p.threads = p.threads || [];
   p.threads.push(thread);

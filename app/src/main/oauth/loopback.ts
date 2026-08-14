@@ -7,6 +7,13 @@
 // that comes back from a browser now lands on a port we opened.
 import * as http from "http";
 import { AddressInfo } from "net";
+import { focusWindow } from "../window";
+import { successPage, errorPage } from "./pages";
+
+// How long the listener stays up after the callback lands, purely so the
+// success page's "Launch App" button has something to talk to. The OAuth
+// result is already resolved by then; this window serves nothing sensitive.
+const LINGER_MS = 120_000;
 
 export interface LoopbackResult {
   /** The redirect URI to hand the authorization server. */
@@ -15,15 +22,6 @@ export interface LoopbackResult {
   received: Promise<Record<string, string>>;
   /** Shut the listener down early, e.g. when the user cancels. */
   close: () => void;
-}
-
-function page(title: string, body: string): string {
-  return (
-    `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head>` +
-    `<body style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding-top:80px;color:#16181d">` +
-    `<h2 style="font-size:19px">${title}</h2>` +
-    `<p style="opacity:.7">${body}</p></body></html>`
-  );
 }
 
 /**
@@ -42,8 +40,25 @@ export function listen(path = "/callback", timeoutMs = 300_000): Promise<Loopbac
       fail = rej;
     });
 
+    let linger: NodeJS.Timeout | null = null;
+
     const server = http.createServer((req, res) => {
       const url = new URL(req.url || "/", "http://127.0.0.1");
+
+      // The success page's "Launch App" button. Same-origin, no parameters,
+      // and it only raises a window, so there is nothing to validate beyond
+      // the method.
+      if (url.pathname === "/launch") {
+        if (req.method !== "POST") {
+          res.writeHead(405).end();
+          return;
+        }
+        const raised = focusWindow();
+        res.writeHead(raised ? 204 : 503).end();
+        if (raised) shutdown();
+        return;
+      }
+
       if (url.pathname !== path) {
         res.writeHead(404).end();
         return;
@@ -53,17 +68,25 @@ export function listen(path = "/callback", timeoutMs = 300_000): Promise<Loopbac
 
       const ok = !params.error;
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(
-        ok
-          ? page("Signed in", "You can close this window and return to AnyLM.")
-          : page("Sign-in failed", params.error_description || params.error)
-      );
+      res.end(ok ? successPage() : errorPage(params.error_description || params.error));
 
       clearTimeout(timer);
-      server.close();
-      if (ok) settle?.(params);
-      else fail?.(new Error(params.error_description || params.error));
+      if (ok) {
+        settle?.(params);
+        // Stay up briefly so "Launch App" still has a server to reach.
+        linger = setTimeout(shutdown, LINGER_MS);
+        linger.unref?.();
+      } else {
+        fail?.(new Error(params.error_description || params.error));
+        server.close();
+      }
     });
+
+    function shutdown(): void {
+      if (linger) clearTimeout(linger);
+      linger = null;
+      server.close();
+    }
 
     const timer = setTimeout(() => {
       server.close();
@@ -80,7 +103,7 @@ export function listen(path = "/callback", timeoutMs = 300_000): Promise<Loopbac
         received,
         close: () => {
           clearTimeout(timer);
-          server.close();
+          shutdown();
           fail?.(new Error("Sign-in cancelled"));
         },
       });

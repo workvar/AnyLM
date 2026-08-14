@@ -57,6 +57,11 @@
       // the real system browser here and we complete the flow with the normal
       // web SDK.
       //
+      // We use signInWithRedirect (not signInWithPopup). The desktop app opens
+      // this page with ?provider=…, which would call the SDK immediately — and
+      // browsers block popups that are not tied to a user gesture
+      // (auth/popup-blocked). A top-level redirect is not subject to that.
+      //
       // The SDK talks to Firebase's own hosted OAuth handler, which holds the
       // Google and GitHub client secrets inside the Firebase project. That is
       // what lets a distributed desktop app support both providers without
@@ -65,10 +70,18 @@
       // The result comes back over a loopback port the app opened, not over
       // the anylm:// scheme. Any local application can register a URL scheme
       // and intercept the callback; only one process can hold a TCP port.
+      //
+      // Port is stashed in sessionStorage before the OAuth redirect, because
+      // the return URL may not keep the original query string.
+      var PORT_KEY = "anylm_oauth_port";
+      var STARTED_KEY = "anylm_oauth_started";
+
       var msg = document.getElementById("msg");
       var buttons = document.getElementById("buttons");
       var params = new URLSearchParams(location.search);
-      var port = params.get("port");
+      var port = params.get("port") || sessionStorage.getItem(PORT_KEY);
+
+      if (params.get("port")) sessionStorage.setItem(PORT_KEY, params.get("port"));
 
       function say(text, isError) {
         msg.textContent = text;
@@ -82,44 +95,84 @@
         return p;
       }
 
-      async function signIn(name) {
+      async function finish(cred) {
+        // The refresh token is what the app needs; it trades it for a
+        // session immediately and stores it in the OS keystore. Handing it
+        // to a loopback port on the same machine is the standard native-app
+        // pattern (RFC 8252).
+        var refreshToken = cred.user.refreshToken;
+        if (!refreshToken) throw new Error("No session was returned.");
+        if (!port) throw new Error("Open this page from the AnyLM app so it can receive the result.");
+
+        // Nothing should stay signed in in the browser afterwards.
+        await firebase.auth().signOut();
+
+        sessionStorage.removeItem(PORT_KEY);
+        sessionStorage.removeItem(STARTED_KEY);
+
+        say("Signed in. Returning to AnyLM...");
+        location.href =
+          "http://127.0.0.1:" + encodeURIComponent(port) +
+          "/callback?refreshToken=" + encodeURIComponent(refreshToken);
+      }
+
+      async function startRedirect(name) {
         if (!port) {
           say("Open this page from the AnyLM app so it can receive the result.", true);
           return;
         }
+        sessionStorage.setItem(PORT_KEY, port);
+        sessionStorage.setItem(STARTED_KEY, "1");
         buttons.style.display = "none";
         say("Opening " + name + "...");
-        try {
-          var cred = await firebase.auth().signInWithPopup(providerFor(name));
-
-          // The refresh token is what the app needs; it trades it for a
-          // session immediately and stores it in the OS keystore. Handing it
-          // to a loopback port on the same machine is the standard native-app
-          // pattern (RFC 8252).
-          var refreshToken = cred.user.refreshToken;
-          if (!refreshToken) throw new Error("No session was returned.");
-
-          // Nothing should stay signed in in the browser afterwards.
-          await firebase.auth().signOut();
-
-          say("Signed in. Returning to AnyLM...");
-          location.href =
-            "http://127.0.0.1:" + encodeURIComponent(port) +
-            "/callback?refreshToken=" + encodeURIComponent(refreshToken);
-        } catch (e) {
-          buttons.style.display = "";
-          say(e.message || "Sign-in failed.", true);
-        }
+        await firebase.auth().signInWithRedirect(providerFor(name));
       }
 
       buttons.addEventListener("click", function (e) {
         var p = e.target.getAttribute("data-provider");
-        if (p) signIn(p);
+        if (p) startRedirect(p).catch(function (err) {
+          buttons.style.display = "";
+          sessionStorage.removeItem(STARTED_KEY);
+          say(err.message || "Sign-in failed.", true);
+        });
       });
 
-      // The app links straight to ?provider=github to skip this screen.
-      var wanted = params.get("provider");
-      if (wanted === "google" || wanted === "github") signIn(wanted);
+      (async function boot() {
+        try {
+          var result = await firebase.auth().getRedirectResult();
+          if (result && result.user) {
+            buttons.style.display = "none";
+            say("Signed in. Returning to AnyLM...");
+            await finish(result);
+            return;
+          }
+        } catch (e) {
+          sessionStorage.removeItem(STARTED_KEY);
+          say(e.message || "Sign-in failed.", true);
+          return;
+        }
+
+        // Returned from the provider without a credential (cancel / deny).
+        // Clear the flag so a later button click can try again; do not
+        // immediately re-trigger redirect or we loop forever.
+        if (sessionStorage.getItem(STARTED_KEY)) {
+          sessionStorage.removeItem(STARTED_KEY);
+          say("Sign-in was cancelled. Choose a provider to try again.", true);
+          return;
+        }
+
+        // App deep-link: start the provider redirect without a popup.
+        var wanted = params.get("provider");
+        if (wanted === "google" || wanted === "github") {
+          try {
+            await startRedirect(wanted);
+          } catch (e) {
+            buttons.style.display = "";
+            sessionStorage.removeItem(STARTED_KEY);
+            say(e.message || "Sign-in failed.", true);
+          }
+        }
+      })();
     </script>
   </body>
 </html>

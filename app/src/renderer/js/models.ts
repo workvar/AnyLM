@@ -240,7 +240,10 @@ export function bindEvents() {
     btn.onclick = () => {
       state.modelsLayout = btn.dataset.layout === "grid" ? "grid" : "list";
       for (const b of layoutButtons) {
-        b.classList.toggle("active", b === btn);
+        const on = b === btn;
+        b.classList.toggle("active", on);
+        // aria-pressed must track the visual state, not just the class.
+        b.setAttribute("aria-pressed", on ? "true" : "false");
       }
       render();
     };

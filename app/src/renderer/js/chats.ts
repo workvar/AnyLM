@@ -30,7 +30,7 @@ export async function selectChat(id) {
   attachTurn(`chat:${id}`);
   estimateContext(state.current.model, state.chat);
   updateModelLock();
-  setUseTools(!!state.current.useTools, { persist: false });
+  setUseTools(!!state.current.useTools);
   resetWebResearchHintDismiss();
   syncMenuContext();
   await loadRecents();

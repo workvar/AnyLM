@@ -73,9 +73,34 @@ body {
     radial-gradient(ellipse 45% 40% at 85% 60%, rgba(60, 90, 80, 0.16), transparent 60%);
 }
 
+/* The hero text sits on top of an animated constellation. Two things keep it
+   readable: the artwork is faded out across the centre column (.constellation),
+   and a scrim sits directly behind the words (.hero-scrim). Either one alone
+   leaves the CTA cluster washed out by the hub glow. */
+.constellation {
+  -webkit-mask-image: radial-gradient(
+    ellipse 42% 46% at 50% 48%,
+    rgba(0, 0, 0, 0.1),
+    rgba(0, 0, 0, 0.35) 55%,
+    #000 88%
+  );
+  mask-image: radial-gradient(
+    ellipse 42% 46% at 50% 48%,
+    rgba(0, 0, 0, 0.1),
+    rgba(0, 0, 0, 0.35) 55%,
+    #000 88%
+  );
+}
+
 .hero-scrim {
   background:
-    radial-gradient(ellipse 70% 55% at 50% 42%, rgba(3, 4, 5, 0.88), rgba(3, 4, 5, 0.55) 45%, transparent 72%);
+    radial-gradient(
+      ellipse 62% 62% at 50% 50%,
+      rgba(3, 4, 5, 0.94),
+      rgba(3, 4, 5, 0.82) 55%,
+      rgba(3, 4, 5, 0.4) 78%,
+      transparent 100%
+    );
 }
 
 .btn-primary {

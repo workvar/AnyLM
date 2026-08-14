@@ -1,6 +1,9 @@
+import { resolveUseTools } from "./use-tools";
+
+// New standalone chats: an explicit value wins, else the app default.
 export function resolveNewChatUseTools(
-  explicit: boolean | undefined,
-  defaultUseToolsForChats: boolean
+  explicit: boolean | null | undefined,
+  defaultUseToolsForChats: boolean | null | undefined
 ): boolean {
-  return explicit != null ? !!explicit : !!defaultUseToolsForChats;
+  return resolveUseTools(explicit, defaultUseToolsForChats);
 }

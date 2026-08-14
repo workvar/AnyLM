@@ -1,54 +1,99 @@
 // Markdown-HTML → PDF buffer, rendered by a hidden Chromium window so the
 // app carries no PDF dependency.
+//
+// The HTML goes through a temp FILE, not a data: URL. A data: URL is capped
+// by Chromium's URL length limit, so any document past a few pages used to
+// load as a blank page and print as an empty PDF.
 import { BrowserWindow } from "electron";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+import { PDF_CSS } from "./pdf-css";
 
 function escapeHtml(s: unknown): string {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formattedDate(): string {
+  return new Date().toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function document(title: unknown, bodyHtml: string): string {
-  return `<!doctype html><html><head><meta charset="utf-8"><style>
-    body {
-      font: 14px/1.65 -apple-system, "Segoe UI", Roboto, sans-serif;
-      color: #1a1a1a;
-      margin: 56px 64px;
-      max-width: 720px;
-    }
-    h1 { font-size: 22px; font-weight: 700; margin: 1.6em 0 0.5em; line-height: 1.25; }
-    h2 { font-size: 17px; font-weight: 650; margin: 1.4em 0 0.45em; line-height: 1.3; }
-    h3 { font-size: 14px; font-weight: 650; margin: 1.2em 0 0.4em; line-height: 1.35; }
-    p { margin: 0.55em 0; }
-    ul, ol { margin: 0.5em 0 0.5em 1.25em; padding: 0; }
-    li { margin: 0.25em 0; }
-    pre {
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
-      padding: 12px 14px;
-      border-radius: 8px;
-      overflow-x: auto;
-      margin: 0.75em 0;
-    }
-    code { font: 12.5px/1.5 ui-monospace, Menlo, monospace; }
-    pre code { font-size: 12px; }
-    table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
-    .doc-title { font-size: 26px; font-weight: 750; margin: 0 0 6px; line-height: 1.2; }
-    .doc-meta { color: #6b7280; font-size: 11.5px; margin-bottom: 28px; letter-spacing: 0.01em; }
-  </style></head><body>
-    <div class="doc-title">${escapeHtml(title || "Document")}</div>
-    <div class="doc-meta">AnyLM · ${new Date().toLocaleString()}</div>
-    ${bodyHtml}
+  const heading = escapeHtml(title || "Document");
+  return `<!doctype html><html><head><meta charset="utf-8">
+    <title>${heading}</title>
+    <style>${PDF_CSS}</style></head><body>
+    <header class="doc-head">
+      <h1 class="doc-title">${heading}</h1>
+      <div class="doc-meta">AnyLM · ${escapeHtml(formattedDate())}</div>
+    </header>
+    <main>${bodyHtml}</main>
   </body></html>`;
 }
 
-async function buildPdf(title: unknown, bodyHtml: string): Promise<Buffer> {
-  const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true } });
+// Page numbers, drawn by Chromium in the bottom margin.
+function footerTemplate(title: unknown): string {
+  return `<div style="width:100%;font:8pt -apple-system,sans-serif;color:#9aa1ab;
+    padding:0 0.75in;display:flex;justify-content:space-between;">
+    <span>${escapeHtml(title || "Document")}</span>
+    <span><span class="pageNumber"></span> / <span class="totalPages"></span></span>
+  </div>`;
+}
+
+function writeTempHtml(html: string): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "anylm-pdf-"));
+  const fp = path.join(dir, "document.html");
+  fs.writeFileSync(fp, html, "utf8");
+  return fp;
+}
+
+function removeQuietly(fp: string): void {
   try {
-    const html = document(title, bodyHtml || "");
-    await win.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
-    return await win.webContents.printToPDF({ printBackground: true });
+    fs.rmSync(path.dirname(fp), { recursive: true, force: true });
+  } catch {
+    // temp cleanup is best effort
+  }
+}
+
+async function buildPdf(title: unknown, bodyHtml: string): Promise<Buffer> {
+  const body = String(bodyHtml || "").trim();
+  if (!body) {
+    throw new Error("no content to render — pass full markdown in `content`");
+  }
+  const file = writeTempHtml(document(title, body));
+  const win = new BrowserWindow({
+    show: false,
+    width: 1024,
+    height: 1400,
+    webPreferences: { sandbox: true, javascript: false },
+  });
+  try {
+    await win.loadFile(file);
+    // Layout and webfont metrics must settle before printing, otherwise the
+    // first page can be captured mid-layout.
+    await new Promise((r) => setTimeout(r, 120));
+    const pdf = await win.webContents.printToPDF({
+      pageSize: "A4",
+      printBackground: true,
+      margins: { top: 0.7, bottom: 0.75, left: 0.75, right: 0.75 },
+      displayHeaderFooter: true,
+      headerTemplate: "<span></span>",
+      footerTemplate: footerTemplate(title),
+      generateDocumentOutline: true,
+    });
+    if (!pdf || pdf.length < 1000) throw new Error("PDF renderer produced an empty file");
+    return pdf;
   } finally {
-    win.destroy();
+    if (!win.isDestroyed()) win.destroy();
+    removeQuietly(file);
   }
 }
 

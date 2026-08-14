@@ -73,8 +73,10 @@ not have, and Google refuses sign-in inside embedded webviews. So:
 
 1. The app opens a loopback port and launches the system browser at
    `https://<project>.web.app/?provider=google&port=<port>`.
-2. That page runs `signInWithPopup` with the Firebase web SDK. Firebase's own
-   hosted OAuth handler holds the provider secrets inside your project.
+2. That page runs `signInWithRedirect` with the Firebase web SDK (redirect,
+   not popup — the app opens the page with `?provider=…`, and browsers block
+   popups that are not tied to a user gesture). Firebase's own hosted OAuth
+   handler holds the provider secrets inside your project.
 3. The page redirects to `http://127.0.0.1:<port>/callback?refreshToken=...`.
 4. The app trades the refresh token for a session and stores it through the OS
    keystore (`app/src/main/token-store.ts`).

@@ -41,7 +41,7 @@ export async function openThread(threadId) {
   attachTurn(`thread:${threadId}`);
   estimateContext(state.current.model, state.chat);
   updateModelLock();
-  setUseTools(!!state.thread.useTools, { persist: false });
+  setUseTools(!!state.thread.useTools);
   resetWebResearchHintDismiss();
   syncMenuContext();
   // Repaint recents so this thread shows as the selected item in the sidebar.

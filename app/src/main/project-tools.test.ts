@@ -38,16 +38,23 @@ function sampleProject(): Project {
 }
 
 describe("applyProjectDefaultUseTools", () => {
-  test("turns on default and all threads including archived", () => {
+  test("sets the default without rewriting threads that already chose", () => {
     const p = applyProjectDefaultUseTools(sampleProject(), true);
     expect(p.defaultUseTools).toBe(true);
-    expect(p.threads!.every((t) => t.useTools === true)).toBe(true);
+    expect(p.threads!.map((t) => t.useTools)).toEqual([false, true]);
   });
 
-  test("turns off default and all threads", () => {
+  test("turning the default off leaves explicit thread choices alone", () => {
     const p = applyProjectDefaultUseTools(sampleProject(), false);
     expect(p.defaultUseTools).toBe(false);
-    expect(p.threads!.every((t) => t.useTools === false)).toBe(true);
+    expect(p.threads!.map((t) => t.useTools)).toEqual([false, true]);
+  });
+
+  test("backfills threads with no stored choice from the default", () => {
+    const base = sampleProject();
+    delete (base.threads![0] as { useTools?: boolean }).useTools;
+    const p = applyProjectDefaultUseTools(base, true);
+    expect(p.threads!.map((t) => t.useTools)).toEqual([true, true]);
   });
 
   test("handles missing threads array", () => {

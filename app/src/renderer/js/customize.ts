@@ -62,8 +62,8 @@ function paintStep() {
   }
   const title = el("customize-step-title");
   if (title) title.textContent = STEP_TITLES[step];
-  const back = el("customize-back") as HTMLButtonElement;
-  const next = el("customize-next") as HTMLButtonElement;
+  const back = el("customize-back");
+  const next = el("customize-next");
   if (back) back.disabled = step === 1;
   if (next) next.textContent = customizePrimaryLabel(step);
 }
