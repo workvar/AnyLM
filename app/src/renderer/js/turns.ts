@@ -23,6 +23,7 @@ import { paintWorkingStrip, setWorkingStripActions } from "./working-strip.js";
 import { resolveWorkingStrip } from "./working-strip-mode.js";
 import { shouldClearPendingOnToolDone } from "./pending-confirm.js";
 import { openConfirmToken, waitingConfirmLabel } from "./doc-confirm-policy.js";
+import { renderRestoredConfirms, saveConfirmRecord } from "./restored-confirms.js";
 
 const turns = new Map<string, any>();
 const byRequest = new Map<string, any>();
@@ -87,6 +88,7 @@ export function clearPendingConfirm(requestId?: string): void {
 
 function replyConfirm(turn, token: string, approved: boolean): void {
   if (turn.pendingConfirm?.token === token) dropPendingConfirm(turn);
+  // The stored offer is dropped by main on reply (see "chat:tool-confirm-reply").
   // File-card path also calls this via settleDocConfirm → reply; strip Allow
   // settles the card without notifying twice.
   settleDocConfirm(token, approved, { notify: false });
@@ -189,6 +191,8 @@ function onActivity(payload: ActivityIpcEvent): void {
       tool: ev.tool,
       args: ev.args,
     };
+    // Persist immediately: from here on the request survives a quit.
+    saveConfirmRecord(turn, turn.pendingConfirm);
   } else if (shouldClearPendingOnToolDone(turn.pendingConfirm, ev)) {
     // Only clear on deny/timeout (declined output). A parallel same-name
     // success must not wipe Allow/Deny for a newer outstanding confirm.
@@ -302,6 +306,9 @@ export function detachAll(): void {
 
 // Called after a conversation's history is rendered: re-attach a live turn.
 export function attachTurn(key: string): void {
+  // Unanswered confirms from earlier sessions are offered again below the
+  // history, whether or not this conversation has a live turn.
+  void renderRestoredConfirms(key);
   const turn = turnFor(key);
   if (!turn || turn.status === "done") {
     syncWorkingStrip();

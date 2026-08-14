@@ -522,6 +522,25 @@ interface ProxyStatus {
   baseUrl: string | null;
 }
 
+/**
+ * A risky-tool confirmation stored on disk so it survives the turn that asked
+ * for it. "pending" is live in this process; "expired" means the user never
+ * answered (timeout, stop, or app quit) and it can be offered again.
+ */
+interface PendingConfirmRecord {
+  token: string;
+  /** Conversation key: "chat:<id>" or "thread:<id>". */
+  key: string;
+  chatId?: string | null;
+  projectId?: string | null;
+  threadId?: string | null;
+  toolName: string;
+  toolDescription?: string;
+  args: Record<string, unknown>;
+  createdAt: number;
+  status: "pending" | "expired";
+}
+
 interface GeneratedFile {
   name: string;
   ext: string;

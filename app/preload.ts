@@ -68,6 +68,11 @@ const api: AnyLmApi = {
   },
   replyToolConfirm: (token, approved) =>
     ipcRenderer.send("chat:tool-confirm-reply", { token, approved }),
+  // Confirmations that outlive the turn that asked for them.
+  confirmsSave: (record) => ipcRenderer.invoke("confirms:save", record),
+  confirmsRemove: (token) => ipcRenderer.invoke("confirms:remove", token),
+  confirmsForKey: (key) => ipcRenderer.invoke("confirms:for-key", key),
+  confirmsResume: (token) => ipcRenderer.invoke("confirms:resume", token),
   // A generated document is ready (shown as a file card in the chat).
   onFileGenerated: (cb) => {
     const fn = (_e, m) => cb(m);

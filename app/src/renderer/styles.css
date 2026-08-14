@@ -3870,6 +3870,11 @@ button.full {
 .perm-card.denied .perm-desc {
   margin: 0;
 }
+/* Re-offered after the fact: same shape, calmer than a live request. */
+.perm-card.restored {
+  background: color-mix(in srgb, var(--warn) 4%, var(--panel));
+  border-left-color: color-mix(in srgb, var(--warn) 55%, var(--border));
+}
 
 
 /* ===== Settings hub ===== */

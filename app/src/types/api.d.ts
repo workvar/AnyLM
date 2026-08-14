@@ -38,6 +38,12 @@ interface ToolConfirmRequest {
   args: Record<string, unknown>;
 }
 
+interface ResumedConfirmResult {
+  ok: boolean;
+  output: string;
+  files: GeneratedFile[];
+}
+
 interface GovernanceEvent {
   id: string;
   warnings: string[];
@@ -129,6 +135,10 @@ interface AnyLmApi {
   onChatContext(cb: (e: ChatContextEvent) => void): Unsubscribe;
   onToolConfirm(cb: (r: ToolConfirmRequest) => void): Unsubscribe;
   replyToolConfirm(token: string, approved: boolean): void;
+  confirmsSave(record: PendingConfirmRecord): Promise<PendingConfirmRecord | null>;
+  confirmsRemove(token: string): Promise<boolean>;
+  confirmsForKey(key: string): Promise<PendingConfirmRecord[]>;
+  confirmsResume(token: string): Promise<ResumedConfirmResult>;
   onFileGenerated(cb: (f: GeneratedFile & { id: string }) => void): Unsubscribe;
   onGovernance(cb: (e: GovernanceEvent) => void): Unsubscribe;
   onAsk(cb: (e: AskEvent) => void): Unsubscribe;

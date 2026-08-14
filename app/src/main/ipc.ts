@@ -65,6 +65,8 @@ import { analyticsAvailable as isAnalyticsAvailable } from "./analytics/availabi
 import type { AnalyticsCategory } from "./analytics";
 import { env } from "./env";
 import { conversationAttachments } from "./chat-attachments";
+import * as pendingConfirmStore from "./pending-confirms";
+import { resumeConfirm } from "./confirm-resume";
 
 const ANALYTICS_CATEGORIES = new Set<AnalyticsCategory>([
   "productUsage",
@@ -161,6 +163,9 @@ function coarseOllamaError(message?: string): string {
 
 // Pending risky-tool confirmations, keyed by a one-time token → { resolve, id }.
 const pendingConfirms = new Map();
+// How long a confirm blocks its tool call before auto-denying. Long, because an
+// unanswered confirm is no longer lost: it is stored and re-offered later.
+const CONFIRM_TIMEOUT_MS = 10 * 60_000;
 // Pending ask_user replies, keyed by token → { resolve, id }.
 const pendingAsks = new Map();
 // Chat request ids the user stopped.
@@ -171,6 +176,9 @@ function rejectPendingForChat(id: string): void {
   for (const [token, entry] of pendingConfirms) {
     if (entry.id === id) {
       pendingConfirms.delete(token);
+      // Stopping the turn is not an answer to the question — keep the stored
+      // record so the call can still be approved from the conversation later.
+      pendingConfirmStore.expire(token);
       entry.resolve(false);
     }
   }
@@ -183,6 +191,10 @@ function rejectPendingForChat(id: string): void {
 }
 
 function registerIpc() {
+  // Confirms still marked live belong to agent loops that died with the last
+  // process; turn them into offers before any window can ask for them.
+  pendingConfirmStore.reconcileOnStartup();
+
   // Settings
   ipcMain.on("menu:set-context", (_e, ctx) => {
     appMenu.setContext(ctx && typeof ctx === "object" ? ctx : {});
@@ -430,11 +442,30 @@ function registerIpc() {
     return auth.request("GET", "/connectors");
   });
   ipcMain.on("chat:tool-confirm-reply", (_e, { token, approved }) => {
+    // The user answered, so the stored offer is settled either way.
+    pendingConfirmStore.remove(token);
     const entry = pendingConfirms.get(token);
     if (entry) {
       pendingConfirms.delete(token);
       entry.resolve(!!approved);
     }
+  });
+
+  // Persisted confirmations: survive an app quit or an unanswered timeout, and
+  // are offered again when the conversation they belong to is reopened.
+  ipcMain.handle("confirms:save", (_e, record) => pendingConfirmStore.save(record));
+  ipcMain.handle("confirms:remove", (_e, token) => {
+    pendingConfirmStore.remove(token);
+    return true;
+  });
+  ipcMain.handle("confirms:for-key", (_e, key) => pendingConfirmStore.forKey(key));
+  ipcMain.handle("confirms:resume", async (_e, token) => {
+    const record = pendingConfirmStore.get(token);
+    if (!record) return { ok: false, output: "This request is no longer available.", files: [] };
+    const result = await resumeConfirm(record);
+    // Keep the offer only if it failed — a completed call must not run twice.
+    if (result.ok) pendingConfirmStore.remove(token);
+    return result;
   });
   ipcMain.on("chat:ask-reply", (_e, { token, answer }) => {
     const entry = pendingAsks.get(token);
@@ -976,13 +1007,15 @@ function registerIpc() {
             tool: { name: tool.name, description: tool.description },
             args,
           });
-          // Auto-deny if the user doesn't answer within 2 minutes.
+          // Unanswered confirms auto-deny so the loop cannot hang forever, but
+          // the persisted record survives as an offer (see pending-confirms).
           setTimeout(() => {
             if (pendingConfirms.has(token)) {
               pendingConfirms.delete(token);
+              pendingConfirmStore.expire(token);
               resolve(false);
             }
-          }, 120_000);
+          }, CONFIRM_TIMEOUT_MS);
         });
       const ask = (payload) =>
         new Promise((resolve) => {
