@@ -5,6 +5,8 @@
 // table is written as a single-column row so no content is silently dropped.
 import JSZip from "jszip";
 import { parseRows } from "./parse-table";
+import { colsXml, rowStyle, sheetViewXml, stylesXml, XF } from "./xlsx-style";
+import { resolveTheme } from "./theme";
 
 function colName(i: number): string {
   let n = i + 1;
@@ -26,8 +28,8 @@ function esc(s: unknown): string {
     .replace(/>/g, "&gt;");
 }
 
-function cell(ref: string, value: string, bold: boolean): string {
-  const style = bold ? ' s="1"' : "";
+function cell(ref: string, value: string, xf: number): string {
+  const style = xf ? ` s="${xf}"` : "";
   if (value !== "" && !isNaN(Number(value)) && /^-?\d+(\.\d+)?$/.test(value.trim())) {
     return `<c r="${ref}"${style}><v>${value.trim()}</v></c>`;
   }
@@ -35,16 +37,22 @@ function cell(ref: string, value: string, bold: boolean): string {
 }
 
 function sheetXml(rows: string[][], headerRow: boolean): string {
+  const width = rows.length ? Math.max(...rows.map((r) => r.length)) : 0;
   const body = rows
     .map((cells, r) => {
-      const inner = cells
-        .map((v, c) => cell(`${colName(c)}${r + 1}`, v, headerRow && r === 0))
-        .join("");
-      return `<row r="${r + 1}">${inner}</row>`;
+      const xf = rowStyle(r, headerRow);
+      // Pad to the widest row so banding and borders run the full table.
+      const inner = Array.from({ length: width }, (_, c) =>
+        cell(`${colName(c)}${r + 1}`, cells[c] ?? "", xf)
+      ).join("");
+      const h = xf === XF.HEADER ? ' ht="22" customHeight="1"' : "";
+      return `<row r="${r + 1}"${h}>${inner}</row>`;
     })
     .join("");
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${body}</sheetData></worksheet>`;
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${sheetViewXml(
+    headerRow
+  )}${colsXml(rows)}<sheetData>${body}</sheetData></worksheet>`;
 }
 
 const CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -67,15 +75,7 @@ const WORKBOOK_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`;
 
-// Two cell formats: 0 = default, 1 = bold (header row).
-const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
-<fills count="1"><fill><patternFill patternType="none"/></fill></fills>
-<borders count="1"><border/></borders>
-<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>
-</styleSheet>`;
+
 
 function workbookXml(sheetName: string): string {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -84,14 +84,19 @@ function workbookXml(sheetName: string): string {
 </workbook>`;
 }
 
-async function buildXlsx(title: unknown, markdown: string): Promise<Buffer> {
+async function buildXlsx(
+  title: unknown,
+  markdown: string,
+  themeId?: string | null
+): Promise<Buffer> {
+  const theme = resolveTheme(title, markdown, themeId);
   const { rows, hasHeader } = parseRows(markdown);
   const zip = new JSZip();
   zip.file("[Content_Types].xml", CONTENT_TYPES);
   zip.file("_rels/.rels", ROOT_RELS);
   zip.file("xl/workbook.xml", workbookXml(String(title || "Sheet1")));
   zip.file("xl/_rels/workbook.xml.rels", WORKBOOK_RELS);
-  zip.file("xl/styles.xml", STYLES);
+  zip.file("xl/styles.xml", stylesXml(theme));
   zip.file("xl/worksheets/sheet1.xml", sheetXml(rows, hasHeader));
   return zip.generateAsync({ type: "nodebuffer" });
 }

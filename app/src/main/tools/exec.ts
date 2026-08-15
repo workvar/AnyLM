@@ -8,8 +8,15 @@ import * as path from "path";
 import * as registry from "./registry";
 import * as fsTools from "./fs-tools";
 import * as webSearch from "./web-search";
+import {
+  MAX_SEARCHES_PER_TURN,
+  refuseBudget,
+  refuseRepeat,
+  searchKey,
+} from "./search-budget";
 import * as documents from "../documents";
 import { generateDocumentToolMessage } from "../documents/messages";
+import { normalizeFormat } from "../documents/normalize";
 
 const MAX_OUTPUT = 20_000; // chars returned to the model
 const SHELL_TIMEOUT = 15_000;
@@ -81,7 +88,14 @@ async function execBuiltin(tool, args, context) {
     case "generate_document": {
       try {
         const projectId = context?.projectId || null;
-        const file = await documents.generate(projectId, args);
+        // The user named a format this turn. Small local models routinely send
+        // a different one (asked for a deck, pass "pdf"), so the user's word
+        // wins over the model's.
+        const wanted = context?.wantedFormat || null;
+        const call = wanted && normalizeFormat(args.format, args.title, args.content) !== wanted
+          ? { ...args, format: wanted }
+          : args;
+        const file = await documents.generate(projectId, call);
         if (context?.onFile) context.onFile(file);
         return generateDocumentToolMessage(file.name, !!projectId);
       } catch (e) {
@@ -120,8 +134,20 @@ async function execBuiltin(tool, args, context) {
       return await fsTools.deletePath(args);
     case "find_files":
       return clip(fsTools.findFiles(args));
-    case "web_search":
-      return clip(await webSearch.search(String(args.query || "")));
+    case "web_search": {
+      const query = String(args.query || "").trim();
+      // Re-asking the same question in different words burns a tool round for
+      // the same results, and enough of those hit the round cap — which is how
+      // a turn ends with tools run and nothing written.
+      const seen = context?.searchedQueries;
+      const key = searchKey(query);
+      if (key && seen) {
+        if (seen.has(key)) return refuseRepeat(query);
+        if (seen.size >= MAX_SEARCHES_PER_TURN) return refuseBudget();
+        seen.add(key);
+      }
+      return clip(await webSearch.search(query));
+    }
     case "open_app_or_url": {
       const target = String(args.target || "").trim();
       if (!target) return "Error: target required";
@@ -148,12 +174,19 @@ async function execBuiltin(tool, args, context) {
     case "http_fetch": {
       const url = String(args.url || "");
       const method = String(args.method || "GET").toUpperCase();
-      const duplicate = !!(url && context?.fetchedUrls?.has(url));
-      const body = await httpFetch(url, method, args.body);
-      if (url) context?.fetchedUrls?.add(url);
-      if (duplicate) {
-        return `Note: this URL was already fetched earlier this turn.\n\n${body}`;
+      // Re-reading a URL costs a round trip and a tool round to return text
+      // the model already has. Previously this refetched and prepended a note,
+      // which models ignored; refuse outright instead. GET only — a repeated
+      // POST is a different request and may legitimately need to run again.
+      if (url && method === "GET" && context?.fetchedUrls?.has(url)) {
+        return (
+          `You already fetched ${url} this turn and its contents are above. ` +
+          "Do not fetch it again. Fetch a DIFFERENT source, or write your answer from " +
+          "what you already have."
+        );
       }
+      const body = await httpFetch(url, method, args.body);
+      if (url && method === "GET") context?.fetchedUrls?.add(url);
       return body;
     }
     default:
@@ -181,7 +214,7 @@ async function execCustom(tool, args) {
 // confirm(tool, args) → Promise<boolean>; only invoked for risky calls.
 // allow: optional Set of names permitted even when globally disabled
 // (tools referenced by an enabled skill).
-// context: { projectId, onFile, ask, fetchedUrls? } — chat context for tools
+// context: { projectId, onFile, ask, fetchedUrls?, searchedQueries?, wantedFormat? } — chat context
 // that write project files, need an answer from the user, or soft-dedupe
 // http_fetch URLs within a turn.
 async function execute(name, args, confirm, allow, context) {

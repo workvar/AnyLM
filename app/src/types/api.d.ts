@@ -224,6 +224,10 @@ interface AnyLmApi {
   pfilesSavePdf(projectId: string, title: string, html: string, text: string): Promise<GeneratedFile>;
   pfilesReveal(projectId: string): Promise<boolean>;
   pfilesShow(dir: string, name: string): Promise<boolean>;
+  /** Read a generated file by folder, for chats with no project. */
+  pfilesReadGenerated(dir: string, name: string): Promise<ProjectFileRead | null>;
+  /** Preview a generated docx/pptx by folder, for chats with no project. */
+  pfilesPreviewGenerated(dir: string, name: string): Promise<FilePreview>;
   pfilesOpen(dir: string, name: string): Promise<boolean>;
   pfilesAppsFor(
     dir: string,

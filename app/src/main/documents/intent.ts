@@ -21,6 +21,20 @@ const AS_FORMAT =
 // Phrases that mean the user is asking about a file, not for one.
 const NOT_WANTS = /\b(what is|how do i|explain|difference between|instead of)\b/i;
 
+// Only the formats the user NAMED. "write me a report" infers docx in
+// detect(); here it returns null, because nothing was actually named. Used to
+// decide whether we may overrule the format the model passed to
+// generate_document — we only overrule an explicit request.
+function detectExplicit(text: unknown): string | null {
+  const s = String(text || "");
+  if (!s.trim() || NOT_WANTS.test(s)) return null;
+  if (!WANTS.test(s) && !AS_FORMAT.test(s)) return null;
+  for (const [format, re] of FORMAT_WORDS) {
+    if (re.test(s)) return format;
+  }
+  return null;
+}
+
 // Returns "pdf" | "docx" | "pptx" | "xlsx" | "md" | null.
 function detect(text: unknown): string | null {
   const s = String(text || "");
@@ -42,7 +56,11 @@ function promptBlock(format: string): string {
     "You CAN create files: the generate_document tool writes them to disk. " +
     "Never reply that you are unable to create or generate files. " +
     `Always call generate_document with format "${format}", a short title, and full markdown content. ` +
-    `When the topic needs current or researched facts, call web_search, then http_fetch on 1–2 solid URLs before generate_document. ` +
+    `The format is fixed: ${format}. Do not substitute another format (a PPTX request is not satisfied by a PDF). ` +
+    `Research before writing: run at least 2 different web_search queries covering different angles of the topic, ` +
+    `then http_fetch 3–5 distinct, credible URLs from those results before calling generate_document. ` +
+    `Only search for the topic in the user's latest message — ignore topics from earlier chats or background context. ` +
+    `End the document with a "Sources" section listing every URL you fetched. ` +
     `Every heading must have real paragraphs or detailed steps (commands/examples where relevant) — ` +
     `no empty sections and no outline of step titles alone. ` +
     `If search or fetch fails, say so briefly and still write dense content from your best knowledge. ` +
@@ -50,7 +68,8 @@ function promptBlock(format: string): string {
     (format === "xlsx"
       ? "For xlsx, format the content as a markdown table with a header row. "
       : format === "pptx"
-      ? "For pptx, start each slide with a '#' or '##' heading. "
+      ? "For pptx, start each slide with a '#' or '##' heading. " +
+        "Bullets written as 'Label: description' are laid out as a card grid. "
       : "") +
     "Only tell the user the file is ready if the tool result confirms it was created. " +
     "If the tool says the user declined, denied, or returned an error, say so clearly " +
@@ -58,4 +77,4 @@ function promptBlock(format: string): string {
   );
 }
 
-export { detect, promptBlock };
+export { detect, detectExplicit, promptBlock };

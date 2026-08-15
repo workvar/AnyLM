@@ -5,6 +5,11 @@
 import * as chroma from "./chroma";
 
 const TOP_K = 4;
+// Cosine similarity below this is treated as "unrelated". Chroma returns the
+// nearest records regardless of how far away they are, so an unfiltered recall
+// pastes the previous thread's task into a brand-new one and small local
+// models act on it (asked for a deck on X, they research last week's Y).
+const MIN_SCORE = 0.45;
 const NAME = chroma.PROJECT_MEMORY;
 
 // Store one exchange (user + assistant) as a memory record for the project.
@@ -45,12 +50,16 @@ async function recall({
     ? { $and: [{ projectId }, { threadId: { $ne: threadId } }] }
     : { projectId };
   const res = await chroma.queryText(NAME, query, TOP_K, where);
-  const hits = res.filter((r) => r.score > 0);
+  const hits = res.filter((r) => r.score >= MIN_SCORE);
   if (!hits.length) return "";
   const body = hits.map((r, i) => `[M${i + 1}] ${r.text}`).join("\n\n");
   return (
-    "Relevant memory from other chats in this project (shared context — use it " +
-    "to stay consistent about the user, their preferences, and prior decisions):\n\n" +
+    "Background from the user's other chats in this project. This is REFERENCE " +
+    "ONLY: use it to stay consistent about the user, their preferences and prior " +
+    "decisions. It is NOT the current request. Never adopt the topic, the " +
+    "research subject, or the output format of a past chat unless the user's " +
+    "latest message asks for it. If it is unrelated to the latest message, " +
+    "ignore it completely.\n\n" +
     body
   );
 }

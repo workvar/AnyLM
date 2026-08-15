@@ -70,6 +70,9 @@ export interface WorkersDeps {
   onFile?: (file: GeneratedFile) => void;
   /** Bumps the outer handler's toolsRun counter so the final summary stays accurate. */
   onToolCall?: () => void;
+  /** Format the user explicitly named this turn; overrules the model's own
+   *  `format` arg inside generate_document. Null when none was named. */
+  wantedFormat?: string | null;
   // Injectable seams for tests; default to the real modules.
   recall?: typeof memory.recall;
   retrieveContext?: typeof context.retrieve;
@@ -160,6 +163,7 @@ async function runTool(
   let promptTokens = 0;
   let completionTokens = 0;
   const fetchedUrls = new Set<string>();
+  const searchedQueries = new Set<string>();
   const kindAllow =
     step.kind === "research" ||
     step.kind === "fact_check" ||
@@ -212,6 +216,8 @@ async function runTool(
             onFile: deps.onFile || (() => {}),
             ask,
             fetchedUrls,
+            searchedQueries,
+            wantedFormat: deps.wantedFormat ?? null,
           });
       deps.onToolCall?.();
 

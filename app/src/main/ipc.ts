@@ -33,6 +33,7 @@ import {
   shouldNudgeDocumentGenerate,
   type DocNudgeState,
 } from "./documents/doc-nudge";
+import { MAX_TOOL_ROUNDS, finalAnswerPrompt, needsFinalAnswer } from "./final-answer";
 import * as proxy from "./proxy/server";
 import * as projectFiles from "./project-files";
 import * as artifacts from "./artifacts";
@@ -608,6 +609,12 @@ function registerIpc() {
   );
   ipcMain.handle("pfiles:reveal", (_e, projectId) => projectFiles.reveal(projectId));
   ipcMain.handle("pfiles:show", (_e, { dir, name }) => projectFiles.showGenerated(dir, name));
+  ipcMain.handle("pfiles:read-generated", (_e, { dir, name }) =>
+    projectFiles.readGenerated(dir, name)
+  );
+  ipcMain.handle("pfiles:preview-generated", (_e, { dir, name }) =>
+    projectFiles.previewGeneratedFile(dir, name)
+  );
   ipcMain.handle("pfiles:open", async (_e, { dir, name }) => {
     const result = await projectFiles.openGenerated(dir, name);
     try {
@@ -805,6 +812,7 @@ function registerIpc() {
       const derived = conversationAttachments(messages);
       let wantsDocument = false;
       const fetchedUrls = new Set<string>();
+      const searchedQueries = new Set<string>();
 
       // --- Governance: pre-flight limits/budget/rate/model, then content. ---
       const warnings = [];
@@ -901,6 +909,9 @@ function registerIpc() {
       // all and replies "I can't create PDFs", which is the bug this fixes.
       const wantedFormat = lastUser ? documentIntent.detect(lastUser.content) : null;
       wantsDocument = !!wantedFormat;
+      // Only a format the user actually named may overrule the model's choice
+      // of format inside generate_document (see tools/exec.ts).
+      const explicitFormat = lastUser ? documentIntent.detectExplicit(lastUser.content) : null;
       const docAutoTools = !useTools && !!wantedFormat;
       if (wantedFormat) {
         const docBlock = documentIntent.promptBlock(wantedFormat);
@@ -1233,6 +1244,7 @@ function registerIpc() {
           onToolCall: () => {
             toolsRun += 1;
           },
+          wantedFormat: explicitFormat,
           isCancelled: () => cancelledChats.has(id),
         });
 
@@ -1342,6 +1354,7 @@ function registerIpc() {
       let totalCompletion = 0;
       let rounds = 0;
       let stopped = false;
+      let hitRoundCap = false;
       let docNudge: DocNudgeState = {
         documentIntent: wantsDocument,
         researchOnlyRounds: 0,
@@ -1410,8 +1423,14 @@ function registerIpc() {
             send("chat:replace", { id, text: recovered.cleanedText });
           }
         }
+        if (!toolDefs || !calls.length) break;
         // Folder organizing / coding tasks need more tool rounds than Q&A.
-        if (!toolDefs || !calls.length || rounds >= 15) break;
+        // Breaking here leaves `result.text` empty (the model spent this round
+        // on tool calls), which is why the cap has to be recorded, not just hit.
+        if (rounds >= MAX_TOOL_ROUNDS) {
+          hitRoundCap = true;
+          break;
+        }
         rounds += 1;
         act({ kind: "status", text: `Running ${calls.length} tool${calls.length === 1 ? "" : "s"}…` });
         full.push({ role: "assistant", content: result.text, tool_calls: calls });
@@ -1438,6 +1457,8 @@ function registerIpc() {
                 onFile: (file) => send("chat:file", { id, ...file }),
                 ask,
                 fetchedUrls,
+                searchedQueries,
+                wantedFormat: explicitFormat,
               });
           toolsRun += 1;
           act({
@@ -1475,6 +1496,34 @@ function registerIpc() {
         }
       }
       let text = (result && result.text) || "";
+      // Tools ran but nothing reached the user (round cap, or an empty final
+      // message). Spend one more call with the tools removed so the turn ends
+      // in an answer instead of "(stopped before any reply)".
+      if (needsFinalAnswer({ text, stopped, toolsRun, hitRoundCap })) {
+        act({ kind: "status", text: "Writing reply…" });
+        full.push({ role: "system", content: finalAnswerPrompt(hitRoundCap) });
+        try {
+          const wrap = await ollama.chatStream(useModel, full, (piece) => {
+            if (piece.content && !projectCoding) send("chat:chunk", { id, text: piece.content });
+          });
+          totalPrompt += wrap.promptTokens || 0;
+          totalCompletion += wrap.completionTokens || 0;
+          const tail = (wrap.text || "").trim();
+          if (tail) {
+            // The wrap pass streamed on top of whatever the capped round had
+            // already shown, so the persisted text must be both, in order.
+            text = text.trim() ? `${text.trim()}\n\n${tail}` : tail;
+            send("chat:replace", { id, text });
+          }
+        } catch (e) {
+          // The turn still has to end with something the user can read.
+          const note =
+            "I ran out of tool rounds before writing this up. " +
+            `The research above is what I gathered. (${(e as Error).message})`;
+          send("chat:chunk", { id, text: note });
+          text = text || note;
+        }
+      }
       // Stop mid-turn: still summarize whatever tools already landed.
       if (projectCoding && (!stopped || projectCodingOutcomes.length)) {
         act({ kind: "status", text: "Writing summary" });

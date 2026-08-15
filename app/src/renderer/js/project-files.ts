@@ -93,7 +93,24 @@ function openFile(name) {
 
 // Open the in-app viewer for any project file (also used by chat file cards).
 export async function openFileViewer(projectId, name) {
-  const f = await window.api.pfilesRead(projectId, name);
+  return showInViewer(await window.api.pfilesRead(projectId, name), {
+    kind: "project",
+    projectId,
+    name,
+  });
+}
+
+// Same viewer for a file generated outside a project, addressed by folder.
+// Without this, a standalone chat could only "Show in folder".
+export async function openGeneratedViewer(dir, name) {
+  return showInViewer(await window.api.pfilesReadGenerated(dir, name), {
+    kind: "generated",
+    dir,
+    name,
+  });
+}
+
+async function showInViewer(f, src) {
   if (!f) return;
   el("viewer-title").textContent = f.name;
   const body = el("viewer-body");
@@ -107,7 +124,7 @@ export async function openFileViewer(projectId, name) {
     div.innerHTML = renderMarkdown(f.content || "");
     body.appendChild(div);
   } else if (f.ext === ".docx" || f.ext === ".pptx") {
-    await renderBinaryPreview(body, projectId, name, f.ext);
+    await renderBinaryPreview(body, src, f.ext);
   } else {
     const pre = document.createElement("pre");
     pre.className = "viewer-pre";
@@ -118,9 +135,12 @@ export async function openFileViewer(projectId, name) {
 }
 
 // docx → converted HTML; pptx → extracted slide text; fallback → hint.
-async function renderBinaryPreview(body, projectId, name, ext) {
+async function renderBinaryPreview(body, src, ext) {
   body.appendChild(node("div", "grid-empty", "Loading preview…"));
-  const p = await window.api.pfilesPreview(projectId, name);
+  const p =
+    src.kind === "generated"
+      ? await window.api.pfilesPreviewGenerated(src.dir, src.name)
+      : await window.api.pfilesPreview(src.projectId, src.name);
   body.innerHTML = "";
   if (p && p.kind === "html") {
     const div = node("div", "viewer-md");

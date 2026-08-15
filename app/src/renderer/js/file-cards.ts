@@ -3,7 +3,7 @@
 // control (default app + dropdown for Preview / Show in folder when allowed).
 import { el, node } from "./dom.js";
 import { state } from "./state.js";
-import { openFileViewer } from "./project-files.js";
+import { openFileViewer, openGeneratedViewer } from "./project-files.js";
 
 const ICONS = { ".pdf": "📄", ".docx": "📝", ".pptx": "📊", ".xlsx": "📈", ".md": "🗒️" };
 
@@ -179,9 +179,13 @@ export async function renderFileCard(
     if (defaultApp) window.api.pfilesOpenWith(dir, name, defaultApp.id);
     else window.api.pfilesOpen(dir, name);
   };
+  // Previewable in-app whether or not this chat belongs to a project — a
+  // standalone chat used to offer nothing but "Show in folder".
+  const canPreview = [".pdf", ".md", ".docx", ".pptx"].includes(ext);
   const preview = () => {
     closeOpenMenus();
     if (projectId) openFileViewer(projectId, name);
+    else openGeneratedViewer(dir, name);
   };
   const showFolder = () => {
     closeOpenMenus();
@@ -206,7 +210,7 @@ export async function renderFileCard(
     menu.appendChild(item);
   }
 
-  if (projectId) {
+  if (canPreview) {
     const itemPreview = node("button", "doc-open-item", "Preview in AnyLM");
     itemPreview.onclick = (e) => {
       e.stopPropagation();
@@ -234,6 +238,17 @@ export async function renderFileCard(
   };
 
   split.append(main, chevron);
+  if (canPreview) {
+    // Seeing the file in the app is the common case, so it gets its own button
+    // rather than living two clicks deep in the dropdown.
+    const previewBtn = node("button", "doc-preview-btn", "Preview");
+    previewBtn.title = "Preview in AnyLM";
+    previewBtn.onclick = (e) => {
+      e.stopPropagation();
+      preview();
+    };
+    actions.appendChild(previewBtn);
+  }
   actions.append(split, menu);
   card.appendChild(actions);
 

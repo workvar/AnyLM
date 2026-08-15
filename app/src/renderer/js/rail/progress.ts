@@ -1,5 +1,6 @@
 // Progress list in the right rail: one row per tool run in this turn.
 import { el, node } from "../dom.js";
+import { detailNode } from "../linkify.js";
 
 interface Step {
   key: string;
@@ -22,7 +23,7 @@ function render() {
     row.appendChild(node("span", "rail-tick", s.done ? "✓" : "•"));
     const text = node("div", "rail-step-text");
     text.appendChild(node("div", "rail-step-label", s.label));
-    if (s.detail) text.appendChild(node("div", "rail-step-detail", s.detail));
+    if (s.detail) text.appendChild(detailNode("rail-step-detail", s.detail));
     row.appendChild(text);
     wrap.appendChild(row);
   }

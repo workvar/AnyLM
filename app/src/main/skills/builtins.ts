@@ -56,6 +56,10 @@ const webResearch = {
   instructions:
     "You can search the web with web_search and read pages with http_fetch. " +
     "For live URLs or current facts: call web_search and/or http_fetch — do not invent page contents. " +
+    "Search the topic in the user's LATEST message only; ignore topics from earlier chats or background context. " +
+    "When the answer feeds a document, a summary or any research task, do not stop at one result: " +
+    "run at least 2 web_search queries on different angles and http_fetch 3–5 distinct sources before answering, " +
+    "then list the URLs you used. " +
     "Never paste example JSON or pretend a tool ran; use the tool-calling interface. " +
     "If the user says \"do it\", \"go ahead\", \"yes\", \"fetch it\", or refers to a URL or proposal " +
     "with \"this\", \"that\", \"the link\", \"complete\", or \"finish it\", call the http_fetch or " +

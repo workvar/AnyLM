@@ -1,4 +1,5 @@
 // Chat sending and streaming.
+import { resizeComposer } from "./composer-autogrow.js";
 import { el } from "./dom.js";
 import { state } from "./state.js";
 import { addMessage, addUserMessage } from "./views.js";
@@ -75,6 +76,7 @@ export async function sendMessage() {
 
   if (text && answerFromComposer(text)) {
     input.value = "";
+    resizeComposer(input);
     void syncWebResearchHint();
     return;
   }
@@ -90,6 +92,7 @@ export async function sendMessage() {
   clearAttachments();
 
   input.value = "";
+    resizeComposer(input);
   void syncWebResearchHint();
 
   for (const p of pending) {

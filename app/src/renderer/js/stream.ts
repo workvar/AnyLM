@@ -1,6 +1,7 @@
 // Batched streaming renderer. Coalesces tokens into one DOM write per animation
 // frame and appends only new text, so fast models don't cause per-token reflow.
 import { el } from "./dom.js";
+import { scrollToBottom } from "./autoscroll.js";
 
 export function createStreamRenderer(bubble) {
   let acc = "";
@@ -8,10 +9,6 @@ export function createStreamRenderer(bubble) {
   let raf = 0;
   let started = false;
   let textNode = null;
-
-  function nearBottom(m) {
-    return m.scrollHeight - m.scrollTop - m.clientHeight < 80;
-  }
 
   function flush() {
     raf = 0;
@@ -23,11 +20,9 @@ export function createStreamRenderer(bubble) {
       textNode = document.createTextNode("");
       bubble.appendChild(textNode);
     }
-    const m = el("messages");
-    const stick = nearBottom(m);
     textNode.appendData(pending);
     pending = "";
-    if (stick) m.scrollTop = m.scrollHeight;
+    scrollToBottom();
   }
 
   return {

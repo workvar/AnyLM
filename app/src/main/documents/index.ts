@@ -10,6 +10,8 @@ import { buildPptx } from "./pptx";
 import { buildXlsx } from "./xlsx";
 import { buildPdf } from "./pdf";
 import { assertDocumentContentOrThrow } from "./content-quality";
+import { resolveTheme } from "./theme";
+import { normalizeFormat, toMarkdown } from "./normalize";
 
 const FORMATS = new Set(["pdf", "docx", "pptx", "xlsx", "md"]);
 
@@ -17,26 +19,34 @@ interface GenerateOpts {
   format?: string;
   title?: string;
   content?: string;
+  /** "professional" | "academic" | "vibrant" | "informal". Omit to detect from the content. */
+  theme?: string;
 }
 
 // generate(projectId, { format, title, content }) → { name, ext, dir }
 async function generate(
   projectId: string | null,
-  { format, title, content }: GenerateOpts = {}
+  { format, title, content, theme }: GenerateOpts = {}
 ): Promise<GeneratedFile> {
-  const fmt = String(format || "").toLowerCase().trim();
+  // Models send "Presentation" for format and an array of slide objects for
+  // content often enough that rejecting those is a worse failure than coercing
+  // them: the user sees "unsupported format" or a slide reading [object Object].
+  const fmt = normalizeFormat(format, title, content);
   if (!FORMATS.has(fmt)) {
     throw new Error(`unsupported format "${format}" — use pdf, docx, pptx, xlsx, or md`);
   }
-  const text = String(content || "");
+  const text = toMarkdown(content);
   assertDocumentContentOrThrow(fmt, text);
   const fp = dest.reserve(projectId, title || "document", `.${fmt}`);
+  // One theme for the whole file, resolved from the content when not given, so
+  // every format of the same document comes out looking like one family.
+  const themeId = resolveTheme(title, text, theme).id;
 
   if (fmt === "md") fs.writeFileSync(fp, text);
-  else if (fmt === "pdf") fs.writeFileSync(fp, await buildPdf(title, mdToHtml(text)));
-  else if (fmt === "docx") fs.writeFileSync(fp, await buildDocx(title, text));
-  else if (fmt === "xlsx") fs.writeFileSync(fp, await buildXlsx(title, text));
-  else await buildPptx(title, text, fp);
+  else if (fmt === "pdf") fs.writeFileSync(fp, await buildPdf(title, mdToHtml(text), themeId));
+  else if (fmt === "docx") fs.writeFileSync(fp, await buildDocx(title, text, themeId));
+  else if (fmt === "xlsx") fs.writeFileSync(fp, await buildXlsx(title, text, themeId));
+  else await buildPptx(title, text, fp, themeId);
 
   const name = path.basename(fp);
   dest.index(projectId, name, text);

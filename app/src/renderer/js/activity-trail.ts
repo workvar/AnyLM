@@ -2,6 +2,7 @@
 import { node } from "./dom.js";
 import { formatThought } from "./activity-store.js";
 import { paintAgentTrail } from "./agent-trail.js";
+import { appendLinkified, detailNode } from "./linkify.js";
 
 export function createTrailHost(): HTMLElement {
   return node("div", "activity-trail-host");
@@ -71,9 +72,11 @@ export function paintTrail(
       head.appendChild(toggle);
       if (running) head.appendChild(node("span", "act-live-tag", "running"));
       body.appendChild(head);
-      if (ev.detail) body.appendChild(node("div", "act-tool-detail", ev.detail));
+      if (ev.detail) body.appendChild(detailNode("act-tool-detail", ev.detail));
       if (ev.output) {
-        const out = node("pre", "act-tool-out hidden", ev.output);
+        // Linkified so the URLs a search returned are clickable, not just text.
+        const out = node("pre", "act-tool-out hidden");
+        if (!appendLinkified(out, ev.output)) out.textContent = ev.output;
         if (done) {
           toggle.title = "Show tool output";
           toggle.onclick = () => out.classList.toggle("hidden");

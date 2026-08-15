@@ -1591,6 +1591,16 @@ select {
   resize: none;
   font-family: inherit;
   font-size: var(--fs-lg);
+  /* Grows with the text via composer-autogrow.ts; the cap keeps the message
+     log from being squeezed off screen by a very long prompt. flex-shrink: 0
+     matters because #chat-form is a flex column, which would otherwise be free
+     to squeeze the field below its min-height. */
+  box-sizing: border-box;
+  min-height: 52px;
+  max-height: 200px;
+  flex: 0 0 auto;
+  overflow-y: hidden;
+  line-height: 1.45;
 }
 #chat-input:focus {
   outline: none;
@@ -4843,4 +4853,50 @@ button:disabled:hover {
 .error-text,
 .auth-error {
   color: color-mix(in srgb, var(--danger) 82%, var(--text));
+}
+
+
+/* Preview a generated file in-app. Sits left of the Open split control so
+   viewing a file never requires a trip to Finder. */
+.doc-preview-btn {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  padding: 8px 12px;
+  min-height: 34px;
+  margin-right: 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text);
+  cursor: pointer;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.doc-preview-btn:hover {
+  background: var(--hover);
+}
+
+/* ---- Clickable URLs inside activity rows (Progress rail + inline trail) ---- */
+.act-link {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  cursor: pointer;
+}
+.act-link:hover {
+  border-bottom-color: var(--accent);
+}
+.act-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+/* A detail row that is a single link should still be readable when long. */
+.rail-step-detail .act-link,
+.act-tool-detail .act-link {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
 }

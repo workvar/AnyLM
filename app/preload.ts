@@ -188,6 +188,9 @@ const api: AnyLmApi = {
     ipcRenderer.invoke("pfiles:save-pdf", { projectId, title, html, text }),
   pfilesReveal: (projectId) => ipcRenderer.invoke("pfiles:reveal", projectId),
   pfilesShow: (dir, name) => ipcRenderer.invoke("pfiles:show", { dir, name }),
+  pfilesReadGenerated: (dir, name) => ipcRenderer.invoke("pfiles:read-generated", { dir, name }),
+  pfilesPreviewGenerated: (dir, name) =>
+    ipcRenderer.invoke("pfiles:preview-generated", { dir, name }),
   pfilesOpen: (dir, name) => ipcRenderer.invoke("pfiles:open", { dir, name }),
   pfilesAppsFor: (dir, name) => ipcRenderer.invoke("pfiles:apps-for", { dir, name }),
   pfilesOpenWith: (dir, name, appId) =>

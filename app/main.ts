@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session } from "electron";
+import { app, BrowserWindow, session, shell } from "electron";
 import * as path from "path";
 import { registerIpc } from "./src/main/ipc";
 import { registerProtocol } from "./src/main/protocol";
@@ -52,6 +52,19 @@ function createWindow(): void {
   // overwrite our displayName (e.g. "AnyLM (Dev)") once the page loads.
   win.on("page-title-updated", (event) => {
     event.preventDefault();
+  });
+  // Links in chat and in the activity trail carry target="_blank". Without
+  // this they would open a bare, chrome-less Electron window; send them to the
+  // user's real browser instead, and never let the app frame itself navigate.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    return { action: "deny" };
+  });
+  win.webContents.on("will-navigate", (event, url) => {
+    if (url !== win.webContents.getURL()) {
+      event.preventDefault();
+      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    }
   });
   win.loadFile(RENDERER_HTML);
 

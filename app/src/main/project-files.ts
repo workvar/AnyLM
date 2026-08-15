@@ -240,6 +240,30 @@ function resolveGenerated(dir: string, name: string): string | null {
   return target;
 }
 
+// Read/preview a generated file by its folder rather than a project id, so
+// files made in a standalone chat can be viewed in-app instead of only being
+// revealed in Finder. Path safety still comes from generatedPath().
+function readGenerated(dir: string, name: string) {
+  const fp = resolveGenerated(dir, name);
+  if (!fp) return null;
+  const ext = path.extname(fp).toLowerCase();
+  if (ext === ".pdf") {
+    return { name: path.basename(fp), ext, url: "file://" + encodeURI(fp).replace(/#/g, "%23") };
+  }
+  if (ext === ".docx" || ext === ".pptx") return { name: path.basename(fp), ext };
+  try {
+    return { name: path.basename(fp), ext, content: fs.readFileSync(fp, "utf8") };
+  } catch {
+    return null;
+  }
+}
+
+async function previewGeneratedFile(dir: string, name: string) {
+  const fp = resolveGenerated(dir, name);
+  if (!fp) return { kind: "none" };
+  return require("./documents/preview").preview(fp, path.extname(fp).toLowerCase());
+}
+
 function existsGenerated(dir: string, name: string): boolean {
   const p = generatedPath(dir, name);
   return !!(p && fs.existsSync(p));
@@ -261,5 +285,5 @@ async function openGenerated(dir: string, name: string): Promise<boolean> {
   return !err;
 }
 
-export { defaultBase, childPath, ensureFolder, listFiles, readFile, previewFile, saveMarkdown, savePdf, savePathFor, indexText, appendLog, reveal, showGenerated, openGenerated, resolveGenerated, existsGenerated };
+export { defaultBase, childPath, ensureFolder, listFiles, readFile, previewFile, readGenerated, previewGeneratedFile, saveMarkdown, savePdf, savePathFor, indexText, appendLog, reveal, showGenerated, openGenerated, resolveGenerated, existsGenerated };
 

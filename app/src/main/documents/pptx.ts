@@ -1,55 +1,60 @@
-// Markdown → .pptx via pptxgenjs. Each '#'/'##' heading starts a new slide;
-// list items and paragraphs become bullets on the current slide.
+// Markdown → .pptx via pptxgenjs, themed. Headings drive slide breaks;
+// pptx-layout decides each slide's shape and pptx-render draws it.
 import PptxGenJS from "pptxgenjs";
 import { parseBlocks } from "./parse-md";
+import { toSlides, type SlideSpec } from "./pptx-layout";
+import { resolveTheme, type Theme } from "./theme";
+import * as R from "./pptx-render";
 
-// Group blocks into slides: { title, lines: [{text, bullet}] }.
-function toSlides(title, blocks) {
-  const slides = [];
-  let cur = null;
-  const ensure = () => {
-    if (!cur) {
-      cur = { title: String(title || "Presentation"), lines: [] };
-      slides.push(cur);
-    }
-    return cur;
-  };
-  for (const b of blocks) {
-    if (b.kind === "heading" && b.level <= 2) {
-      cur = { title: b.text, lines: [] };
-      slides.push(cur);
-    } else if (b.kind === "code") {
-      for (const line of b.text.split("\n")) ensure().lines.push({ text: line, bullet: false });
-    } else {
-      ensure().lines.push({
-        text: b.text,
-        bullet: b.kind === "bullet" || b.kind === "numbered",
-      });
-    }
+function renderSlide(pptx: any, t: Theme, spec: SlideSpec, label: string, page: number): boolean {
+  if (spec.kind === "cover") {
+    R.coverSlide(pptx, t, spec.title, spec.subtitle);
+    return false; // cover carries no footer
   }
-  return slides.length ? slides : [{ title: String(title || "Presentation"), lines: [] }];
+  if (spec.kind === "section" || (spec.kind === "closing" && spec.bodyKind === "prose" && !spec.prose?.length)) {
+    R.sectionSlide(pptx, t, spec.title, spec.kicker);
+    return false;
+  }
+
+  const { slide, top } = R.contentSlide(pptx, t, spec.title, spec.kicker);
+  let y = top;
+  if (spec.lede) y = R.lede(slide, t, spec.lede, y);
+
+  if (spec.bodyKind === "table" && spec.table) {
+    R.table(slide, t, spec.table.header, spec.table.rows, y);
+  } else if (spec.bodyKind === "cards" && spec.cards) {
+    R.cardGrid(slide, t, spec.cards, y);
+  } else if (spec.bodyKind === "pillars" && spec.pillars) {
+    R.pillarGrid(slide, t, spec.pillars, y);
+  } else if (spec.bodyKind === "bullets" && spec.bullets?.length) {
+    R.bulletList(slide, t, spec.bullets, y);
+  } else if (spec.prose?.length) {
+    R.prose(slide, t, spec.prose, y);
+  }
+  R.footer(slide, t, label, page);
+  return true;
 }
 
-async function buildPptx(title, markdown, filePath) {
+async function buildPptx(
+  title: unknown,
+  markdown: string,
+  filePath: string,
+  themeId?: string | null
+): Promise<void> {
+  const theme = resolveTheme(title, markdown, themeId);
   const pptx = new PptxGenJS();
-  pptx.defineLayout({ name: "WIDE", width: 13.33, height: 7.5 });
+  pptx.defineLayout({ name: "WIDE", width: R.W, height: R.H });
   pptx.layout = "WIDE";
+  pptx.theme = { headFontFace: theme.fonts.heading, bodyFontFace: theme.fonts.body };
 
-  for (const s of toSlides(title, parseBlocks(markdown))) {
-    const slide = pptx.addSlide();
-    slide.addText(s.title, { x: 0.6, y: 0.4, w: 12.1, h: 0.9, fontSize: 28, bold: true });
-    if (s.lines.length) {
-      slide.addText(
-        s.lines.map((l) => ({
-          text: l.text,
-          options: { bullet: l.bullet, breakLine: true, fontSize: 16 },
-        })),
-        { x: 0.8, y: 1.5, w: 11.7, h: 5.4, valign: "top" }
-      );
-    }
+  const label = String(title || "Presentation");
+  const specs = toSlides(title, parseBlocks(markdown));
+  let page = 1;
+  for (const spec of specs) {
+    renderSlide(pptx, theme, spec, label, page);
+    page++;
   }
   await pptx.writeFile({ fileName: filePath });
 }
 
 export { buildPptx };
-

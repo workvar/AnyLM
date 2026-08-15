@@ -1,4 +1,6 @@
 // App bootstrap: status, navigation, conversation wiring, and event binding.
+import { initAutoScroll } from "./autoscroll.js";
+import { initComposerAutogrow, resizeComposer } from "./composer-autogrow.js";
 import { el, qsa } from "./dom.js";
 import { state } from "./state.js";
 import {
@@ -220,6 +222,7 @@ function bindEvents() {
       sendMessage();
     }
   };
+  initComposerAutogrow(el("chat-input"));
   el("chat-input").oninput = (e) => updateDraft((e.target as UiElement).value);
   el("ctx-compact").onclick = compactConversation;
 }
@@ -230,6 +233,7 @@ async function startApp(settings) {
   initArtifacts();
   initNewProjectModal();
   initPrompt();
+  initAutoScroll();
   initToolsScopePrompt();
   initOrg();
   initTools();

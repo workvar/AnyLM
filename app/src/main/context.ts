@@ -7,6 +7,8 @@ import * as rag from "./rag";
 
 const MAX_SUMMARY_CHARS = 8000;
 const TOP_K = 4;
+// Same reasoning as memory.ts: nearest-neighbour is not the same as relevant.
+const MIN_SCORE = 0.4;
 const NAME = chroma.PROJECT_CONTEXT;
 
 // Ingest a reference: chunk it, store chunks in Chroma under {projectId,
@@ -55,7 +57,7 @@ async function removeProject(projectId) {
 async function retrieve(project, query) {
   const res = await chroma.queryText(NAME, query, TOP_K, { projectId: project.id });
   return res
-    .filter((r) => r.score > 0)
+    .filter((r) => r.score >= MIN_SCORE)
     .map((r) => ({ name: r.metadata.name || "reference", text: r.text, score: r.score }));
 }
 

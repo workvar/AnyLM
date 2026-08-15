@@ -8,7 +8,8 @@ import { BrowserWindow } from "electron";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { PDF_CSS } from "./pdf-css";
+import { pdfCss } from "./pdf-css";
+import { getTheme, type Theme } from "./theme";
 
 function escapeHtml(s: unknown): string {
   return String(s)
@@ -26,11 +27,11 @@ function formattedDate(): string {
   });
 }
 
-function document(title: unknown, bodyHtml: string): string {
+function document(title: unknown, bodyHtml: string, theme: Theme): string {
   const heading = escapeHtml(title || "Document");
   return `<!doctype html><html><head><meta charset="utf-8">
     <title>${heading}</title>
-    <style>${PDF_CSS}</style></head><body>
+    <style>${pdfCss(theme)}</style></head><body>
     <header class="doc-head">
       <h1 class="doc-title">${heading}</h1>
       <div class="doc-meta">AnyLM · ${escapeHtml(formattedDate())}</div>
@@ -63,12 +64,17 @@ function removeQuietly(fp: string): void {
   }
 }
 
-async function buildPdf(title: unknown, bodyHtml: string): Promise<Buffer> {
+async function buildPdf(
+  title: unknown,
+  bodyHtml: string,
+  themeId?: string | null
+): Promise<Buffer> {
+  const theme = getTheme(themeId);
   const body = String(bodyHtml || "").trim();
   if (!body) {
     throw new Error("no content to render — pass full markdown in `content`");
   }
-  const file = writeTempHtml(document(title, body));
+  const file = writeTempHtml(document(title, body, theme));
   const win = new BrowserWindow({
     show: false,
     width: 1024,
