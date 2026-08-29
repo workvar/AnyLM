@@ -5,8 +5,8 @@ import { state } from "./state.js";
 import { addMessage, addUserMessage } from "./views.js";
 import { updateModelLock } from "./convo.js";
 import { getSelectedModel } from "./dropdown.js";
-import { persistCurrentChat } from "./chats.js";
-import { persistProjectThread } from "./threads.js";
+import { loadRecents } from "./recents.js";
+import { appendStored, refOf } from "./convo-store.js";
 import { snapshotPending, hasAttachments, clearAttachments } from "./attach.js";
 import { showDocConfirm } from "./file-cards.js";
 import { chatAttachment } from "./messages.js";
@@ -95,15 +95,15 @@ export async function sendMessage() {
     resizeComposer(input);
   void syncWebResearchHint();
 
-  for (const p of pending) {
-    const msg = chatAttachment({
+  const outgoing: StoredMessage[] = pending.map((p) =>
+    chatAttachment({
       kind: p.kind,
       name: p.name,
       text: p.kind === "doc" ? p.text : undefined,
       dataUrl: p.kind === "image" ? p.dataUrl : undefined,
-    });
-    state.chat.push(msg);
-  }
+    })
+  );
+  outgoing.push({ role: "user", content: text });
   // Interim: thumbs-only until Task 5 groups attachment cards with the user bubble.
   addUserMessage(
     text,
@@ -112,12 +112,19 @@ export async function sendMessage() {
       .map((p) => p.dataUrl)
       .filter(Boolean)
   );
-  state.chat.push({ role: "user", content: text });
+  state.chat.push(...outgoing);
   updateModelLock(); // model is fixed once the conversation has started
 
   const key = activeKey();
   const projectId = state.mode === "project" ? state.current.id : null;
   const threadId = state.mode === "project" ? state.thread?.id : null;
+  const chatId = state.mode === "chat" ? state.current.id : null;
+  const ref = refOf({ mode: state.mode, projectId, threadId, chatId });
+
+  // Store the outgoing messages BEFORE the turn starts. The reply is written by
+  // the turn itself (turns.ts commit) against this same conversation, so the
+  // user can switch chats mid-turn without their own message being lost.
+  await appendStored(ref, outgoing);
 
   await runTurn({
     key,
@@ -131,11 +138,12 @@ export async function sendMessage() {
     placeholder: el("chat-input").placeholder,
     projectId,
     threadId,
-    chatId: state.mode === "chat" ? state.current.id : null,
+    chatId,
   });
 
-  if (state.mode === "project") await persistProjectThread();
-  else if (state.mode === "chat") await persistCurrentChat();
+  // The reply, its title and any artifacts are already persisted by the turn.
+  // All that is left is repainting the sidebar for whatever is on screen now.
+  await loadRecents();
 }
 
 export function stopActive() {

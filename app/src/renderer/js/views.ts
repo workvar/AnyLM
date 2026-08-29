@@ -129,8 +129,8 @@ export function renderRecents(items, activeKey, handlers) {
     const li = node("li", key === activeKey ? "active" : "");
     // activity.ts paints the working / waiting dot onto this row.
     li.dataset.convKey = key;
-    li.appendChild(node("span", "conv-dot"));
     li.appendChild(node("span", "conv-title", it.title || "New chat"));
+    li.appendChild(node("span", "conv-dot"));
     li.onclick = () => handlers.onOpen(it);
     li.oncontextmenu = (e) => {
       e.preventDefault();

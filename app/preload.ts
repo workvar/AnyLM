@@ -49,6 +49,21 @@ const api: AnyLmApi = {
   skillsConnect: (provider) => ipcRenderer.invoke("skills:connect", provider),
   skillsDisconnect: (provider) => ipcRenderer.invoke("skills:disconnect", provider),
 
+  // GitHub Projects sync
+  githubDeviceStart: () => ipcRenderer.invoke("github:device-start"),
+  githubDeviceWait: (start) => ipcRenderer.invoke("github:device-wait", start),
+  githubAccount: () => ipcRenderer.invoke("github:account"),
+  githubDisconnect: () => ipcRenderer.invoke("github:disconnect"),
+  githubProjectSync: (login, number) => ipcRenderer.invoke("github:project-sync", { login, number }),
+  githubProjectResyncAll: () => ipcRenderer.invoke("github:project-resync-all"),
+  githubProjectList: () => ipcRenderer.invoke("github:project-list"),
+  githubProjectSnapshot: (projectId) => ipcRenderer.invoke("github:project-snapshot", projectId),
+  githubProjectDisconnect: (projectId) => ipcRenderer.invoke("github:project-disconnect", projectId),
+  githubItemSetField: (projectId, itemId, fieldId, update) =>
+    ipcRenderer.invoke("github:item-set-field", { projectId, itemId, fieldId, update }),
+  githubItemAddDraft: (projectId, title) => ipcRenderer.invoke("github:item-add-draft", { projectId, title }),
+  githubItemDelete: (projectId, itemId) => ipcRenderer.invoke("github:item-delete", { projectId, itemId }),
+
   // Descriptive AI activity trail (thinking / tools / status).
   onActivity: (cb) => {
     const fn = (_e, m) => cb(m);

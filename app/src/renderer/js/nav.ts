@@ -5,6 +5,7 @@ import { state } from "./state.js";
 // Which sidebar button "owns" each view.
 function navFor(view) {
   if (view === "artifacts") return "artifacts-nav";
+  if (view === "github") return "github-nav";
   if (view === "projects" || view === "project") return "projects-nav";
   if (view === "convo") return state.mode === "project" ? "projects-nav" : null;
   return null;
@@ -15,6 +16,7 @@ export function showView(view) {
   el("projects-view").classList.toggle("hidden", view !== "projects");
   el("project-detail").classList.toggle("hidden", view !== "project");
   el("artifacts-view").classList.toggle("hidden", view !== "artifacts");
+  el("github-view").classList.toggle("hidden", view !== "github");
   el("convo-view").classList.toggle("hidden", view !== "convo");
   el("settings-view").classList.toggle("hidden", view !== "settings");
 
@@ -23,7 +25,7 @@ export function showView(view) {
 
   // Sidebar selected state (this was previously never updated).
   const active = navFor(view);
-  for (const id of ["projects-nav", "artifacts-nav"]) {
+  for (const id of ["projects-nav", "artifacts-nav", "github-nav"]) {
     const node = el(id);
     if (node) node.classList.toggle("active", id === active);
   }

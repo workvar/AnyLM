@@ -14,6 +14,7 @@ import { renderAsk, clearAsk } from "./ask-card.js";
 import { attachTokenStats } from "./tokenstats.js";
 import { setContextUsage } from "./contextmeter.js";
 import { maybeTitle } from "./titler.js";
+import { appendStored, patchStored, readRecord, refOf } from "./convo-store.js";
 import { askArtifact, fileArtifact } from "./messages.js";
 import { renderFileCard, showDocConfirm, settleDocConfirm, expireDocConfirms } from "./file-cards.js";
 import { applyActivity, buildSummary, toolCountOf, thoughtMsOf, formatThought } from "./activity-store.js";
@@ -244,15 +245,7 @@ export async function handleFileGenerated({
 }
 
 async function persistStoredMessage(turn, artifact: StoredMessage) {
-  if (turn.mode === "project") {
-    const stored = await window.api.getThread(turn.projectId, turn.threadId);
-    const messages = [...((stored && stored.messages) || []), artifact];
-    await window.api.updateThread(turn.projectId, turn.threadId, { messages });
-  } else {
-    const stored = await window.api.getChat(turn.chatId);
-    const messages = [...((stored && stored.messages) || []), artifact];
-    await window.api.updateChat(turn.chatId, { messages });
-  }
+  await appendStored(refOf(turn), [artifact]);
   if (activeKey() === turn.key) state.chat.push(artifact);
 }
 
@@ -266,26 +259,15 @@ async function commit(turn, text: string) {
     turn.activityMeta = meta;
     message.activity = meta;
   }
-  if (turn.mode === "project") {
-    const stored = await window.api.getThread(turn.projectId, turn.threadId);
-    const messages = [...((stored && stored.messages) || []), message];
-    await window.api.updateThread(turn.projectId, turn.threadId, { messages });
-    const title = await maybeTitle(turn.model, messages, stored && stored.title);
-    if (title) {
-      await window.api.updateThread(turn.projectId, turn.threadId, { title });
-      if (activeKey() === turn.key) el("convo-name").value = title;
-      paintRecentsTitle(turn.key, title);
-    }
-  } else {
-    const stored = await window.api.getChat(turn.chatId);
-    const messages = [...((stored && stored.messages) || []), message];
-    await window.api.updateChat(turn.chatId, { messages });
-    const title = await maybeTitle(turn.model, messages, stored && stored.title);
-    if (title) {
-      await window.api.updateChat(turn.chatId, { title });
-      if (activeKey() === turn.key) el("convo-name").value = title;
-      paintRecentsTitle(turn.key, title);
-    }
+  const ref = refOf(turn);
+  const stored = await readRecord(ref);
+  const messages = [...((stored && stored.messages) || []), message];
+  await patchStored(ref, { messages });
+  const title = await maybeTitle(turn.model, messages, stored && stored.title);
+  if (title) {
+    await patchStored(ref, { title });
+    if (activeKey() === turn.key) el("convo-name").value = title;
+    paintRecentsTitle(turn.key, title);
   }
   // Keep the on-screen transcript in step when this is the open conversation.
   if (activeKey() === turn.key) state.chat.push(message);

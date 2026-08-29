@@ -6,8 +6,6 @@ import { getSelectedModel } from "./dropdown.js";
 import { openConvo, renderHistory, showEmpty, updateModelLock } from "./convo.js";
 import { estimateContext } from "./contextmeter.js";
 import { loadRecents } from "./recents.js";
-import { maybeTitle } from "./titler.js";
-import { paintRecentsTitle } from "./views.js";
 import { detachAll, attachTurn } from "./turns.js";
 import { resetRail } from "./rail/index.js";
 import { setUseTools } from "./tools-toggle.js";
@@ -81,21 +79,4 @@ export async function saveChatModel() {
   // Remember this choice so the next new chat defaults to it.
   state.lastModel = patch.model;
   await window.api.setSettings({ lastModel: patch.model });
-}
-
-// Persist the current chat's messages after a turn, then auto-title (via an
-// LLM summary) while the chat is still untitled.
-export async function persistCurrentChat() {
-  if (state.mode !== "chat" || !state.current) return;
-  await window.api.updateChat(state.current.id, { messages: state.chat });
-  state.current = { ...state.current, messages: state.chat };
-  await loadRecents();
-
-  const title = await maybeTitle(state.current.model, state.chat, state.current.title);
-  if (title && state.mode === "chat" && state.current) {
-    state.current = { ...state.current, title };
-    await window.api.updateChat(state.current.id, { title });
-    if (state.view === "convo") el("convo-name").value = title;
-    paintRecentsTitle(`chat:${state.current.id}`, title);
-  }
 }

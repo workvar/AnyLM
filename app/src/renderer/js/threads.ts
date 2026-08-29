@@ -6,8 +6,6 @@ import { openConvo, renderHistory, updateModelLock } from "./convo.js";
 import { getSelectedModel } from "./dropdown.js";
 import { estimateContext } from "./contextmeter.js";
 import { loadRecents } from "./recents.js";
-import { maybeTitle } from "./titler.js";
-import { paintRecentsTitle } from "./views.js";
 import { detachAll, attachTurn } from "./turns.js";
 import { resetRail } from "./rail/index.js";
 import { setUseTools } from "./tools-toggle.js";
@@ -80,23 +78,4 @@ async function saveThreadName() {
 export async function archiveThread(projectId, threadId) {
   await window.api.updateThread(projectId, threadId, { archived: true });
   await loadRecents();
-}
-
-// Persist the active thread after a turn, then auto-title (via an LLM summary)
-// while it is still untitled.
-export async function persistProjectThread() {
-  if (state.mode !== "project" || !state.thread) return;
-  state.thread = { ...state.thread, messages: state.chat };
-  await window.api.updateThread(state.current.id, state.thread.id, { messages: state.chat });
-  state.threads = await window.api.listThreads(state.current.id);
-  await loadRecents();
-
-  const title = await maybeTitle(state.current.model, state.chat, state.thread.title);
-  if (title && state.mode === "project" && state.thread) {
-    state.thread = { ...state.thread, title };
-    await window.api.updateThread(state.current.id, state.thread.id, { title });
-    state.threads = await window.api.listThreads(state.current.id);
-    if (state.view === "convo") el("convo-name").value = title;
-    paintRecentsTitle(`thread:${state.thread.id}`, title);
-  }
 }

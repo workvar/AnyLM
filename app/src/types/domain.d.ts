@@ -365,6 +365,82 @@ interface ConnectorStatus {
   accountLabel?: string | null;
 }
 
+// --- GitHub Projects sync -----------------------------------------------------
+// See ../main/github/ and docs/github-projects-sync.md.
+
+interface GithubDeviceStart {
+  userCode: string;
+  verificationUri: string;
+  deviceCode: string;
+  expiresIn: number;
+  interval: number;
+}
+
+interface GithubFieldOption {
+  id: string;
+  name: string;
+}
+
+interface GithubField {
+  id: string;
+  name: string;
+  dataType: string; // TEXT | NUMBER | DATE | SINGLE_SELECT | ITERATION | ...
+  options?: GithubFieldOption[];
+}
+
+interface GithubView {
+  id: string;
+  name: string;
+  layout: string; // TABLE_LAYOUT | BOARD_LAYOUT | ROADMAP_LAYOUT
+}
+
+interface GithubProjectSummary {
+  id: string;
+  title: string;
+  url: string;
+  ownerLogin: string;
+  number: number;
+}
+
+interface GithubBoardProject {
+  id: string;
+  title: string;
+  url: string;
+  closed: boolean;
+  fields: GithubField[];
+  views: GithubView[];
+  updatedAt: string | null;
+}
+
+interface GithubItemFieldValue {
+  fieldId: string;
+  fieldName: string;
+  value: string | number | null;
+}
+
+interface GithubBoardItem {
+  id: string;
+  contentType: string;
+  title: string;
+  url: string | null;
+  state: string | null;
+  assignees: string[];
+  labels: string[];
+  fieldValues: GithubItemFieldValue[];
+  updatedAt: string | null;
+}
+
+interface GithubBoardSnapshot {
+  project: GithubBoardProject | null;
+  items: GithubBoardItem[];
+}
+
+type GithubFieldValueUpdate =
+  | { kind: "text"; value: string }
+  | { kind: "number"; value: number }
+  | { kind: "date"; value: string }
+  | { kind: "singleSelect"; optionId: string };
+
 // --- Governance -------------------------------------------------------------
 
 type PolicyKind =

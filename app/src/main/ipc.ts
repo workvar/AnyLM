@@ -442,6 +442,39 @@ function registerIpc() {
     await auth.request("DELETE", `/connectors/${provider}`);
     return auth.request("GET", "/connectors");
   });
+
+  // GitHub Projects sync — see docs/github-projects-sync.md. Each call goes
+  // through the same in-process API dispatch (api/index.ts) as everything
+  // else; these handlers exist only to give the renderer a stable channel
+  // name, same pattern as the skills:connect family above.
+  ipcMain.handle("github:device-start", () => auth.request("POST", "/github/device/start"));
+  ipcMain.handle("github:device-wait", (_e, start) => auth.request("POST", "/github/device/wait", start));
+  ipcMain.handle("github:account", () => auth.request("GET", "/github/account"));
+  ipcMain.handle("github:disconnect", () => auth.request("DELETE", "/github/account"));
+  ipcMain.handle("github:project-sync", (_e, { login, number }) =>
+    auth.request("POST", "/github/projects/sync", { login, number })
+  );
+  ipcMain.handle("github:project-resync-all", () => auth.request("POST", "/github/projects/resync-all"));
+  ipcMain.handle("github:project-list", () => auth.request("GET", "/github/projects"));
+  ipcMain.handle("github:project-snapshot", (_e, projectId) =>
+    auth.request("GET", `/github/projects/${encodeURIComponent(projectId)}`)
+  );
+  ipcMain.handle("github:project-disconnect", (_e, projectId) =>
+    auth.request("DELETE", `/github/projects/${encodeURIComponent(projectId)}`)
+  );
+  ipcMain.handle("github:item-set-field", (_e, { projectId, itemId, fieldId, update }) =>
+    auth.request(
+      "PATCH",
+      `/github/projects/${encodeURIComponent(projectId)}/items/${encodeURIComponent(itemId)}/fields/${encodeURIComponent(fieldId)}`,
+      update
+    )
+  );
+  ipcMain.handle("github:item-add-draft", (_e, { projectId, title }) =>
+    auth.request("POST", `/github/projects/${encodeURIComponent(projectId)}/items`, { title })
+  );
+  ipcMain.handle("github:item-delete", (_e, { projectId, itemId }) =>
+    auth.request("DELETE", `/github/projects/${encodeURIComponent(projectId)}/items/${encodeURIComponent(itemId)}`)
+  );
   ipcMain.on("chat:tool-confirm-reply", (_e, { token, approved }) => {
     // The user answered, so the stored offer is settled either way.
     pendingConfirmStore.remove(token);
