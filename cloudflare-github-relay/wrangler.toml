@@ -1,0 +1,8 @@
+name = "anylm-github-relay"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Set with:
+#   wrangler secret put GITHUB_WEBHOOK_SECRET
+#   wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON
+# See ../docs/github-projects-sync.md for what each is and where it comes from.
