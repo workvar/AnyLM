@@ -246,28 +246,6 @@ service cloud.firestore {
       allow read, write: if signedIn() && connectorId.split('__')[0] == uid();
     }
 
-    // --- GitHub Projects sync -----------------------------------------------
-    // Synced from a GitHub Projects v2 board. Two writers: the signed-in user
-    // (initial sync / manual edits from the app, over this same REST path) and
-    // the anylm-github-relay Cloudflare Worker (webhook fan-in), which writes
-    // with a Google service account and so is Admin-SDK-equivalent — it
-    // bypasses these rules entirely, which is why they only need to describe
-    // what a *user* may do. ownerUid is set once at connect-time and never
-    // reassigned.
-    match /githubProjects/{projectId} {
-      allow read: if signedIn() && resource.data.ownerUid == uid();
-      allow create: if signedIn() && request.resource.data.ownerUid == uid();
-      allow update: if signedIn() && resource.data.ownerUid == uid() && keeps(['ownerUid']);
-      allow delete: if signedIn() && resource.data.ownerUid == uid();
-    }
-
-    match /githubProjectItems/{itemId} {
-      allow read: if signedIn() && resource.data.ownerUid == uid();
-      allow create: if signedIn() && request.resource.data.ownerUid == uid();
-      allow update: if signedIn() && resource.data.ownerUid == uid() && keeps(['ownerUid', 'projectId']);
-      allow delete: if signedIn() && resource.data.ownerUid == uid();
-    }
-
     // Anything not named above is denied.
     match /{document=**} {
       allow read, write: if false;

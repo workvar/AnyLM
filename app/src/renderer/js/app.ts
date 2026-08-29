@@ -58,7 +58,6 @@ import { initAppMenu, syncMenuContext } from "./app-menu.js";
 import { initOllamaSetup, runOllamaLaunchFlow } from "./ollama-setup.js";
 import { initSetupWizard, runSetupWizard, shouldRunSetupWizard } from "./setup-wizard.js";
 import { initArtifacts, openArtifactsPane } from "./artifacts.js";
-import { initGithubProjects, openGithubPane } from "./github-projects.js";
 
 // Paints a status dot as connected / degraded / disconnected.
 function paintDot(node: UiElement, level: "on" | "warn" | "off") {
@@ -141,7 +140,6 @@ function bindEvents() {
   });
   bindClick("projects-nav", openProjectsGrid);
   bindClick("artifacts-nav", openArtifactsPane);
-  bindClick("github-nav", openGithubPane);
   bindClick("sidebar-toggle", toggleSidebar);
   bindClick("sidebar-toggle-projects", toggleSidebar);
   bindClick("sidebar-toggle-artifacts", toggleSidebar);
@@ -240,7 +238,6 @@ function bindEvents() {
 async function startApp(settings) {
   bindEvents();
   initArtifacts();
-  initGithubProjects();
   initNewProjectModal();
   initPrompt();
   initAutoScroll();

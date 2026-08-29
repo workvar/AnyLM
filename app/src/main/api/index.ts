@@ -19,7 +19,6 @@ import * as invites from "./invites";
 import * as logs from "./logs";
 import * as apikeys from "./apikeys";
 import * as connectors from "./connectors";
-import { githubAuth, githubSync, githubBoard, githubMutations } from "../github";
 import * as users from "./users";
 import * as tokenStore from "../token-store";
 
@@ -139,29 +138,6 @@ route("GET", "/connectors", () => connectors.status(uid()));
 route("POST", "/connectors/:provider/start", ([provider]) => connectors.connect(uid(), provider));
 route("GET", "/connectors/:provider/token", ([provider]) => connectors.freshToken(uid(), provider));
 route("DELETE", "/connectors/:provider", ([provider]) => connectors.disconnect(uid(), provider));
-
-// --- GitHub Projects sync -----------------------------------------------------
-// See docs/github-projects-sync.md. Device-flow sign-in (no client secret,
-// no redirect URI needed — see github/auth.ts), then a synced board reads
-// and writes through Firestore the same way everything else here does.
-route("POST", "/github/device/start", () => githubAuth.startDeviceFlow());
-route("POST", "/github/device/wait", (_p, b) => githubAuth.waitForApproval(uid(), b as any));
-route("GET", "/github/account", () => githubAuth.connectedAccount(uid()));
-route("DELETE", "/github/account", () => githubAuth.disconnect(uid()));
-
-route("POST", "/github/projects/sync", (_p, b) => githubSync.syncProject(uid(), b.login, b.number));
-route("POST", "/github/projects/resync-all", () => githubSync.resyncAll(uid()));
-route("GET", "/github/projects", () => githubBoard.listConnectedProjects(uid()));
-route("GET", "/github/projects/:id", ([id]) => githubBoard.getBoardSnapshot(uid(), id));
-route("DELETE", "/github/projects/:id", ([id]) => githubBoard.disconnectProject(uid(), id));
-
-route("PATCH", "/github/projects/:id/items/:itemId/fields/:fieldId", ([id, itemId, fieldId], b) =>
-  githubMutations.setFieldValue(uid(), id, itemId, fieldId, b as any)
-);
-route("POST", "/github/projects/:id/items", ([id], b) => githubMutations.addDraftItem(uid(), id, b.title));
-route("DELETE", "/github/projects/:id/items/:itemId", ([id, itemId]) =>
-  githubMutations.deleteItem(uid(), id, itemId)
-);
 
 // --- dispatch -------------------------------------------------------------------------
 

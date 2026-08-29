@@ -28,10 +28,6 @@ const PUBLIC_KEYS = {
   // A public OAuth client id for the Outlook connector. Public clients carry
   // no secret; PKCE protects the exchange, so this is safe to ship.
   ANYLM_MS_CLIENT_ID: { required: false, description: "Microsoft public client id for the Outlook skill" },
-  // A public OAuth client id for the GitHub Projects sync connector. GitHub's
-  // classic OAuth Apps require a client id but authenticate via the device
-  // flow here (no client secret, no redirect URI), so this is shippable.
-  ANYLM_GITHUB_CLIENT_ID: { required: false, description: "GitHub OAuth client id for Projects sync; empty hides the connector" },
   ANYLM_GA_MEASUREMENT_ID: { required: false, description: "GA4 measurement ID (G-…); empty disables GA4" },
   ANYLM_GA_API_SECRET: { required: false, description: "GA4 Measurement Protocol API secret; required with measurement ID; CI/shell only — must not appear in app/.env (FORBIDDEN_PATTERNS /SECRET/i)" },
   ANYLM_CLARITY_ID: { required: false, description: "Microsoft Clarity project id; empty disables Clarity" },

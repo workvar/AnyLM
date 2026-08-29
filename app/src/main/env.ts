@@ -42,10 +42,6 @@ export const env = {
   // Outlook connector. A public client id, not a secret: the flow is PKCE,
   // which is what makes a secretless exchange safe. Blank disables the skill.
   msClientId: value("ANYLM_MS_CLIENT_ID"),
-  // GitHub Projects sync connector. Same public-client reasoning as msClientId,
-  // but the exchange is the device flow rather than PKCE (GitHub's classic
-  // OAuth Apps don't support PKCE at all). Blank hides the connector.
-  githubClientId: value("ANYLM_GITHUB_CLIENT_ID"),
   ga: {
     measurementId: value("ANYLM_GA_MEASUREMENT_ID"),
     apiSecret: value("ANYLM_GA_API_SECRET"),

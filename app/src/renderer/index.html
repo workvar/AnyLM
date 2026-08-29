@@ -123,13 +123,6 @@
           </svg>
           Artifacts
         </button>
-        <button id="github-nav" class="side-nav" type="button">
-          <svg class="side-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.5v-1.94c-2.78.62-3.37-1.37-3.37-1.37-.46-1.2-1.11-1.52-1.11-1.52-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.34 1.12 2.91.86.09-.67.35-1.12.64-1.38-2.22-.26-4.56-1.14-4.56-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.9-1.33 2.74-1.05 2.74-1.05.56 1.41.2 2.46.1 2.72.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.79-4.57 5.05.36.32.68.94.68 1.9v2.82c0 .28.18.61.69.5A10.26 10.26 0 0 0 22 12.25C22 6.58 17.52 2 12 2Z"
-                  fill="currentColor" />
-          </svg>
-          GitHub
-        </button>
         <div class="side-search">
           <input id="sidebar-search" type="search" placeholder="Search chats…" autocomplete="off" aria-label="Search chats…" />
         </div>
@@ -191,64 +184,6 @@
               <span id="artifacts-dir" class="files-dir"></span>
             </div>
             <div id="artifacts-list" class="artifacts-icon-grid"></div>
-          </div>
-        </section>
-
-        <!-- GitHub Projects sync -->
-        <section id="github-view" class="hidden">
-          <header class="view-toolbar">
-            <button id="sidebar-toggle-github" class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
-            <button type="button" id="github-back" class="ghost small hidden">‹ GitHub</button>
-            <h1 class="view-title" id="github-title">GitHub</h1>
-            <div class="view-actions" id="github-list-actions">
-              <button id="github-resync-all-btn" class="ghost small hidden">Resync all</button>
-              <button id="github-add-project-btn" class="ghost small hidden">Add project</button>
-              <button id="github-connect-btn" class="primary">Connect GitHub</button>
-            </div>
-            <div class="view-actions hidden" id="github-board-actions">
-              <span id="github-board-status" class="github-board-status"></span>
-              <button id="github-add-item-btn" class="ghost small">New draft item</button>
-            </div>
-          </header>
-
-          <div id="github-signed-out" class="github-empty hidden">
-            <p>Connect a GitHub account to sync Projects v2 boards into AnyLM.</p>
-          </div>
-
-          <div id="github-device-modal" class="modal-overlay hidden">
-            <div class="modal" role="dialog" aria-labelledby="github-device-title">
-              <h2 id="github-device-title">Connect GitHub</h2>
-              <p class="modal-sub">Enter this code at <a href="#" id="github-device-uri" target="_blank" rel="noreferrer"></a>:</p>
-              <div id="github-device-code" class="github-device-code"></div>
-              <p class="modal-sub">Waiting for approval…</p>
-              <div class="modal-foot">
-                <button id="github-device-cancel" class="ghost">Cancel</button>
-              </div>
-            </div>
-          </div>
-
-          <div id="github-add-project-modal" class="modal-overlay hidden">
-            <div class="modal" role="dialog" aria-labelledby="github-add-title">
-              <h2 id="github-add-title">Add a project board</h2>
-              <label class="field-label">Owner (user or org login)<input id="github-add-owner" type="text" placeholder="octocat" /></label>
-              <label class="field-label">Project number<input id="github-add-number" type="number" min="1" placeholder="1" /></label>
-              <div class="auth-error hidden" id="github-add-error"></div>
-              <div class="modal-foot">
-                <button id="github-add-cancel" class="ghost">Cancel</button>
-                <button id="github-add-confirm" class="primary">Sync</button>
-              </div>
-            </div>
-          </div>
-
-          <div id="github-projects-list" class="card-grid"></div>
-
-          <div id="github-board" class="hidden">
-            <table class="github-board-table">
-              <thead>
-                <tr id="github-board-head"></tr>
-              </thead>
-              <tbody id="github-board-body"></tbody>
-            </table>
           </div>
         </section>
 

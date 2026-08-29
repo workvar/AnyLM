@@ -130,25 +130,6 @@ interface AnyLmApi {
   skillsConnect(provider: string): Promise<ConnectorStatus[]>;
   skillsDisconnect(provider: string): Promise<ConnectorStatus[]>;
 
-  // GitHub Projects sync
-  githubDeviceStart(): Promise<GithubDeviceStart>;
-  githubDeviceWait(start: GithubDeviceStart): Promise<{ login: string }>;
-  githubAccount(): Promise<{ login: string } | null>;
-  githubDisconnect(): Promise<void>;
-  githubProjectSync(login: string, number: number): Promise<{ projectId: string; title: string; url: string }>;
-  githubProjectResyncAll(): Promise<void>;
-  githubProjectList(): Promise<GithubProjectSummary[]>;
-  githubProjectSnapshot(projectId: string): Promise<GithubBoardSnapshot>;
-  githubProjectDisconnect(projectId: string): Promise<void>;
-  githubItemSetField(
-    projectId: string,
-    itemId: string,
-    fieldId: string,
-    update: GithubFieldValueUpdate
-  ): Promise<void>;
-  githubItemAddDraft(projectId: string, title: string): Promise<string>;
-  githubItemDelete(projectId: string, itemId: string): Promise<void>;
-
   // Chat-time events
   onActivity(cb: (e: ActivityIpcEvent) => void): Unsubscribe;
   onChatContext(cb: (e: ChatContextEvent) => void): Unsubscribe;
