@@ -12,6 +12,7 @@ import { loadRecents } from "./recents.js";
 import { resetDetailTabs } from "./project-files.js";
 import { slugFolderName } from "./folder-slug.js";
 import { syncMenuContext } from "./menu-context.js";
+import { syncProjectChip } from "./project-chip.js";
 
 // --- Grid ---
 export async function loadProjects() {
@@ -270,6 +271,7 @@ async function saveProjectName() {
     state.viewProject.name = name;
     el("detail-title").textContent = name;
   }
+  syncProjectChip();
   syncMenuContext();
   await loadProjects();
 }

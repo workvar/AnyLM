@@ -58,6 +58,7 @@ import { initAppMenu, syncMenuContext } from "./app-menu.js";
 import { initOllamaSetup, runOllamaLaunchFlow } from "./ollama-setup.js";
 import { initSetupWizard, runSetupWizard, shouldRunSetupWizard } from "./setup-wizard.js";
 import { initArtifacts, openArtifactsPane } from "./artifacts.js";
+import { initProjectPicker } from "./project-picker.js";
 
 // Paints a status dot as connected / degraded / disconnected.
 function paintDot(node: UiElement, level: "on" | "warn" | "off") {
@@ -238,6 +239,7 @@ function bindEvents() {
 async function startApp(settings) {
   bindEvents();
   initArtifacts();
+  initProjectPicker();
   initNewProjectModal();
   initPrompt();
   initAutoScroll();

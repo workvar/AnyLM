@@ -23,7 +23,14 @@ function num(key: string, fallback: number): number {
 }
 
 const PROJECT_ID = value("ANYLM_FIREBASE_PROJECT");
-const SITE_URL = value("ANYLM_SITE_URL", `https://${PROJECT_ID}.web.app`).replace(/\/$/, "");
+// Defaults to the firebaseapp.com domain, not web.app, on purpose. Hosting
+// serves the sign-in page on both, but Firebase's OAuth handler lives at
+// <project>.firebaseapp.com/__/auth/handler. Serving the page from web.app
+// makes the redirect flow a cross-origin hop, and browsers that partition
+// third-party storage (Safari ITP, Chrome) then hand back an empty
+// getRedirectResult(); sign-in silently falls back to "cancelled". Same
+// origin, no partitioning.
+const SITE_URL = value("ANYLM_SITE_URL", `https://${PROJECT_ID}.firebaseapp.com`).replace(/\/$/, "");
 
 export const env = {
   firebase: {

@@ -72,7 +72,11 @@ Firebase Auth's popup flow needs a DOM, which an Electron main process does
 not have, and Google refuses sign-in inside embedded webviews. So:
 
 1. The app opens a loopback port and launches the system browser at
-   `https://<project>.web.app/?provider=google&port=<port>`.
+   `https://<project>.firebaseapp.com/?provider=google&port=<port>`.
+   The firebaseapp.com domain, not web.app: Firebase's OAuth handler lives
+   at `<project>.firebaseapp.com/__/auth/handler`, and keeping the page on
+   the same origin stops third-party storage partitioning from emptying
+   `getRedirectResult()`.
 2. That page runs `signInWithRedirect` with the Firebase web SDK (redirect,
    not popup — the app opens the page with `?provider=…`, and browsers block
    popups that are not tied to a user gesture). Firebase's own hosted OAuth

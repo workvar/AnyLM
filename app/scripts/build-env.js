@@ -36,13 +36,28 @@ function main() {
     );
   }
 
-  // 2. Warn about keys nobody reads, usually a typo.
+  // 2. Shout when the shell is silently overriding app/.env. The precedence
+  //     above is deliberate (CI injects without writing a file), but a stale
+  //     export in a developer's shell profile otherwise builds the wrong
+  //     project with no visible sign of it.
+  for (const key of Object.keys(PUBLIC_KEYS)) {
+    const fromFile = fileEnv[key];
+    const fromShell = process.env[key];
+    if (fromFile && fromShell && fromFile !== fromShell) {
+      console.warn(
+        `  build-env: environment variable ${key} overrides app/.env ` +
+          `(using "${fromShell}", app/.env says "${fromFile}"); unset it if that is not intended`
+      );
+    }
+  }
+
+  // 3. Warn about keys nobody reads, usually a typo.
   const unknown = Object.keys(fileEnv).filter((k) => !(k in PUBLIC_KEYS));
   for (const k of unknown) {
     console.warn(`  build-env: ignoring unknown key ${k} (not in PUBLIC_KEYS)`);
   }
 
-  // 3. Collect the allowlisted values.
+  // 4. Collect the allowlisted values.
   const values = {};
   const missing = [];
   for (const [key, spec] of Object.entries(PUBLIC_KEYS)) {

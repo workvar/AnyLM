@@ -20,7 +20,7 @@ const PUBLIC_KEYS = {
   ANYLM_FIREBASE_PROJECT: { required: true, description: "Firebase project id" },
   ANYLM_FIREBASE_API_KEY: { required: true, description: "Firebase web API key (public identifier)" },
   ANYLM_FIREBASE_AUTH_DOMAIN: { required: false, description: "Defaults to <project>.firebaseapp.com" },
-  ANYLM_SITE_URL: { required: false, description: "Defaults to https://<project>.web.app" },
+  ANYLM_SITE_URL: { required: false, description: "Defaults to https://<project>.firebaseapp.com (same origin as the OAuth handler)" },
   ANYLM_OLLAMA_HOST: { required: false, description: "Defaults to http://127.0.0.1:11434" },
   ANYLM_OLLAMA_REGISTRY: { required: false, description: "Defaults to https://registry.ollama.ai" },
   ANYLM_EMBED_MODEL: { required: false, description: "Defaults to nomic-embed-text" },

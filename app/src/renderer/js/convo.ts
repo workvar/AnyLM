@@ -4,6 +4,7 @@ import { el } from "./dom.js";
 import { state } from "./state.js";
 import { setModelDropdown, setModelDropdownEnabled } from "./dropdown.js";
 import { modelLockPopoverMessage } from "./model-lock-message.js";
+import { syncProjectChip } from "./project-chip.js";
 import { clearMessages, addMessage, setBubbleMarkdown } from "./views.js";
 import { hideContext } from "./contextmeter.js";
 import { showView } from "./nav.js";
@@ -34,6 +35,7 @@ export function showEmpty() {
   state.chat = [];
   clearMessages();
   hideContext();
+  syncProjectChip();
   showView("projects");
 }
 
@@ -49,6 +51,7 @@ export function openConvo({ mode, name, model, modelLocked, placeholder }) {
   });
   setModelDropdownEnabled(!modelLocked, message);
   el("chat-input").placeholder = placeholder || "Message…";
+  syncProjectChip();
 }
 
 // Model can only change on a fresh conversation. Once it has messages (or the
@@ -59,6 +62,7 @@ export function updateModelLock() {
   const enabled = !projectLocked && !started;
   const message = modelLockPopoverMessage({ started, projectLocked });
   setModelDropdownEnabled(enabled, message);
+  syncProjectChip(); // a chat can only change project before its first message
 }
 
 // Render a saved message history (assistant messages as markdown). When `key`

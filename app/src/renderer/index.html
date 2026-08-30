@@ -104,7 +104,17 @@
             <span id="chroma-dot" class="dot" role="img" title="Memory backend (Chroma) status" aria-label="Memory backend status"></span>
           </span>
         </div>
-        <button id="new-chat-btn" class="primary">＋ New chat</button>
+        <div class="new-chat-split">
+          <button id="new-chat-btn" class="primary">＋ New chat</button>
+          <button id="new-chat-project-btn" class="primary new-chat-caret" type="button"
+                  aria-haspopup="menu" aria-expanded="false"
+                  title="Start a chat in a project" aria-label="Start a chat in a project">
+            <svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true">
+              <path d="M1 1.5 5 5l4-3.5" fill="none" stroke="currentColor" stroke-width="1.4"
+                    stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
         <button id="projects-nav" class="side-nav" type="button">
           <svg class="side-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75" />
@@ -254,6 +264,19 @@
                   </button>
                   <button type="button" id="workspace-btn" class="icon-btn tools-toggle" title="Choose a working folder for file tools" aria-label="Choose a working folder for file tools">📁</button>
                   <span id="workspace-label" class="chip hidden"></span>
+                  <div id="project-picker" class="dropdown composer-model composer-project hidden">
+                    <button id="project-trigger" class="dropdown-trigger" type="button"
+                            aria-haspopup="menu" aria-expanded="false"
+                            aria-label="Project: No project" title="Choose a project for this chat">
+                      <svg class="project-chip-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+                        <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+                        <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+                        <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+                      </svg>
+                      <span id="project-current" class="dropdown-value">No project</span>
+                    </button>
+                  </div>
                   <div id="model-dropdown" class="dropdown composer-model">
                     <button
                       id="model-trigger"

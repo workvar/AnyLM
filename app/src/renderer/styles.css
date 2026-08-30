@@ -1539,6 +1539,40 @@ select {
   background: var(--panel-2);
   color: var(--text);
 }
+/* Composer project chip: which project this conversation belongs to. */
+#chat-form .composer-project .dropdown-trigger {
+  gap: 6px;
+  max-width: 170px;
+  padding: 0 10px;
+}
+.composer-project .project-chip-icon {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+.composer-project .dropdown-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+#chat-form .composer-project .dropdown-trigger.assigned {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--text) 22%, var(--border));
+  background: color-mix(in srgb, var(--panel-2) 86%, var(--text) 10%);
+}
+#chat-form .composer-project .dropdown-trigger.disabled {
+  opacity: 0.7;
+}
+#chat-form .composer-project .dropdown-trigger.disabled:hover {
+  background: transparent;
+  color: var(--muted);
+}
+#chat-form .composer-project .dropdown-trigger.assigned.disabled:hover {
+  background: color-mix(in srgb, var(--panel-2) 86%, var(--text) 10%);
+  color: var(--text);
+}
+
 .model-lock-popover {
   position: absolute;
   left: 0;
@@ -2735,6 +2769,33 @@ button.full {
   margin-top: 4px;
   overflow: visible;
 }
+/* "New chat" is a split control: the button starts a standalone chat, the
+   caret picks a project to start it in. */
+.new-chat-split {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+.new-chat-split #new-chat-btn {
+  flex: 1;
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.new-chat-caret {
+  flex: none;
+  width: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.new-chat-caret svg {
+  display: block;
+}
+
 .side-nav {
   display: inline-flex;
   align-items: center;
@@ -2793,9 +2854,48 @@ button.full {
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-lg);
   z-index: 200;
+  /* Grows from the control it was opened from, so the eye keeps the thread
+     between trigger and menu. The menu is measured before .open is added, so
+     the start state must not change its box, only how it is painted. */
+  transform-origin: top left;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.97);
+  transition: opacity 0.14s ease, transform 0.14s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.popup-menu[data-place="above"] {
+  transform-origin: bottom left;
+  transform: translateY(4px) scale(0.97);
+}
+.popup-menu.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+/* Leaving is quicker than arriving: a slow dismissal reads as lag. */
+.popup-menu.closing {
+  opacity: 0;
+  transform: translateY(-2px) scale(0.985);
+  transition-duration: 0.1s;
+  pointer-events: none;
+}
+.popup-menu[data-place="above"].closing {
+  transform: translateY(2px) scale(0.985);
+}
+@media (prefers-reduced-motion: reduce) {
+  .popup-menu,
+  .popup-menu[data-place="above"],
+  .popup-menu.closing,
+  .popup-menu[data-place="above"].closing {
+    transform: none;
+    transition-duration: 0.01ms;
+  }
 }
 .popup-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  /* Explicit: the global `button` rule and the UA sheet both centre button
+     content, and inheriting that here left every menu item centred. */
+  justify-content: flex-start;
+  gap: 8px;
   width: 100%;
   padding: 8px 10px;
   text-align: left;
@@ -2808,6 +2908,31 @@ button.full {
 }
 .popup-item:hover {
   background: var(--panel-2);
+}
+.popup-item:focus-visible {
+  background: var(--panel-2);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.popup-item.checked {
+  font-weight: 500;
+}
+.popup-check {
+  flex: none;
+  width: 12px;
+  color: var(--accent);
+}
+.popup-label {
+  flex: 1 1 auto;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.popup-sep {
+  height: 1px;
+  margin: 5px 6px;
+  background: var(--border);
 }
 .popup-item.danger {
   color: var(--danger);
