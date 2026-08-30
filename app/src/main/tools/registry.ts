@@ -5,7 +5,8 @@ import { app } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 
-// Built-ins. `risky: true` tools require user confirmation before running.
+// Built-ins. `risky: true` tools require user confirmation before running —
+// unless the user granted a standing permission for them (see ../tool-grants).
 const BUILTINS = [
   {
     id: "get_time",
@@ -36,9 +37,9 @@ const BUILTINS = [
     id: "write_file",
     name: "write_file",
     builtin: true,
-    risky: false,
+    risky: true,
     description:
-      "Create or overwrite a text file inside the working folder (code, notes, configs). Parent folders are created automatically.",
+      "Create or overwrite a text file inside the context folder (code, notes, configs). Parent folders are created automatically. Read an existing file before overwriting it.",
     params: [
       { name: "path", description: "File path relative to the working folder", required: true },
       { name: "content", description: "Full text content of the file", required: true },
@@ -48,15 +49,15 @@ const BUILTINS = [
     id: "create_directory",
     name: "create_directory",
     builtin: true,
-    risky: false,
-    description: "Create a folder (and any missing parents) inside the working folder.",
+    risky: true,
+    description: "Create a folder (and any missing parents) inside the context folder.",
     params: [{ name: "path", description: "Folder path relative to the working folder", required: true }],
   },
   {
     id: "move_path",
     name: "move_path",
     builtin: true,
-    risky: false,
+    risky: true,
     description: "Move or rename a file or folder inside the working folder. Use this to organize files.",
     params: [
       { name: "from", description: "Current path, relative to the working folder", required: true },
@@ -67,7 +68,7 @@ const BUILTINS = [
     id: "copy_path",
     name: "copy_path",
     builtin: true,
-    risky: false,
+    risky: true,
     description: "Copy a file or folder inside the working folder.",
     params: [
       { name: "from", description: "Source path, relative to the working folder", required: true },
@@ -92,6 +93,24 @@ const BUILTINS = [
     params: [
       { name: "query", description: "Name substring or glob, e.g. *.png or report", required: true },
       { name: "path", description: "Subfolder to search (default: whole working folder)", required: false },
+    ],
+  },
+  {
+    id: "create_project",
+    name: "create_project",
+    builtin: true,
+    risky: true,
+    description:
+      "Create a new AnyLM project with its own folder on disk, and make that folder the place " +
+      "file tools write to for the rest of this turn. Use when the user asks to start a new " +
+      "project, app, or body of work that deserves its own folder.",
+    params: [
+      { name: "name", description: "Project name (also the folder name)", required: true },
+      {
+        name: "instructions",
+        description: "Standing instructions for the project (optional)",
+        required: false,
+      },
     ],
   },
   {

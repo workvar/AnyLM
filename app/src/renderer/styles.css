@@ -906,9 +906,14 @@ select {
   box-shadow: var(--shadow-sm);
   white-space: normal;
 }
-/* While streaming raw text, preserve newlines until markdown renders. */
+/* Legacy raw-text streaming fallback: preserve newlines if ever used. */
 .msg.assistant.raw {
   white-space: pre-wrap;
+}
+/* Streaming markdown is split into a settled part and a live tail; both
+   should lay out as if their children were direct children of the bubble. */
+.msg.assistant .md-part {
+  display: contents;
 }
 
 /* Rendered markdown inside assistant bubbles. */
@@ -1041,6 +1046,60 @@ select {
     opacity: 1;
   }
 }
+/* Tool-family icon in place of a bullet: says read/write/shell at a glance. */
+.act-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-top: -1px;
+  border-radius: var(--r-sm, 6px);
+  color: var(--muted);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+.act-icon.done {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+.act-icon.run {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  animation: act-pulse 1.1s ease-in-out infinite;
+}
+
+/* Live "still working" row with its own clock. */
+.act-working {
+  align-items: center;
+  color: var(--muted);
+}
+.act-working .act-text {
+  color: var(--text);
+}
+.act-spinner {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin: 0 4px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-top-color: var(--accent);
+  animation: act-spin 0.9s linear infinite;
+}
+.act-elapsed {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+@keyframes act-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .act-tool-body {
   min-width: 0;
   flex: 1;
@@ -1127,6 +1186,18 @@ select {
   border: none;
   background: var(--accent);
   color: var(--accent-contrast);
+}
+.act-allow.act-allow-scope {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.act-allow.act-allow-scope:hover {
+  background: var(--panel-2);
+  color: var(--accent);
+}
+.act-confirm-actions {
+  flex-wrap: wrap;
 }
 .act-allow:hover {
   background: var(--accent-2);

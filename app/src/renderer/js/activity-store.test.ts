@@ -87,6 +87,6 @@ describe("applyActivity", () => {
 
   test("buildSummary", () => {
     expect(buildSummary(800, 0)).toBe("Thought briefly");
-    expect(buildSummary(8000, 3)).toBe("Thought for 8s · 3 tools");
+    expect(buildSummary(8000, 3)).toBe("Used 3 tools · thought for 8s");
   });
 });

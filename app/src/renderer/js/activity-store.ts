@@ -1,12 +1,14 @@
+import { workSummary } from "./elapsed.js";
+
 export function formatThought(ms: number): string {
   if (ms < 1500) return "Thought briefly";
   return `Thought for ${Math.round(ms / 1000)}s`;
 }
 
 export function buildSummary(thoughtMs: number, toolCount: number): string {
-  const thought = formatThought(thoughtMs);
-  if (!toolCount) return thought;
-  return `${thought} · ${toolCount} tool${toolCount === 1 ? "" : "s"}`;
+  // Tools first: what the model DID is more informative than how long it
+  // thought, and it is what the user clicks the summary to inspect.
+  return workSummary(toolCount, formatThought(thoughtMs));
 }
 
 export function toolCountOf(events: ActivityEvent[]): number {

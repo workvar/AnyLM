@@ -2,7 +2,13 @@
 // share the project's instructions + context but keep their own history.
 import { el } from "./dom.js";
 import { state } from "./state.js";
-import { openConvo, renderHistory, updateModelLock } from "./convo.js";
+import {
+  openConvo,
+  renderHistory,
+  updateModelLock,
+  saveActiveConvoView,
+  invalidateConvo,
+} from "./convo.js";
 import { getSelectedModel } from "./dropdown.js";
 import { estimateContext } from "./contextmeter.js";
 import { loadRecents } from "./recents.js";
@@ -24,6 +30,8 @@ export async function fetchThreads() {
 
 // Open a thread in the conversation view.
 export async function openThread(threadId) {
+  // Park the outgoing conversation's rendered view before `state` moves on.
+  saveActiveConvoView();
   detachAll();
   resetRail();
   state.thread = await window.api.getThread(state.current.id, threadId);
@@ -35,7 +43,7 @@ export async function openThread(threadId) {
     modelLocked: !!state.current.modelLocked,
     placeholder: "Message your project model…",
   });
-  await renderHistory(state.chat);
+  await renderHistory(state.chat, `thread:${threadId}`);
   attachTurn(`thread:${threadId}`);
   estimateContext(state.current.model, state.chat);
   updateModelLock();
@@ -76,6 +84,7 @@ async function saveThreadName() {
 
 // Archive a thread (hidden, not deleted).
 export async function archiveThread(projectId, threadId) {
+  invalidateConvo(`thread:${threadId}`);
   await window.api.updateThread(projectId, threadId, { archived: true });
   await loadRecents();
 }

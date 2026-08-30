@@ -11,8 +11,23 @@ import { appendAskAnswered } from "./turns.js";
 import { renderFileCard } from "./file-cards.js";
 import { paintCollapsed, createTrailHost } from "./activity-trail.js";
 import { paintAgentTrail } from "./agent-trail.js";
+import { saveConvoView, restoreConvoView, invalidateConvo } from "./convo-cache.js";
+import { activeKey } from "./activity.js";
+import { turnFor } from "./turns.js";
+
+// Park the conversation currently on screen in the view cache. Call this
+// before switching away, while `state` still describes the old conversation.
+export function saveActiveConvoView() {
+  const key = activeKey();
+  if (!key) return;
+  const turn = turnFor(key);
+  saveConvoView(key, el("messages"), state.chat, !!turn && turn.status !== "done");
+}
+
+export { invalidateConvo };
 
 export function showEmpty() {
+  saveActiveConvoView();
   state.mode = null;
   state.current = null;
   state.thread = null;
@@ -46,8 +61,11 @@ export function updateModelLock() {
   setModelDropdownEnabled(enabled, message);
 }
 
-// Render a saved message history (assistant messages as markdown).
-export async function renderHistory(messages) {
+// Render a saved message history (assistant messages as markdown). When `key`
+// names a conversation whose rendered view is still cached and still matches
+// the stored transcript, that view is put back instead of rebuilt.
+export async function renderHistory(messages, key) {
+  if (key && restoreConvoView(key, el("messages"), messages)) return;
   clearMessages();
   for (const m of messages || []) {
     if (m.role === "artifact" && m.type === "file") {

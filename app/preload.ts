@@ -66,8 +66,8 @@ const api: AnyLmApi = {
     ipcRenderer.on("chat:tool-confirm", fn);
     return () => ipcRenderer.removeListener("chat:tool-confirm", fn);
   },
-  replyToolConfirm: (token, approved) =>
-    ipcRenderer.send("chat:tool-confirm-reply", { token, approved }),
+  replyToolConfirm: (token, approved, scope) =>
+    ipcRenderer.send("chat:tool-confirm-reply", { token, approved, scope: scope || "once" }),
   // Confirmations that outlive the turn that asked for them.
   confirmsSave: (record) => ipcRenderer.invoke("confirms:save", record),
   confirmsRemove: (token) => ipcRenderer.invoke("confirms:remove", token),

@@ -1,22 +1,23 @@
-// File-operation tools, sandboxed to the working folder (../workspace).
+// File-operation tools, sandboxed to the context folder (../context-root):
+// the active project's folder when there is one, else the picked working folder.
 // Every function returns a string for the model.
 import * as fs from "fs";
 import * as path from "path";
 import { shell } from "electron";
-import * as workspace from "../workspace";
+import * as root from "../context-root";
 
 const SKIP = new Set(["node_modules", ".git", ".venv", "__pycache__", "dist", "build"]);
 const MAX_HITS = 200;
 const MAX_DEPTH = 8;
 
-// Reads may use absolute paths anywhere; relative paths need the workspace.
+// Reads may use absolute paths anywhere; relative paths need the context folder.
 function resolveRead(p) {
   const str = String(p || "");
-  return path.isAbsolute(str) ? str : workspace.resolveInside(str);
+  return path.isAbsolute(str) ? str : root.resolveInside(str);
 }
 
 function writeFile(args) {
-  const abs = workspace.resolveInside(args.path);
+  const abs = root.resolveInside(args.path);
   const content = String(args.content ?? "");
   fs.mkdirSync(path.dirname(abs), { recursive: true });
   fs.writeFileSync(abs, content);
@@ -24,13 +25,13 @@ function writeFile(args) {
 }
 
 function createDirectory(args) {
-  fs.mkdirSync(workspace.resolveInside(args.path), { recursive: true });
+  fs.mkdirSync(root.resolveInside(args.path), { recursive: true });
   return `Created directory ${args.path}`;
 }
 
 function movePath(args) {
-  const src = workspace.resolveInside(args.from);
-  const dest = workspace.resolveInside(args.to);
+  const src = root.resolveInside(args.from);
+  const dest = root.resolveInside(args.to);
   if (!fs.existsSync(src)) return `Error: ${args.from} does not exist`;
   if (fs.existsSync(dest)) return `Error: ${args.to} already exists`;
   fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -39,8 +40,8 @@ function movePath(args) {
 }
 
 function copyPath(args) {
-  const src = workspace.resolveInside(args.from);
-  const dest = workspace.resolveInside(args.to);
+  const src = root.resolveInside(args.from);
+  const dest = root.resolveInside(args.to);
   if (!fs.existsSync(src)) return `Error: ${args.from} does not exist`;
   if (fs.existsSync(dest)) return `Error: ${args.to} already exists`;
   fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -49,8 +50,8 @@ function copyPath(args) {
 }
 
 async function deletePath(args) {
-  const abs = workspace.resolveInside(args.path);
-  if (abs === workspace.get()) return "Error: refusing to delete the working folder itself";
+  const abs = root.resolveInside(args.path);
+  if (abs === root.get()) return "Error: refusing to delete the context folder itself";
   if (!fs.existsSync(abs)) return `Error: ${args.path} does not exist`;
   await shell.trashItem(abs);
   return `Moved ${args.path} to the system trash`;
@@ -74,16 +75,16 @@ function listDirectory(args) {
 
 // Recursive filename search: substring, or glob when the query contains "*".
 function findFiles(args) {
-  const root = workspace.resolveInside(args.path || ".");
+  const base = root.resolveInside(args.path || ".");
   const q = String(args.query || "").toLowerCase();
   if (!q) return "Error: query required";
   const rx = q.includes("*")
     ? new RegExp("^" + q.split("*").map(escapeRx).join(".*") + "$")
     : null;
   const hits = [];
-  walk(root, 0, (abs, name) => {
+  walk(base, 0, (abs, name) => {
     const n = name.toLowerCase();
-    if (rx ? rx.test(n) : n.includes(q)) hits.push(path.relative(workspace.get(), abs));
+    if (rx ? rx.test(n) : n.includes(q)) hits.push(path.relative(root.get(), abs));
     return hits.length < MAX_HITS;
   });
   return hits.length ? hits.join("\n") : "No matches";

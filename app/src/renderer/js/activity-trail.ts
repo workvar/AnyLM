@@ -3,6 +3,8 @@ import { node } from "./dom.js";
 import { formatThought } from "./activity-store.js";
 import { paintAgentTrail } from "./agent-trail.js";
 import { appendLinkified, detailNode } from "./linkify.js";
+import { iconFor, kindOf } from "./activity-icons.js";
+import { formatElapsed } from "./elapsed.js";
 
 export function createTrailHost(): HTMLElement {
   return node("div", "activity-trail-host");
@@ -13,14 +15,44 @@ export type PaintTrailOpts = {
   thoughtTickMs?: number;
   /** When set, only this confirm token shows Allow/Deny (answered confirms stay text-only). */
   pendingConfirmToken?: string | null;
-  onAllow?: (token: string) => void;
+  /** Milliseconds since the turn started, for the live "Working…" row. */
+  elapsedMs?: number;
+  /** Label for the live row, e.g. "Working on your computer". */
+  liveLabel?: string;
+  onAllow?: (token: string, scope: ConfirmScope) => void;
   onDeny?: (token: string) => void;
 };
+
+export type ConfirmScope = "once" | "session" | "project";
 
 function bullet(done: boolean, running: boolean): HTMLElement {
   const b = node("span", `act-bullet${done ? " done" : ""}${running ? " run" : ""}`);
   b.textContent = done ? "✓" : running ? "●" : "•";
   return b;
+}
+
+
+const SCOPE_BUTTONS: { scope: ConfirmScope; label: string; title: string }[] = [
+  { scope: "once", label: "Allow", title: "Run this one time" },
+  { scope: "session", label: "This session", title: "Stop asking for this tool until AnyLM quits" },
+  { scope: "project", label: "Always here", title: "Stop asking for this tool in this project" },
+];
+
+/** Allow / This session / Always here / Deny. */
+function confirmActions(token: string, opts: PaintTrailOpts): HTMLElement {
+  const actions = node("div", "act-confirm-actions");
+  for (const { scope, label, title } of SCOPE_BUTTONS) {
+    const btn = node("button", scope === "once" ? "act-allow" : "act-allow act-allow-scope", label);
+    btn.type = "button";
+    btn.title = title;
+    btn.onclick = () => opts.onAllow?.(token, scope);
+    actions.appendChild(btn);
+  }
+  const deny = node("button", "act-deny", "Deny");
+  deny.type = "button";
+  deny.onclick = () => opts.onDeny?.(token);
+  actions.appendChild(deny);
+  return actions;
 }
 
 export function paintTrail(
@@ -64,7 +96,11 @@ export function paintTrail(
       const running = ev.status === "running";
       const done = ev.status === "done";
       const row = node("div", `act-row act-tool${running ? " live" : ""}`);
-      row.appendChild(bullet(done, running));
+      // The icon carries the family (read / write / shell / network); the
+      // bullet only ever said "step", which the label already said better.
+      const mark = iconFor(kindOf(ev.name));
+      mark.classList.add(done ? "done" : running ? "run" : "idle");
+      row.appendChild(mark);
       const body = node("div", "act-tool-body");
       const head = node("div", "act-tool-head");
       const toggle = node("button", "act-tool-toggle", ev.label);
@@ -98,15 +134,7 @@ export function paintTrail(
         !!opts.pendingConfirmToken &&
         opts.pendingConfirmToken === ev.token;
       if (showActions) {
-        const actions = node("div", "act-confirm-actions");
-        const allow = node("button", "act-allow", "Allow");
-        allow.type = "button";
-        allow.onclick = () => opts.onAllow?.(ev.token);
-        const deny = node("button", "act-deny", "Deny");
-        deny.type = "button";
-        deny.onclick = () => opts.onDeny?.(ev.token);
-        actions.append(allow, deny);
-        row.appendChild(actions);
+        row.appendChild(confirmActions(ev.token, opts));
       }
       trail.appendChild(row);
       continue;
@@ -117,6 +145,16 @@ export function paintTrail(
       row.appendChild(node("span", "act-text", ev.question));
       trail.appendChild(row);
     }
+  }
+
+  // Live clock: one row that says work is still happening and for how long,
+  // so a long tool run never looks like a stall.
+  if (opts.live) {
+    const row = node("div", "act-row act-working");
+    row.appendChild(node("span", "act-spinner"));
+    row.appendChild(node("span", "act-text", opts.liveLabel || "Working"));
+    row.appendChild(node("span", "act-elapsed", formatElapsed(opts.elapsedMs ?? 0)));
+    trail.appendChild(row);
   }
 
   // host.innerHTML = "" above wipes out any `.agent-trail` node a previous

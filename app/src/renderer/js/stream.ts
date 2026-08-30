@@ -1,27 +1,23 @@
 // Batched streaming renderer. Coalesces tokens into one DOM write per animation
-// frame and appends only new text, so fast models don't cause per-token reflow.
-import { el } from "./dom.js";
+// frame, so fast models don't cause per-token reflow. Text is rendered as
+// formatted Markdown while it streams rather than as raw source.
 import { scrollToBottom } from "./autoscroll.js";
+import { createIncrementalMarkdown } from "./markdown-stream.js";
 
 export function createStreamRenderer(bubble) {
   let acc = "";
-  let pending = "";
   let raf = 0;
   let started = false;
-  let textNode = null;
+  let md = null;
 
   function flush() {
     raf = 0;
     if (!started) {
       started = true;
-      bubble.classList.remove("thinking");
-      bubble.classList.add("raw");
-      bubble.textContent = "";
-      textNode = document.createTextNode("");
-      bubble.appendChild(textNode);
+      bubble.classList.remove("thinking", "raw");
+      md = createIncrementalMarkdown(bubble);
     }
-    textNode.appendData(pending);
-    pending = "";
+    md.update(acc);
     scrollToBottom();
   }
 
@@ -29,14 +25,13 @@ export function createStreamRenderer(bubble) {
     // Called per token; schedules a single flush per frame.
     push(piece) {
       acc += piece;
-      pending += piece;
       if (!raf) raf = requestAnimationFrame(flush);
     },
     // Final text accumulated so far.
     text() {
       return acc;
     },
-    // Stop pending frames (call before swapping in rendered markdown).
+    // Stop pending frames (call before swapping in the final rendered markdown).
     cancel() {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;

@@ -4,12 +4,12 @@ import { labelFor, detailFor } from "./activity-labels";
 describe("labelFor", () => {
   test("known tools", () => {
     expect(labelFor("web_search")).toBe("Searching the web");
-    expect(labelFor("ask_user")).toBe("Asking a question");
-    expect(labelFor("run_shell")).toBe("Running a command");
+    expect(labelFor("ask_user")).toBe("Asking you a question");
+    expect(labelFor("run_shell")).toBe("Running a command on your computer");
   });
 
-  test("unknown falls back to name", () => {
-    expect(labelFor("custom_tool")).toBe("custom_tool");
+  test("unknown reads as an intent, not a symbol", () => {
+    expect(labelFor("custom_tool")).toBe("Using custom tool");
   });
 });
 

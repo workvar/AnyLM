@@ -3,7 +3,14 @@
 import { el } from "./dom.js";
 import { state } from "./state.js";
 import { getSelectedModel } from "./dropdown.js";
-import { openConvo, renderHistory, showEmpty, updateModelLock } from "./convo.js";
+import {
+  openConvo,
+  renderHistory,
+  showEmpty,
+  updateModelLock,
+  saveActiveConvoView,
+  invalidateConvo,
+} from "./convo.js";
 import { estimateContext } from "./contextmeter.js";
 import { loadRecents } from "./recents.js";
 import { detachAll, attachTurn } from "./turns.js";
@@ -13,6 +20,9 @@ import { resetWebResearchHintDismiss } from "./web-research-hint.js";
 import { syncMenuContext } from "./menu-context.js";
 
 export async function selectChat(id) {
+  // Park the outgoing conversation's rendered view before anything in `state`
+  // moves to the new one.
+  saveActiveConvoView();
   detachAll();
   resetRail();
   state.current = await window.api.getChat(id);
@@ -24,7 +34,7 @@ export async function selectChat(id) {
     modelLocked: false,
     placeholder: "Message…",
   });
-  await renderHistory(state.chat);
+  await renderHistory(state.chat, `chat:${id}`);
   attachTurn(`chat:${id}`);
   estimateContext(state.current.model, state.chat);
   updateModelLock();
@@ -53,6 +63,7 @@ export async function newChatSeeded(messages, title) {
 
 // Archive a chat (hidden, not deleted).
 export async function archiveChat(id) {
+  invalidateConvo(`chat:${id}`);
   await window.api.updateChat(id, { archived: true });
   if (state.mode === "chat" && state.current?.id === id) showEmpty();
   await loadRecents();

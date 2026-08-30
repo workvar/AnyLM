@@ -20,6 +20,9 @@ import { followUpPromptBlock } from "./tools/follow-up-prompt";
 import * as skillsRegistry from "./skills/registry";
 import * as skillsExec from "./skills/exec";
 import * as workspace from "./workspace";
+import * as contextRoot from "./context-root";
+import * as contextPrompt from "./context-prompt";
+import * as toolGrants from "./tool-grants";
 import { isProjectCodingIntent } from "./project-coding/intent";
 import { projectFirstPromptBlock } from "./project-coding/prompt";
 import { lookupCodingDocs } from "./project-coding/docs";
@@ -442,14 +445,22 @@ function registerIpc() {
     await auth.request("DELETE", `/connectors/${provider}`);
     return auth.request("GET", "/connectors");
   });
-  ipcMain.on("chat:tool-confirm-reply", (_e, { token, approved }) => {
+  ipcMain.on("chat:tool-confirm-reply", (_e, { token, approved, scope }) => {
     // The user answered, so the stored offer is settled either way.
     pendingConfirmStore.remove(token);
     const entry = pendingConfirms.get(token);
     if (entry) {
       pendingConfirms.delete(token);
+      // "This session" / "Always in this project" stop the same tool asking
+      // again; "once" (the default) stores nothing.
+      if (approved && entry.tool) toolGrants.grant(entry.projectId, entry.tool, scope || "once");
       entry.resolve(!!approved);
     }
+  });
+  ipcMain.handle("grants:list", (_e, projectId) => toolGrants.listFor(projectId));
+  ipcMain.handle("grants:revoke", (_e, projectId) => {
+    toolGrants.revokeAll(projectId);
+    return true;
   });
 
   // Persisted confirmations: survive an app quit or an unanswered timeout, and
@@ -798,6 +809,10 @@ function registerIpc() {
     const chatStartedAt = Date.now();
     try {
       const project = store.get(projectId);
+      // Point the file tools at this chat's context: the project's own folder
+      // when the chat belongs to one, else the picked working folder.
+      const projectFolder = project ? projectFiles.ensureFolder(project) : null;
+      contextRoot.claim(id, projectFolder, project?.name);
       const useModel = model || (project && project.model);
       if (!useModel) throw new Error("No model selected");
 
@@ -951,9 +966,10 @@ function registerIpc() {
           blocks.push(skillBlock);
           toolInstructionBlocks.push(skillBlock);
         }
-        // Working folder: tells the model where file tools operate.
-        // Re-read after project-coding ensure so the new root is included.
-        const wsBlock = workspace.promptBlock();
+        // Context folder: where file tools operate, plus what is already in it
+        // so the model reads before it writes. Re-read after project-coding
+        // ensure so a newly created root is included.
+        const wsBlock = contextPrompt.promptBlock();
         if (wsBlock) {
           blocks.push(wsBlock);
           toolInstructionBlocks.push(wsBlock);
@@ -1004,7 +1020,12 @@ function registerIpc() {
       const confirm = (tool, args) =>
         new Promise((resolve) => {
           const token = Math.random().toString(36).slice(2);
-          pendingConfirms.set(token, { resolve, id });
+          pendingConfirms.set(token, {
+            resolve,
+            id,
+            tool: tool.name,
+            projectId: project ? project.id : null,
+          });
           act({
             kind: "confirm",
             token,
@@ -1449,10 +1470,17 @@ function registerIpc() {
           });
           // Connector-skill tools (gcal_*, outlook_*) run through the skills
           // executor; everything else goes to the plain tools executor.
+          // Re-claim in case another chat's turn moved the root since the
+          // last call (no-op within a turn, so create_project's move sticks).
+          contextRoot.claim(id, projectFolder, project?.name);
           const output = skillsExec.owns(fname)
             ? await skillsExec.execute(fname, fargs, confirm)
             : await toolsExec.execute(fname, fargs, confirm, skillToolAllow, {
                 projectId: project ? project.id : null,
+                model: useModel,
+                // A project the model created mid-turn: tell the renderer so
+                // the sidebar shows it without a restart.
+                onProjectCreated: (p) => send("projects:created", p),
                 // Generated documents surface as a clickable file card in the chat.
                 onFile: (file) => send("chat:file", { id, ...file }),
                 ask,
@@ -1559,10 +1587,11 @@ function registerIpc() {
   });
 }
 
+// Mirrors renderer/js/activity-store.buildSummary — keep the two in step.
 function summaryOf(thoughtMs: number, toolCount: number): string {
   const thought = thoughtMs < 1500 ? "Thought briefly" : `Thought for ${Math.round(thoughtMs / 1000)}s`;
   if (!toolCount) return thought;
-  return `${thought} · ${toolCount} tool${toolCount === 1 ? "" : "s"}`;
+  return `Used ${toolCount} tool${toolCount === 1 ? "" : "s"} · ${thought.toLowerCase()}`;
 }
 
 // Format general-store excerpts as a system block.

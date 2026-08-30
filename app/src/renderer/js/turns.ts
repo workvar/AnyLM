@@ -19,6 +19,7 @@ import { askArtifact, fileArtifact } from "./messages.js";
 import { renderFileCard, showDocConfirm, settleDocConfirm, expireDocConfirms } from "./file-cards.js";
 import { applyActivity, buildSummary, toolCountOf, thoughtMsOf, formatThought } from "./activity-store.js";
 import { createTrailHost, paintTrail, paintCollapsed } from "./activity-trail.js";
+import type { ConfirmScope } from "./activity-trail.js";
 import { paintAgentTrail } from "./agent-trail.js";
 import { paintWorkingStrip, setWorkingStripActions } from "./working-strip.js";
 import { resolveWorkingStrip } from "./working-strip-mode.js";
@@ -50,6 +51,25 @@ function clearThoughtTicker(turn): void {
     clearInterval(turn.thoughtTimer);
     turn.thoughtTimer = null;
   }
+}
+
+// The turn-level clock behind the live "Working…" row. Independent of the
+// thought ticker, which only runs while the model is thinking.
+function startLiveTicker(turn): void {
+  stopLiveTicker(turn);
+  turn.startedAt = turn.startedAt || Date.now();
+  turn.liveTimer = setInterval(() => repaintTrail(turn), 1000);
+}
+
+function stopLiveTicker(turn): void {
+  if (turn.liveTimer) {
+    clearInterval(turn.liveTimer);
+    turn.liveTimer = null;
+  }
+}
+
+function elapsedMs(turn): number {
+  return turn.startedAt ? Date.now() - turn.startedAt : 0;
 }
 
 function thoughtTickMs(turn): number | undefined {
@@ -87,13 +107,13 @@ export function clearPendingConfirm(requestId?: string): void {
   repaintTrail(turn);
 }
 
-function replyConfirm(turn, token: string, approved: boolean): void {
+function replyConfirm(turn, token: string, approved: boolean, scope: ConfirmScope = "once"): void {
   if (turn.pendingConfirm?.token === token) dropPendingConfirm(turn);
   // The stored offer is dropped by main on reply (see "chat:tool-confirm-reply").
   // File-card path also calls this via settleDocConfirm → reply; strip Allow
   // settles the card without notifying twice.
   settleDocConfirm(token, approved, { notify: false });
-  window.api.replyToolConfirm(token, approved);
+  window.api.replyToolConfirm(token, approved, scope);
   repaintTrail(turn);
 }
 
@@ -146,7 +166,9 @@ function repaintTrail(turn): void {
       live: turn.status !== "done",
       thoughtTickMs: thoughtTickMs(turn),
       pendingConfirmToken: turn.pendingConfirm?.token ?? null,
-      onAllow: (token) => replyConfirm(turn, token, true),
+      elapsedMs: elapsedMs(turn),
+      liveLabel: stripLabel(turn),
+      onAllow: (token, scope) => replyConfirm(turn, token, true, scope),
       onDeny: (token) => replyConfirm(turn, token, false),
     });
     paintAgentTrail(turn.trailHost, turn.events || []);
@@ -156,6 +178,7 @@ function repaintTrail(turn): void {
 
 function collapseTrail(turn): void {
   clearThoughtTicker(turn);
+  stopLiveTicker(turn);
   turn.thoughtStartedAt = null;
   if (!turn.trailHost) return;
   const meta = resolveActivityMeta(turn);
@@ -204,6 +227,7 @@ function onActivity(payload: ActivityIpcEvent): void {
 
   if (ev.kind === "done") {
     clearThoughtTicker(turn);
+    stopLiveTicker(turn);
     turn.thoughtStartedAt = null;
     dropPendingConfirm(turn);
     turn.activityMeta = {
@@ -446,11 +470,14 @@ export async function runTurn(ctx): Promise<void> {
     activityMeta: null as MessageActivity | null,
     thoughtStartedAt: null as number | null,
     thoughtTimer: null as ReturnType<typeof setInterval> | null,
+    startedAt: Date.now(),
+    liveTimer: null as ReturnType<typeof setInterval> | null,
     trailHost,
     bubble,
     renderer: createStreamRenderer(bubble),
   };
   turns.set(turn.key, turn);
+  startLiveTicker(turn);
   setActivity(turn.key, "working", turn.label);
   syncWorkingStrip();
 
@@ -508,6 +535,7 @@ export async function runTurn(ctx): Promise<void> {
     collapseTrail(turn);
   } finally {
     clearThoughtTicker(turn);
+    stopLiveTicker(turn);
     if (turn.id) byRequest.delete(turn.id);
     turns.delete(turn.key);
     clearActivity(turn.key);

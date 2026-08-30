@@ -7,6 +7,8 @@ import * as fs from "fs";
 import * as path from "path";
 import * as registry from "./registry";
 import * as fsTools from "./fs-tools";
+import { createProject } from "./create-project";
+import * as grants from "../tool-grants";
 import * as webSearch from "./web-search";
 import {
   MAX_SEARCHES_PER_TURN,
@@ -134,6 +136,11 @@ async function execBuiltin(tool, args, context) {
       return await fsTools.deletePath(args);
     case "find_files":
       return clip(fsTools.findFiles(args));
+    case "create_project":
+      return createProject(args, {
+        model: context?.model || null,
+        onProjectCreated: context?.onProjectCreated,
+      });
     case "web_search": {
       const query = String(args.query || "").trim();
       // Re-asking the same question in different words burns a tool round for
@@ -214,7 +221,8 @@ async function execCustom(tool, args) {
 // confirm(tool, args) → Promise<boolean>; only invoked for risky calls.
 // allow: optional Set of names permitted even when globally disabled
 // (tools referenced by an enabled skill).
-// context: { projectId, onFile, ask, fetchedUrls?, searchedQueries?, wantedFormat? } — chat context
+// context: { projectId, model?, onFile, onProjectCreated?, ask, fetchedUrls?,
+// searchedQueries?, wantedFormat? } — chat context
 // that write project files, need an answer from the user, or soft-dedupe
 // http_fetch URLs within a turn.
 async function execute(name, args, confirm, allow, context) {
@@ -222,7 +230,10 @@ async function execute(name, args, confirm, allow, context) {
   const allowed = tool && (tool.enabled !== false || (allow && allow.has(name)));
   if (!allowed) return `Error: tool "${name}" is not available`;
   const parsedArgs = args && typeof args === "object" ? args : {};
-  if (isRisky(tool, parsedArgs)) {
+  // A standing grant ("this session" / "always in this project") answers the
+  // prompt in advance; without one, every risky call still asks.
+  const granted = grants.isGranted(context?.projectId, name);
+  if (isRisky(tool, parsedArgs) && !granted) {
     const ok = await confirm(tool, parsedArgs);
     if (!ok) return "The user declined to run this tool.";
   }

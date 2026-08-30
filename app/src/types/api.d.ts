@@ -134,7 +134,11 @@ interface AnyLmApi {
   onActivity(cb: (e: ActivityIpcEvent) => void): Unsubscribe;
   onChatContext(cb: (e: ChatContextEvent) => void): Unsubscribe;
   onToolConfirm(cb: (r: ToolConfirmRequest) => void): Unsubscribe;
-  replyToolConfirm(token: string, approved: boolean): void;
+  replyToolConfirm(
+    token: string,
+    approved: boolean,
+    scope?: "once" | "session" | "project"
+  ): void;
   confirmsSave(record: PendingConfirmRecord): Promise<PendingConfirmRecord | null>;
   confirmsRemove(token: string): Promise<boolean>;
   confirmsForKey(key: string): Promise<PendingConfirmRecord[]>;
