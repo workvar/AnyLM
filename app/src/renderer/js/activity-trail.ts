@@ -148,8 +148,14 @@ export function paintTrail(
   }
 
   // Live clock: one row that says work is still happening and for how long,
-  // so a long tool run never looks like a stall.
-  if (opts.live) {
+  // so a long tool run never looks like a stall. Skip it when the trail's
+  // last event is itself a live "thinking" row (rendered above, in the loop)
+  // -- that row already shows the same "Thought for Ns" text plus a
+  // THINKING tag, so appending this footer duplicated it verbatim.
+  const lastEvent = events[events.length - 1];
+  const trailingIsLiveThought =
+    !!lastEvent && lastEvent.kind === "thinking" && lastEvent.phase === "start";
+  if (opts.live && !trailingIsLiveThought) {
     const row = node("div", "act-row act-working");
     row.appendChild(node("span", "act-spinner"));
     row.appendChild(node("span", "act-text", opts.liveLabel || "Working"));
