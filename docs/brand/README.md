@@ -16,11 +16,16 @@ Canonical assets for Product Hunt, press, and social. Binary files live in [`/pr
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| Ink | `#0a0c10` | Backgrounds, icon plate |
-| Slime | `#7df9a6` | Primary accent / brand mark |
-| Mist | soft white ~60% | Secondary text on dark |
+| Ink / void | `#030405` / `#0a0c10` | Backgrounds, icon plate |
+| Slime (MD3 primary, dark) | `#7df9a6` | Primary accent / brand mark |
+| Slime deep | `#2fbf6d` | Hover / pressed |
+| Mist | `#bfc9c1` | Secondary text on dark |
 
-Typography on the marketing site: **Space Grotesk** (display) + **Manrope** (body).
+UI chrome uses **AWC UI** (Material Design 3). Brand roles live in
+`app/src/renderer/awc-theme.css` and `web/app/awc-theme.css`.
+
+Typography on the marketing site: **Space Grotesk** (display) + **Manrope** /
+**Roboto** (body / AWC components).
 
 ## Logo files
 

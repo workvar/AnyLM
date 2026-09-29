@@ -123,16 +123,21 @@ function bind() {
     }
   };
 
+  async function runOAuth(provider: string | undefined) {
+    if (!provider) return;
+    setError("");
+    try {
+      const user = await window.api.authOAuth(provider);
+      enterApp(user);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   for (const btn of qsa(".oauth")) {
-    btn.onclick = async () => {
-      setError("");
-      try {
-        const user = await window.api.authOAuth(btn.dataset.provider);
-        enterApp(user);
-      } catch (err) {
-        setError(err.message);
-      }
-    };
+    const activate = () => void runOAuth(btn.dataset.provider);
+    btn.onclick = activate;
+    btn.addEventListener("mdClick", activate);
   }
 
   // User row popup toggle

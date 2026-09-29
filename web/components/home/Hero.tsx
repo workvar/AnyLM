@@ -1,72 +1,72 @@
+"use client";
+
 import Link from "next/link";
+import { MdChip } from "@awc-ui/react";
 import DownloadButton from "@/components/download/DownloadButton";
-import Constellation from "./Constellation";
+import { AppShot } from "./AppShowcase";
 import { PRODUCT_NAME } from "@/lib/config";
 import type { Release } from "@/lib/releases";
 
 const WORKS_WITH = ["OpenAI SDK", "Ollama", "Cursor", "Continue", "Custom scripts"];
 
 export default function Hero({ release }: { release: Release | null }) {
-  // A flex column, not a plain block: when the copy is shorter than 92dvh the
-  // leftover space is absorbed by the content's auto margins instead of piling
-  // up under the "Works with" rule. That keeps the rule pinned to the bottom of
-  // the section at every viewport height, which is what the constellation hub
-  // is positioned against.
   return (
-    <section className="relative flex min-h-[92dvh] flex-col overflow-hidden px-6 pb-16 pt-28 text-center sm:pt-36">
-      <Constellation />
-
-      {/* Full-width scrim behind the whole text column, sized to the content
-          rather than tucked inside it, so the CTA at the bottom is covered too. */}
+    <section className="relative overflow-hidden px-6 pb-20 pt-28 sm:pt-32">
       <div
-        className="hero-scrim pointer-events-none absolute inset-x-0 top-0 bottom-24 -z-0"
+        className="pointer-events-none absolute inset-0 -z-10"
         aria-hidden
+        style={{
+          background: `
+            radial-gradient(ellipse 70% 50% at 70% 20%, color-mix(in srgb, var(--md-sys-color-primary) 16%, transparent), transparent 70%),
+            radial-gradient(ellipse 50% 40% at 10% 80%, color-mix(in srgb, var(--md-sys-color-secondary) 12%, transparent), transparent 65%),
+            var(--md-sys-color-background)
+          `,
+        }}
       />
 
-      <div className="relative z-10 mx-auto my-auto w-full max-w-3xl">
-        <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/40 px-3 py-1 text-xs text-[var(--color-mist)] backdrop-blur">
-          <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-slime)]" />
-          Local-first · nothing leaves your machine
-          <span aria-hidden>→</span>
-        </p>
+      <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-16">
+        <div className="max-w-xl">
+          <p className="font-display text-4xl font-semibold tracking-tight text-[var(--md-sys-color-primary)] sm:text-5xl">
+            {PRODUCT_NAME}
+          </p>
 
-        <h1 className="font-display text-balance text-5xl font-semibold tracking-tight sm:text-6xl lg:text-7xl">
-          One endpoint for every local model.
-          <span className="mt-2 block text-[var(--color-slime)]">Zero duplication.</span>
-        </h1>
+          <h1 className="font-display mt-4 text-balance text-3xl font-semibold tracking-tight text-[var(--md-sys-color-on-surface)] sm:text-4xl lg:text-5xl">
+            One endpoint for every local model.
+          </h1>
 
-        <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-[var(--color-mist)]">
-          {PRODUCT_NAME} runs quietly in the background, pools every LLM already installed on your
-          computer, and gives all your apps a single OpenAI-compatible endpoint to talk to.
-        </p>
+          <p className="mt-5 max-w-md text-lg leading-relaxed text-[var(--md-sys-color-on-surface-variant)]">
+            Local-first workspace for Ollama — projects with RAG, multi-agent chat, and a single
+            OpenAI-compatible router your whole machine can share.
+          </p>
 
-        {/* Primary action and its metadata are one group; "Discover more" is a
-            separate, lower-priority action and is spaced apart to say so. */}
-        <div className="mt-10 flex flex-col items-center">
-          <DownloadButton release={release} />
+          <div className="mt-8 flex flex-col items-start gap-4">
+            <DownloadButton release={release} />
+            <Link
+              href="#product"
+              className="text-sm font-medium text-[var(--md-sys-color-primary)] hover:underline"
+            >
+              See the new Material UI →
+            </Link>
+          </div>
 
-          <Link href="#insights" className="btn-ghost mt-10 text-sm">
-            Discover more
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
-              <path
-                d="M7 10l5 5 5-5"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </Link>
+          <div className="mt-10 flex flex-wrap gap-2">
+            {WORKS_WITH.map((name) => (
+              <MdChip key={name} label={name} variant="assist" density={-1} />
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="relative z-10 mx-auto mt-20 flex w-full max-w-4xl flex-wrap items-center justify-center gap-x-8 gap-y-3 border-t border-white/10 pt-8 text-xs uppercase tracking-[0.18em] text-[var(--color-mist)]">
-        <span className="normal-case tracking-normal text-white/70">Works with</span>
-        {WORKS_WITH.map((name) => (
-          <span key={name} className="text-white/80">
-            {name}
-          </span>
-        ))}
+        <div className="relative hero-shot-motion">
+          <div
+            className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] opacity-80"
+            aria-hidden
+            style={{
+              background:
+                "radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent), transparent 60%)",
+            }}
+          />
+          <AppShot id="hero" />
+        </div>
       </div>
     </section>
   );

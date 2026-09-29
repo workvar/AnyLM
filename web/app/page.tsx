@@ -1,5 +1,6 @@
 import JsonLd from "@/components/site/JsonLd";
 import Hero from "@/components/home/Hero";
+import AppShowcase from "@/components/home/AppShowcase";
 import Insights from "@/components/home/Insights";
 import ActivityStrip from "@/components/home/ActivityStrip";
 import Comparison from "@/components/home/Comparison";
@@ -18,6 +19,7 @@ export default async function HomePage() {
     <>
       <JsonLd />
       <Hero release={release} />
+      <AppShowcase />
       <Insights />
       <ActivityStrip />
       <Comparison />

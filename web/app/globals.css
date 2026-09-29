@@ -7,7 +7,7 @@
   --color-slime: #7df9a6;
   --color-slime-deep: #2fbf6d;
   --color-bile: #ffd166;
-  --color-mist: #b4bcd0;
+  --color-mist: #bfc9c1;
   --color-glass: rgba(255, 255, 255, 0.04);
   --color-glass-border: rgba(255, 255, 255, 0.1);
 
@@ -17,12 +17,12 @@
 
 html {
   scroll-behavior: smooth;
-  background: var(--color-void);
+  background: var(--md-sys-color-background, var(--color-void));
 }
 
 body {
-  color: #eef1f7;
-  background: var(--color-void);
+  color: var(--md-sys-color-on-surface, #eef1f7);
+  background: var(--md-sys-color-background, var(--color-void));
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
@@ -32,7 +32,8 @@ body {
     scroll-behavior: auto;
   }
 
-  .motion-safe-only {
+  .motion-safe-only,
+  .hero-shot-motion {
     animation: none !important;
     transition: none !important;
   }
@@ -53,54 +54,20 @@ body {
 }
 
 .glass {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
-  border: 1px solid var(--color-glass-border);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: var(--md-sys-color-surface-container, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--md-sys-color-outline-variant, rgba(255, 255, 255, 0.1));
 }
 
 .glass-strong {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: var(--md-sys-color-surface-container-high, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--md-sys-color-outline-variant, rgba(255, 255, 255, 0.14));
 }
 
 .nebula {
   background:
-    radial-gradient(ellipse 60% 45% at 50% 20%, rgba(125, 249, 166, 0.14), transparent 70%),
-    radial-gradient(ellipse 40% 35% at 15% 70%, rgba(80, 120, 100, 0.18), transparent 65%),
-    radial-gradient(ellipse 45% 40% at 85% 60%, rgba(60, 90, 80, 0.16), transparent 60%);
-}
-
-/* The hero text sits on top of an animated constellation. Two things keep it
-   readable: the artwork is faded out across the centre column (.constellation),
-   and a scrim sits directly behind the words (.hero-scrim). Either one alone
-   leaves the CTA cluster washed out by the hub glow. */
-.constellation {
-  -webkit-mask-image: radial-gradient(
-    ellipse 42% 46% at 50% 48%,
-    rgba(0, 0, 0, 0.1),
-    rgba(0, 0, 0, 0.35) 55%,
-    #000 88%
-  );
-  mask-image: radial-gradient(
-    ellipse 42% 46% at 50% 48%,
-    rgba(0, 0, 0, 0.1),
-    rgba(0, 0, 0, 0.35) 55%,
-    #000 88%
-  );
-}
-
-.hero-scrim {
-  background:
-    radial-gradient(
-      ellipse 62% 62% at 50% 50%,
-      rgba(3, 4, 5, 0.94),
-      rgba(3, 4, 5, 0.82) 55%,
-      rgba(3, 4, 5, 0.4) 78%,
-      transparent 100%
-    );
+    radial-gradient(ellipse 60% 45% at 50% 20%, color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 15% 70%, color-mix(in srgb, var(--md-sys-color-secondary) 12%, transparent), transparent 65%),
+    var(--md-sys-color-background);
 }
 
 .btn-primary {
@@ -109,15 +76,15 @@ body {
   justify-content: center;
   gap: 0.5rem;
   border-radius: 9999px;
-  background: #fff;
-  color: #05060a;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   font-weight: 600;
   padding: 0.85rem 1.6rem;
-  transition: transform 160ms ease-out, background 160ms ease-out;
+  transition: transform 160ms ease-out, filter 160ms ease-out;
 }
 
 .btn-primary:hover {
-  background: var(--color-slime);
+  filter: brightness(1.06);
 }
 
 .btn-primary:active {
@@ -130,22 +97,48 @@ body {
   justify-content: center;
   gap: 0.5rem;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.04);
-  color: #fff;
+  border: 1px solid var(--md-sys-color-outline);
+  background: transparent;
+  color: var(--md-sys-color-primary);
   font-weight: 500;
   padding: 0.85rem 1.6rem;
-  backdrop-filter: blur(12px);
   transition: transform 160ms ease-out, background 160ms ease-out, border-color 160ms ease-out;
 }
 
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(125, 249, 166, 0.45);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
 }
 
 .btn-ghost:active {
   transform: scale(0.97);
+}
+
+@keyframes hero-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes hero-glow {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.hero-shot-motion {
+  animation: hero-float 7s ease-in-out infinite;
+}
+
+.hero-shot-motion > div:first-child {
+  animation: hero-glow 5s ease-in-out infinite;
 }
 
 @keyframes pulse-soft {
