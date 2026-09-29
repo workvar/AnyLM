@@ -7,8 +7,9 @@
     "build:env": "node scripts/build-env.js",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "tsc -p tsconfig.renderer.json",
+    "build:awc": "node scripts/bundle-awc.js",
     "build:assets": "node scripts/copy-assets.js",
-    "build": "bun run build:env && bun run build:main && bun run build:renderer && bun run build:assets",
+    "build": "bun run build:env && bun run build:main && bun run build:renderer && bun run build:awc && bun run build:assets",
     "fix:electron-bundle": "node scripts/fix-electron-bundle.js",
     "postinstall": "node scripts/fix-electron-bundle.js",
     "watch": "bun run build:env && tsc -p tsconfig.main.json --watch",
@@ -24,6 +25,7 @@
   "author": "Yash",
   "license": "MIT",
   "dependencies": {
+    "@awc-ui/core": "1.0.1",
     "chromadb": "^3.5.0",
     "docx": "^9.5.0",
     "electron-updater": "^6.3.9",
@@ -88,31 +90,13 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
+        "dmg",
+        "zip"
       ]
     },
     "win": {
       "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64",
-            "ia32"
-          ]
-        }
+        "nsis"
       ]
     },
     "nsis": {

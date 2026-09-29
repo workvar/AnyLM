@@ -1,0 +1,69 @@
+/**
+ * Shared AnyLM × AWC MD3 brand tokens for the marketing site.
+ * Keep in sync with app/src/renderer/awc-theme.css.
+ *
+ * Must target [data-theme="dark"] as well as :root — AWC's tokens.css
+ * dark block is more specific than :root alone.
+ */
+
+:root,
+[data-theme="dark"] {
+  --md-sys-color-primary: #7df9a6;
+  --md-sys-color-on-primary: #00391c;
+  --md-sys-color-primary-container: #00522b;
+  --md-sys-color-on-primary-container: #a6f4c5;
+
+  --md-sys-color-secondary: #b5ccb9;
+  --md-sys-color-on-secondary: #213528;
+  --md-sys-color-secondary-container: #374b3e;
+  --md-sys-color-on-secondary-container: #d1e8d5;
+
+  --md-sys-color-tertiary: #ffd166;
+  --md-sys-color-on-tertiary: #412d00;
+  --md-sys-color-tertiary-container: #5e4200;
+  --md-sys-color-on-tertiary-container: #ffdf9b;
+
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffdad6;
+
+  --md-sys-color-background: #030405;
+  --md-sys-color-on-background: #e2e8e2;
+  --md-sys-color-surface: #0a0c10;
+  --md-sys-color-on-surface: #e2e8e2;
+  --md-sys-color-surface-variant: #404943;
+  --md-sys-color-on-surface-variant: #bfc9c1;
+  --md-sys-color-outline: #8a938b;
+  --md-sys-color-outline-variant: #404943;
+
+  --md-sys-color-surface-container-lowest: #050607;
+  --md-sys-color-surface-container-low: #12151c;
+  --md-sys-color-surface-container: #161a22;
+  --md-sys-color-surface-container-high: #1c212b;
+  --md-sys-color-surface-container-highest: #242a36;
+
+  --md-sys-color-inverse-surface: #e2e8e2;
+  --md-sys-color-inverse-on-surface: #2b322d;
+  --md-sys-color-inverse-primary: #1b7a45;
+
+  --md-sys-color-success: #7df9a6;
+  --md-sys-color-on-success: #00391c;
+  --md-sys-color-success-container: #00522b;
+  --md-sys-color-on-success-container: #a6f4c5;
+
+  --md-sys-color-warning: #ffd166;
+  --md-sys-color-on-warning: #412d00;
+  --md-sys-color-warning-container: #5e4200;
+  --md-sys-color-on-warning-container: #ffdf9b;
+
+  --color-void: var(--md-sys-color-background);
+  --color-void-soft: var(--md-sys-color-surface);
+  --color-ink: var(--md-sys-color-surface-container-low);
+  --color-slime: var(--md-sys-color-primary);
+  --color-slime-deep: #2fbf6d;
+  --color-bile: var(--md-sys-color-tertiary);
+  --color-mist: var(--md-sys-color-on-surface-variant);
+  --color-glass: color-mix(in srgb, var(--md-sys-color-surface-container-high) 55%, transparent);
+  --color-glass-border: color-mix(in srgb, var(--md-sys-color-outline-variant) 55%, transparent);
+}

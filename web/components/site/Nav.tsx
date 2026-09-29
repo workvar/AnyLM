@@ -3,6 +3,7 @@ import { PRODUCT_NAME, REPO_URL } from "@/lib/config";
 import NavDownloadCta from "./NavDownloadCta";
 
 const LINKS = [
+  { href: "/#product", label: "Product" },
   { href: "/#features", label: "Features" },
   { href: "/#capabilities", label: "Capabilities" },
   { href: "/#compare", label: "Compare" },
@@ -16,9 +17,9 @@ export default function Nav() {
       <div className="pointer-events-auto mx-auto flex max-w-6xl items-center justify-between gap-3">
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2 rounded-full glass-strong px-3 py-2 font-semibold tracking-tight"
+          className="flex shrink-0 items-center gap-2 rounded-full border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-high)] px-3 py-2 font-semibold tracking-tight"
         >
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--color-slime)] text-sm text-black">
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--md-sys-color-primary)] text-sm text-[var(--md-sys-color-on-primary)]">
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
               <circle cx="12" cy="12" r="3" fill="currentColor" />
               <path
@@ -32,12 +33,12 @@ export default function Nav() {
           <span className="pr-1">{PRODUCT_NAME}</span>
         </Link>
 
-        <nav className="glass-strong hidden items-center gap-1 rounded-full px-2 py-1.5 text-sm md:flex">
+        <nav className="hidden items-center gap-1 rounded-full border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-high)] px-2 py-1.5 text-sm md:flex">
           {LINKS.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className="rounded-full px-3 py-1.5 text-[var(--color-mist)] transition hover:bg-white/5 hover:text-white"
+              className="rounded-full px-3 py-1.5 text-[var(--md-sys-color-on-surface-variant)] transition hover:bg-[color-mix(in_srgb,var(--md-sys-color-on-surface)_8%,transparent)] hover:text-[var(--md-sys-color-on-surface)]"
             >
               {l.label}
             </Link>
@@ -46,7 +47,7 @@ export default function Nav() {
             href={REPO_URL}
             target="_blank"
             rel="noreferrer"
-            className="rounded-full px-3 py-1.5 text-[var(--color-mist)] transition hover:bg-white/5 hover:text-white"
+            className="rounded-full px-3 py-1.5 text-[var(--md-sys-color-on-surface-variant)] transition hover:bg-[color-mix(in_srgb,var(--md-sys-color-on-surface)_8%,transparent)] hover:text-[var(--md-sys-color-on-surface)]"
           >
             GitHub
           </a>

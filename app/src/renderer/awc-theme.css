@@ -1,0 +1,343 @@
+/**
+ * AnyLM brand → Material Design 3 role overrides for AWC UI.
+ * Seeded from slime (#2FBF6D / #7DF9A6). Load after awc-boot.css.
+ */
+
+:root {
+  --md-sys-color-primary: #1b7a45;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #a6f4c5;
+  --md-sys-color-on-primary-container: #002110;
+
+  --md-sys-color-secondary: #4f6354;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #d1e8d5;
+  --md-sys-color-on-secondary-container: #0c1f14;
+
+  --md-sys-color-tertiary: #7c5800;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #ffdf9b;
+  --md-sys-color-on-tertiary-container: #271900;
+
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #410002;
+
+  --md-sys-color-background: #f4f6f8;
+  --md-sys-color-on-background: #161d18;
+  --md-sys-color-surface: #f4f6f8;
+  --md-sys-color-on-surface: #161d18;
+  --md-sys-color-surface-variant: #dbe5db;
+  --md-sys-color-on-surface-variant: #404943;
+  --md-sys-color-outline: #707972;
+  --md-sys-color-outline-variant: #bfc9c1;
+
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #eef1f3;
+  --md-sys-color-surface-container: #e8ecee;
+  --md-sys-color-surface-container-high: #e2e7ea;
+  --md-sys-color-surface-container-highest: #dce2e5;
+
+  --md-sys-color-inverse-surface: #2b322d;
+  --md-sys-color-inverse-on-surface: #ecf2ec;
+  --md-sys-color-inverse-primary: #7df9a6;
+
+  --md-sys-color-success: #1b7a45;
+  --md-sys-color-on-success: #ffffff;
+  --md-sys-color-success-container: #a6f4c5;
+  --md-sys-color-on-success-container: #002110;
+
+  --md-sys-color-warning: #7c5800;
+  --md-sys-color-on-warning: #ffffff;
+  --md-sys-color-warning-container: #ffdf9b;
+  --md-sys-color-on-warning-container: #271900;
+}
+
+[data-theme="dark"] {
+  --md-sys-color-primary: #7df9a6;
+  --md-sys-color-on-primary: #00391c;
+  --md-sys-color-primary-container: #00522b;
+  --md-sys-color-on-primary-container: #a6f4c5;
+
+  --md-sys-color-secondary: #b5ccb9;
+  --md-sys-color-on-secondary: #213528;
+  --md-sys-color-secondary-container: #374b3e;
+  --md-sys-color-on-secondary-container: #d1e8d5;
+
+  --md-sys-color-tertiary: #ffd166;
+  --md-sys-color-on-tertiary: #412d00;
+  --md-sys-color-tertiary-container: #5e4200;
+  --md-sys-color-on-tertiary-container: #ffdf9b;
+
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffdad6;
+
+  --md-sys-color-background: #030405;
+  --md-sys-color-on-background: #e2e8e2;
+  --md-sys-color-surface: #0a0c10;
+  --md-sys-color-on-surface: #e2e8e2;
+  --md-sys-color-surface-variant: #404943;
+  --md-sys-color-on-surface-variant: #bfc9c1;
+  --md-sys-color-outline: #8a938b;
+  --md-sys-color-outline-variant: #404943;
+
+  --md-sys-color-surface-container-lowest: #050607;
+  --md-sys-color-surface-container-low: #12151c;
+  --md-sys-color-surface-container: #161a22;
+  --md-sys-color-surface-container-high: #1c212b;
+  --md-sys-color-surface-container-highest: #242a36;
+
+  --md-sys-color-inverse-surface: #e2e8e2;
+  --md-sys-color-inverse-on-surface: #2b322d;
+  --md-sys-color-inverse-primary: #1b7a45;
+
+  --md-sys-color-success: #7df9a6;
+  --md-sys-color-on-success: #00391c;
+  --md-sys-color-success-container: #00522b;
+  --md-sys-color-on-success-container: #a6f4c5;
+
+  --md-sys-color-warning: #ffd166;
+  --md-sys-color-on-warning: #412d00;
+  --md-sys-color-warning-container: #5e4200;
+  --md-sys-color-on-warning-container: #ffdf9b;
+}
+
+/* Bridge legacy AnyLM tokens onto MD3 roles so existing chrome inherits AWC. */
+:root,
+:root[data-theme="light"] {
+  --bg: var(--md-sys-color-background);
+  --panel: var(--md-sys-color-surface-container-lowest);
+  --panel-2: var(--md-sys-color-surface-container);
+  --border: color-mix(in srgb, var(--md-sys-color-outline-variant) 80%, transparent);
+  --text: var(--md-sys-color-on-surface);
+  --muted: var(--md-sys-color-on-surface-variant);
+  --accent: var(--md-sys-color-primary);
+  --accent-2: color-mix(in srgb, var(--md-sys-color-primary) 82%, #000);
+  --accent-grad: linear-gradient(
+    135deg,
+    var(--md-sys-color-primary),
+    color-mix(in srgb, var(--md-sys-color-primary) 70%, #0a3d22)
+  );
+  --accent-contrast: var(--md-sys-color-on-primary);
+  --danger: var(--md-sys-color-error);
+  --ok: var(--md-sys-color-success);
+  --warn: var(--md-sys-color-warning);
+  --glass: color-mix(in srgb, var(--md-sys-color-surface-container-high) 72%, transparent);
+  --glass-border: color-mix(in srgb, var(--md-sys-color-outline-variant) 70%, transparent);
+  --divider: color-mix(in srgb, var(--md-sys-color-outline-variant) 85%, transparent);
+  --divider-strong: var(--md-sys-color-outline);
+  --hover: color-mix(in srgb, var(--md-sys-color-on-surface) 6%, transparent);
+  --selected: color-mix(in srgb, var(--md-sys-color-primary) 16%, transparent);
+  --focus-ring: var(--md-sys-color-primary);
+  --focus-ring-offset: var(--md-sys-color-surface);
+  --overlay-bg: color-mix(in srgb, #000 35%, transparent);
+
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  --font-display: "Roboto", "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Roboto", "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  --bg: var(--md-sys-color-background);
+  --panel: var(--md-sys-color-surface);
+  --panel-2: var(--md-sys-color-surface-container);
+  --border: color-mix(in srgb, var(--md-sys-color-outline-variant) 70%, transparent);
+  --text: var(--md-sys-color-on-surface);
+  --muted: var(--md-sys-color-on-surface-variant);
+  --accent: var(--md-sys-color-primary);
+  --accent-2: #2fbf6d;
+  --accent-grad: linear-gradient(135deg, #7df9a6, #2fbf6d);
+  --accent-contrast: var(--md-sys-color-on-primary);
+  --danger: var(--md-sys-color-error);
+  --ok: var(--md-sys-color-success);
+  --warn: var(--md-sys-color-warning);
+  --glass: color-mix(in srgb, var(--md-sys-color-surface-container-high) 55%, transparent);
+  --glass-border: color-mix(in srgb, var(--md-sys-color-outline-variant) 55%, transparent);
+  --divider: color-mix(in srgb, var(--md-sys-color-outline-variant) 70%, transparent);
+  --divider-strong: var(--md-sys-color-outline);
+  --hover: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  --selected: color-mix(in srgb, var(--md-sys-color-primary) 16%, transparent);
+  --focus-ring: var(--md-sys-color-primary);
+  --focus-ring-offset: var(--md-sys-color-surface);
+  --overlay-bg: color-mix(in srgb, #000 62%, transparent);
+}
+
+/* MD3-shaped native controls that are not yet AWC custom elements. */
+button.primary {
+  background: var(--md-sys-color-primary) !important;
+  color: var(--md-sys-color-on-primary) !important;
+  border-radius: var(--md-sys-shape-corner-full, 999px) !important;
+  border: none !important;
+  box-shadow: var(--md-sys-elevation-level1, none);
+}
+
+button.primary:hover {
+  filter: brightness(1.06);
+}
+
+button.ghost {
+  background: transparent !important;
+  color: var(--md-sys-color-primary) !important;
+  border: 1px solid var(--md-sys-color-outline) !important;
+  border-radius: var(--md-sys-shape-corner-full, 999px) !important;
+}
+
+button.ghost:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent) !important;
+}
+
+.auth-input,
+input.auth-input,
+textarea.auth-input,
+#sidebar-search,
+#chat-input {
+  border-radius: var(--md-sys-shape-corner-medium, 12px) !important;
+  border-color: var(--md-sys-color-outline) !important;
+  background: var(--md-sys-color-surface-container-highest) !important;
+  color: var(--md-sys-color-on-surface) !important;
+}
+
+#auth-screen md-card {
+  width: min(400px, 92vw);
+  --md-card-padding: 28px;
+  --md-card-gap: 16px;
+}
+
+#auth-screen md-text-field,
+#auth-screen md-button {
+  width: 100%;
+}
+
+#auth-screen .oauth-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+#auth-screen .oauth-row md-button {
+  width: 100%;
+}
+
+#auth-screen .auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#auth-screen .auth-brand-name {
+  font: var(--md-sys-typescale-headline-small-font, 500 24px/32px Roboto, sans-serif);
+  color: var(--md-sys-color-on-surface);
+}
+
+#auth-screen #auth-sub {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font: var(--md-sys-typescale-body-medium-font, 400 14px/20px Roboto, sans-serif);
+}
+
+#auth-screen .auth-toggle {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 13px;
+}
+
+#auth-screen .auth-toggle a {
+  color: var(--md-sys-color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+#sidebar .new-chat-split {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding: 0 12px;
+}
+
+#sidebar .new-chat-split md-button {
+  width: 100%;
+}
+
+#sidebar .side-search {
+  padding: 8px 12px 4px;
+}
+
+#sidebar .side-search md-text-field {
+  width: 100%;
+}
+
+.side-nav-glyph {
+  font-size: 20px;
+  line-height: 1;
+  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 20;
+}
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
+#sidebar {
+  background: var(--md-sys-color-surface-container-low) !important;
+  border-right: 1px solid var(--md-sys-color-outline-variant) !important;
+}
+
+.brand-badge {
+  background: var(--md-sys-color-primary) !important;
+  color: var(--md-sys-color-on-primary) !important;
+}
+
+.nebula {
+  background:
+    radial-gradient(
+      ellipse 60% 45% at 50% 20%,
+      color-mix(in srgb, var(--md-sys-color-primary) 18%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 35% at 15% 70%,
+      color-mix(in srgb, var(--md-sys-color-secondary) 14%, transparent),
+      transparent 65%
+    ),
+    var(--md-sys-color-background) !important;
+}
+
+.glass,
+.glass-strong {
+  background: var(--md-sys-color-surface-container) !important;
+  border: 1px solid var(--md-sys-color-outline-variant) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.modal {
+  background: var(--md-sys-color-surface-container-high) !important;
+  border: 1px solid var(--md-sys-color-outline-variant) !important;
+  border-radius: var(--md-sys-shape-corner-extra-large, 28px) !important;
+}
+
+md-button.full,
+md-button[data-full] {
+  width: 100%;
+}

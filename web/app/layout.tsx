@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Manrope } from "next/font/google";
+import { Space_Grotesk, Manrope, Roboto } from "next/font/google";
+import "@awc-ui/core/css/tokens.css";
+import "./awc-theme.css";
 import "./globals.css";
 import Nav from "@/components/site/Nav";
 import Footer from "@/components/site/Footer";
@@ -22,6 +24,13 @@ const display = Space_Grotesk({
 const sans = Manrope({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+});
+
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "700"],
+  variable: "--font-roboto",
   display: "swap",
 });
 
@@ -92,7 +101,17 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable}`}>
+    <html
+      lang="en"
+      data-theme="dark"
+      className={`${display.variable} ${sans.variable} ${roboto.variable}`}
+    >
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=add,arrow_forward,check,download,search,smart_toy&display=block"
+        />
+      </head>
       <body className="grain min-h-dvh antialiased">
         <Analytics />
         <AppAnalytics />

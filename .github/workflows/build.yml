@@ -27,10 +27,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          # macos-13 was retired Dec 2025; jobs pinned to it queued forever
+          # then cancelled at the 24h limit, which also cancelled the Release
+          # workflow even when Windows/Linux/mac-arm64 succeeded.
+          - os: macos-15
             artifact: mac-arm64
             args: --mac --arm64
-          - os: macos-13
+          - os: macos-15-intel
             artifact: mac-x64
             args: --mac --x64
           - os: windows-latest

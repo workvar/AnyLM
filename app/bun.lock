@@ -1,9 +1,11 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "llmeter-app",
       "dependencies": {
+        "@awc-ui/core": "1.0.1",
         "chromadb": "^3.5.0",
         "docx": "^9.5.0",
         "electron-updater": "^6.3.9",
@@ -26,6 +28,8 @@
     },
   },
   "packages": {
+    "@awc-ui/core": ["@awc-ui/core@1.0.1", "", { "bin": { "awc-ui": "bin/awc-ui.mjs" } }, "sha512-t5bZGDDLml9Z6d+FuHWJsj/M4lnMSIKLLALFonOIb573LQelYeFMrMBYtB4Ux334dbkPD06T1EzCDYNauAchjA=="],
+
     "@electron-internal/extract-zip": ["@electron-internal/extract-zip@1.0.4", "", {}, "sha512-Zr1Vs7E9tpCNhZHDAbFVXc2gEVCG9RqPDjrno5+bdgB6LRAuvgyMHJut4NCVyYwtAieapMzc3fiQ3CSTi75ARg=="],
 
     "@electron/asar": ["@electron/asar@3.4.1", "", { "dependencies": { "commander": "^5.0.0", "glob": "^7.1.6", "minimatch": "^3.0.4" }, "bin": { "asar": "bin/asar.js" } }, "sha512-i4/rNPRS84t0vSRa2HorerGRXWyF4vThfHesw0dmcWHp+cspK743UanA0suA5Q5y8kzY2y6YKrvbIUn69BCAiA=="],

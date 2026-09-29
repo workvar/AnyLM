@@ -9,12 +9,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=add,arrow_drop_down,chat,check,close,description,folder,logout,mail,menu,more_vert,search,send,settings,smart_toy&display=block"
       rel="stylesheet"
     />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="awc-boot.css" />
+    <link rel="stylesheet" href="awc-theme.css" />
     <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="js/awc-boot.js"></script>
     <script>
       // Tag the platform before paint so macOS glass styling applies with no flash.
+      document.documentElement.setAttribute("data-density", "-1");
       if (window.api && window.api.platform === "darwin") {
         document.documentElement.classList.add("platform-darwin");
       }
@@ -36,7 +44,7 @@
     </div>
 
     <div id="auth-screen" class="nebula hidden">
-      <div class="auth-card">
+      <md-card id="auth-card" class="auth-card" variant="elevated">
         <div class="auth-brand">
           <span class="brand-badge lg" aria-hidden="true">
             <svg viewBox="0 0 24 24" class="brand-badge-icon" fill="none">
@@ -45,33 +53,28 @@
                     stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
             </svg>
           </span>
-          <span>AnyLM</span>
+          <span class="auth-brand-name">AnyLM</span>
         </div>
         <p id="auth-sub">Sign in to your projects</p>
 
         <div class="oauth-row">
-          <button type="button" class="oauth" data-provider="google">Continue with Google</button>
-          <button type="button" class="oauth" data-provider="github">Continue with GitHub</button>
+          <md-button type="button" class="oauth" variant="outlined" data-provider="google">Google</md-button>
+          <md-button type="button" class="oauth" variant="outlined" data-provider="github">GitHub</md-button>
         </div>
-        <div class="divider"><span>or</span></div>
+        <md-divider></md-divider>
 
         <form id="auth-form">
-          <input id="auth-name" class="auth-input hidden" placeholder="Name" autocomplete="name" />
-          <input id="auth-email" class="auth-input" type="email" placeholder="Email" autocomplete="email" aria-label="Email" />
-          <input
-            id="auth-password"
-            class="auth-input"
-            type="password"
-            placeholder="Password"
-            autocomplete="current-password" aria-label="Password" />
+          <md-text-field id="auth-name" class="hidden" variant="outlined" label="Name" autocomplete="name"></md-text-field>
+          <md-text-field id="auth-email" variant="outlined" label="Email" type="email" autocomplete="email" required></md-text-field>
+          <md-text-field id="auth-password" variant="outlined" label="Password" type="password" autocomplete="current-password" required></md-text-field>
           <div id="auth-error" class="auth-error" role="alert"></div>
-          <button id="auth-submit" type="submit" class="primary full">Sign in</button>
+          <md-button id="auth-submit" type="submit" variant="filled" data-full>Sign in</md-button>
         </form>
         <div class="auth-toggle">
           <span id="auth-toggle-text">No account?</span>
           <a id="auth-toggle-link" href="#">Create one</a>
         </div>
-      </div>
+      </md-card>
     </div>
 
     <div id="app" class="hidden">
@@ -105,36 +108,23 @@
           </span>
         </div>
         <div class="new-chat-split">
-          <button id="new-chat-btn" class="primary">＋ New chat</button>
-          <button id="new-chat-project-btn" class="primary new-chat-caret" type="button"
+          <md-button id="new-chat-btn" variant="filled" icon="add" size="sm">New chat</md-button>
+          <md-icon-button id="new-chat-project-btn" variant="standard" icon="arrow_drop_down"
+                  type="button"
                   aria-haspopup="menu" aria-expanded="false"
                   title="Start a chat in a project" aria-label="Start a chat in a project">
-            <svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true">
-              <path d="M1 1.5 5 5l4-3.5" fill="none" stroke="currentColor" stroke-width="1.4"
-                    stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </button>
+          </md-icon-button>
         </div>
         <button id="projects-nav" class="side-nav" type="button">
-          <svg class="side-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75" />
-            <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75" />
-            <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75" />
-            <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75" />
-          </svg>
+          <span class="material-symbols-outlined side-nav-glyph" aria-hidden="true">folder</span>
           Projects
         </button>
         <button id="artifacts-nav" class="side-nav" type="button">
-          <svg class="side-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M14 3H7.5A2.5 2.5 0 0 0 5 5.5v13A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V9l-5-6Z"
-                  stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" />
-            <path d="M14 3v5.5H19" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M9 13h6M9 17h4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
-          </svg>
+          <span class="material-symbols-outlined side-nav-glyph" aria-hidden="true">description</span>
           Artifacts
         </button>
         <div class="side-search">
-          <input id="sidebar-search" type="search" placeholder="Search chats…" autocomplete="off" aria-label="Search chats…" />
+          <md-text-field id="sidebar-search" type="search" variant="outlined" label="Search chats" leading-icon="search" density="-1"></md-text-field>
         </div>
 
         <div class="side-scroll">

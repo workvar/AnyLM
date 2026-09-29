@@ -11,8 +11,10 @@ function focusSidebarSearch(): void {
   const input = el("sidebar-search");
   if (!input) return;
   el("app")?.classList.remove("sidebar-collapsed");
-  input.focus();
-  input.select?.();
+  const anyInput = input as UiElement & { focusInput?: () => void };
+  if (typeof anyInput.focusInput === "function") anyInput.focusInput();
+  else anyInput.focus?.();
+  anyInput.select?.();
 }
 
 function toggleSidebar(): void {
