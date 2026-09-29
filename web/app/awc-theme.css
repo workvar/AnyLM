@@ -1,9 +1,13 @@
 /**
  * Shared AnyLM × AWC MD3 brand tokens for the marketing site.
  * Keep in sync with app/src/renderer/awc-theme.css.
+ *
+ * Must target [data-theme="dark"] as well as :root — AWC's tokens.css
+ * dark block is more specific than :root alone.
  */
 
-:root {
+:root,
+[data-theme="dark"] {
   --md-sys-color-primary: #7df9a6;
   --md-sys-color-on-primary: #00391c;
   --md-sys-color-primary-container: #00522b;
@@ -42,6 +46,16 @@
   --md-sys-color-inverse-surface: #e2e8e2;
   --md-sys-color-inverse-on-surface: #2b322d;
   --md-sys-color-inverse-primary: #1b7a45;
+
+  --md-sys-color-success: #7df9a6;
+  --md-sys-color-on-success: #00391c;
+  --md-sys-color-success-container: #00522b;
+  --md-sys-color-on-success-container: #a6f4c5;
+
+  --md-sys-color-warning: #ffd166;
+  --md-sys-color-on-warning: #412d00;
+  --md-sys-color-warning-container: #5e4200;
+  --md-sys-color-on-warning-container: #ffdf9b;
 
   --color-void: var(--md-sys-color-background);
   --color-void-soft: var(--md-sys-color-surface);

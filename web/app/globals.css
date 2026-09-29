@@ -161,3 +161,40 @@ body {
     opacity: 0.8;
   }
 }
+
+/* Brand MD3 roles must load AFTER @awc-ui/core tokens (Next concatenates CSS
+   in import order; AWC's [data-theme=dark] block otherwise wins and paints
+   Material purple instead of slime). */
+html,
+html[data-theme="dark"],
+:root,
+[data-theme="dark"] {
+  --md-sys-color-primary: #7df9a6;
+  --md-sys-color-on-primary: #00391c;
+  --md-sys-color-primary-container: #00522b;
+  --md-sys-color-on-primary-container: #a6f4c5;
+  --md-sys-color-secondary: #b5ccb9;
+  --md-sys-color-on-secondary: #213528;
+  --md-sys-color-secondary-container: #374b3e;
+  --md-sys-color-on-secondary-container: #d1e8d5;
+  --md-sys-color-tertiary: #ffd166;
+  --md-sys-color-on-tertiary: #412d00;
+  --md-sys-color-tertiary-container: #5e4200;
+  --md-sys-color-on-tertiary-container: #ffdf9b;
+  --md-sys-color-background: #030405;
+  --md-sys-color-on-background: #e2e8e2;
+  --md-sys-color-surface: #0a0c10;
+  --md-sys-color-on-surface: #e2e8e2;
+  --md-sys-color-surface-variant: #404943;
+  --md-sys-color-on-surface-variant: #bfc9c1;
+  --md-sys-color-outline: #8a938b;
+  --md-sys-color-outline-variant: #404943;
+  --md-sys-color-surface-container-lowest: #050607;
+  --md-sys-color-surface-container-low: #12151c;
+  --md-sys-color-surface-container: #161a22;
+  --md-sys-color-surface-container-high: #1c212b;
+  --md-sys-color-surface-container-highest: #242a36;
+  --md-sys-color-inverse-primary: #1b7a45;
+  --md-sys-color-surface-tint: #7df9a6;
+  --color-slime: #7df9a6;
+}
